@@ -1,6 +1,7 @@
 // src/tools/registry/staticTools.ts
 
-import type {Tool} from '@shared/index.js';
+import type { Tool } from '@shared/index.js';
+import { autoMemoryTools } from '../handlers/autoMemoryHandler.js';
 
 /**
  * Graph manipulation tools for managing nodes and edges
@@ -19,11 +20,11 @@ export const graphTools: Tool[] = [
                         type: "object",
                         description: "Node to add",
                         properties: {
-                            name: {type: "string", description: "The name of the node"},
-                            nodeType: {type: "string", description: "The type of the node"},
+                            name: { type: "string", description: "The name of the node" },
+                            nodeType: { type: "string", description: "The type of the node" },
                             metadata: {
                                 type: "array",
-                                items: {type: "string", description: "Metadata item"},
+                                items: { type: "string", description: "Metadata item" },
                                 description: "An array of metadata contents associated with the node"
                             },
                         },
@@ -48,11 +49,11 @@ export const graphTools: Tool[] = [
                         type: "object",
                         description: "Node to update",
                         properties: {
-                            name: {type: "string", description: "The name of the node to update"},
-                            nodeType: {type: "string", description: "The new type of the node"},
+                            name: { type: "string", description: "The name of the node to update" },
+                            nodeType: { type: "string", description: "The new type of the node" },
                             metadata: {
                                 type: "array",
-                                items: {type: "string", description: "Metadata item"},
+                                items: { type: "string", description: "Metadata item" },
                                 description: "An array of new metadata contents for the node"
                             },
                         },
@@ -77,9 +78,9 @@ export const graphTools: Tool[] = [
                         type: "object",
                         description: "Edge to add",
                         properties: {
-                            from: {type: "string", description: "The name of the node where the edge starts"},
-                            to: {type: "string", description: "The name of the node where the edge ends"},
-                            edgeType: {type: "string", description: "The type of the edge"},
+                            from: { type: "string", description: "The name of the node where the edge starts" },
+                            to: { type: "string", description: "The name of the node where the edge ends" },
+                            edgeType: { type: "string", description: "The type of the edge" },
                             weight: {
                                 type: "number",
                                 description: "Optional edge weight (0-1 range). Defaults to 1 if not specified",
@@ -108,12 +109,12 @@ export const graphTools: Tool[] = [
                         type: "object",
                         description: "Edge to update",
                         properties: {
-                            from: {type: "string", description: "Current source node name"},
-                            to: {type: "string", description: "Current target node name"},
-                            edgeType: {type: "string", description: "Current edge type"},
-                            newFrom: {type: "string", description: "New source node name"},
-                            newTo: {type: "string", description: "New target node name"},
-                            newEdgeType: {type: "string", description: "New edge type"},
+                            from: { type: "string", description: "Current source node name" },
+                            to: { type: "string", description: "Current target node name" },
+                            edgeType: { type: "string", description: "Current edge type" },
+                            newFrom: { type: "string", description: "New source node name" },
+                            newTo: { type: "string", description: "New target node name" },
+                            newEdgeType: { type: "string", description: "New edge type" },
                             newWeight: {
                                 type: "number",
                                 description: "Optional new edge weight (0-1 range)",
@@ -137,7 +138,7 @@ export const graphTools: Tool[] = [
             properties: {
                 nodeNames: {
                     type: "array",
-                    items: {type: "string", description: "Node name to delete"},
+                    items: { type: "string", description: "Node name to delete" },
                     description: "An array of node names to delete"
                 },
             },
@@ -158,9 +159,9 @@ export const graphTools: Tool[] = [
                         type: "object",
                         description: "Edge to delete",
                         properties: {
-                            from: {type: "string", description: "The name of the node where the edge starts"},
-                            to: {type: "string", description: "The name of the node where the edge ends"},
-                            edgeType: {type: "string", description: "The type of the edge"},
+                            from: { type: "string", description: "The name of the node where the edge starts" },
+                            to: { type: "string", description: "The name of the node where the edge ends" },
+                            edgeType: { type: "string", description: "The type of the edge" },
                         },
                         required: ["from", "to", "edgeType"],
                     },
@@ -207,7 +208,7 @@ export const searchTools: Tool[] = [
             properties: {
                 names: {
                     type: "array",
-                    items: {type: "string", description: "Node name to open"},
+                    items: { type: "string", description: "Node name to open" },
                     description: "An array of node names to retrieve",
                 },
             },
@@ -233,10 +234,10 @@ export const metadataTools: Tool[] = [
                         type: "object",
                         description: "Metadata to add",
                         properties: {
-                            nodeName: {type: "string", description: "The name of the node to add the metadata to"},
+                            nodeName: { type: "string", description: "The name of the node to add the metadata to" },
                             contents: {
                                 type: "array",
-                                items: {type: "string", description: "Metadata content item"},
+                                items: { type: "string", description: "Metadata content item" },
                                 description: "An array of metadata contents to add"
                             },
                         },
@@ -261,10 +262,10 @@ export const metadataTools: Tool[] = [
                         type: "object",
                         description: "Metadata deletion",
                         properties: {
-                            nodeName: {type: "string", description: "The name of the node containing the metadata"},
+                            nodeName: { type: "string", description: "The name of the node containing the metadata" },
                             metadata: {
                                 type: "array",
-                                items: {type: "string", description: "Metadata item to delete"},
+                                items: { type: "string", description: "Metadata item to delete" },
                                 description: "An array of metadata to delete"
                             },
                         },
@@ -283,5 +284,6 @@ export const metadataTools: Tool[] = [
 export const allStaticTools: Tool[] = [
     ...graphTools,
     ...searchTools,
-    ...metadataTools
+    ...metadataTools,
+    ...autoMemoryTools
 ];

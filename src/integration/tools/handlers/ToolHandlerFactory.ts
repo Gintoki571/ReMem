@@ -1,18 +1,20 @@
 // src/tools/handlers/ToolHandlerFactory.ts
 
-import {GraphToolHandler} from './GraphToolHandler.js';
-import {SearchToolHandler} from './SearchToolHandler.js';
-import {MetadataToolHandler} from './MetadataToolHandler.js';
-import {DynamicToolHandler} from './DynamicToolHandler.js';
-import {toolsRegistry} from '@integration/index.js';
-import type {ApplicationManager} from '@application/index.js';
-import type {BaseToolHandler} from './BaseToolHandler.js';
+import { GraphToolHandler } from './GraphToolHandler.js';
+import { SearchToolHandler } from './SearchToolHandler.js';
+import { MetadataToolHandler } from './MetadataToolHandler.js';
+import { DynamicToolHandler } from './DynamicToolHandler.js';
+import { AutoMemoryToolHandler } from './AutoMemoryToolHandler.js';
+import { toolsRegistry } from '@integration/index.js';
+import type { ApplicationManager } from '@application/index.js';
+import type { BaseToolHandler } from './BaseToolHandler.js';
 
 export class ToolHandlerFactory {
     private static graphHandler: GraphToolHandler;
     private static searchHandler: SearchToolHandler;
     private static metadataHandler: MetadataToolHandler;
     private static dynamicHandler: DynamicToolHandler;
+    private static autoMemoryHandler: AutoMemoryToolHandler;
     private static initialized = false;
 
     /**
@@ -27,6 +29,7 @@ export class ToolHandlerFactory {
         this.searchHandler = new SearchToolHandler(knowledgeGraphManager);
         this.metadataHandler = new MetadataToolHandler(knowledgeGraphManager);
         this.dynamicHandler = new DynamicToolHandler(knowledgeGraphManager);
+        this.autoMemoryHandler = new AutoMemoryToolHandler(knowledgeGraphManager);
 
         this.initialized = true;
     }
@@ -39,7 +42,12 @@ export class ToolHandlerFactory {
             throw new Error('ToolHandlerFactory not initialized');
         }
 
-        // First check static tools
+        // Check auto memory tools first
+        if (toolName === 'auto_add_memory' || toolName === 'semantic_search') {
+            return this.autoMemoryHandler;
+        }
+
+        // Then check static tools
         if (toolName.match(/^(add|update|delete)_(nodes|edges)$/)) {
             return this.graphHandler;
         }
