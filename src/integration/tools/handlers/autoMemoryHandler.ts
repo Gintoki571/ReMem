@@ -58,23 +58,37 @@ export async function handleAutoAddMemory(
     manager: ApplicationManager
 ): Promise<ToolResponse> {
     try {
-        // Step 1: Extract entities and relationships using LLM
-        const extraction = await analyzer.extractFromText(args.text);
-
         const db = getDatabase();
         const addedNodes: string[] = [];
         const addedEdges: string[] = [];
         const errors: string[] = [];
 
-        // Step 2: Prepare nodes in correct format
-        const nodesToAdd: Node[] = extraction.entities.map(entity => ({
-            type: 'node' as const,
-            name: entity.name,
-            nodeType: entity.nodeType,
-            metadata: entity.metadata, // Already an array of strings
+        // Step 1: Extract entities using LLM
+        // console.error('[AutoAdd] Starting extraction for text:', args.text.substring(0, 50) + '...');
+        const extraction = await analyzer.extractFromText(args.text);
+        // console.error('[AutoAdd] Extraction complete. Found entities:', extraction.entities.length);
+
+        if (!extraction.entities.length && !extraction.relationships.length) {
+            return {
+                toolResult: {
+                    isError: false,
+                    data: null,
+                    actionTaken: 'No entities or relationships found',
+                    timestamp: new Date().toISOString(),
+                    content: [{ type: 'text', text: 'No entities or relationships were found in the text.' }]
+                }
+            };
+        }
+
+        // Step 2: Add nodes to graph (JSON)
+        // Note: Node is an interface/type, so we create a plain object
+        const nodesToAdd: Node[] = extraction.entities.map(e => ({
+            type: 'node',
+            name: e.name,
+            nodeType: e.nodeType,
+            metadata: e.metadata,
         }));
 
-        // Add nodes to MemoryMesh graph
         if (nodesToAdd.length > 0) {
             try {
                 const addedNodeResults = await manager.addNodes(nodesToAdd);
@@ -83,13 +97,13 @@ export async function handleAutoAddMemory(
                 // Also add to SQLite for relational queries
                 for (const entity of extraction.entities) {
                     try {
-                        await db.insert(schema.nodes).values({
+                        db.insert(schema.nodes).values({
                             name: entity.name,
                             nodeType: entity.nodeType,
                             metadata: JSON.stringify(entity.metadata),
-                        }).onConflictDoNothing();
+                        }).onConflictDoNothing().run();
                     } catch (dbError) {
-                        console.error('[AutoAdd] SQLite error:', dbError);
+                        // console.error('[AutoAdd] SQLite error:', dbError);
                     }
                 }
 
@@ -141,11 +155,11 @@ export async function handleAutoAddMemory(
                 // Also add to SQLite
                 for (const rel of extraction.relationships) {
                     try {
-                        await db.insert(schema.edges).values({
+                        db.insert(schema.edges).values({
                             fromNode: rel.from,
                             toNode: rel.to,
                             edgeType: rel.edgeType,
-                        }).onConflictDoNothing();
+                        }).onConflictDoNothing().run();
                     } catch (dbError) {
                         console.error('[AutoAdd] SQLite edge error:', dbError);
                     }

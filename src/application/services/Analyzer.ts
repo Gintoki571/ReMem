@@ -1,5 +1,5 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateObject } from 'ai';
+import { generateText } from 'ai';
 import { z } from 'zod';
 import 'dotenv/config';
 
@@ -48,22 +48,51 @@ export class Analyzer {
             ? `Available entity types: ${availableTypes.join(', ')}. Use these when appropriate.`
             : 'Common types: npc, location, artifact, quest, faction, player_character, currency, transportation.';
 
-        const result = await generateObject({
+        // Use generateText instead of generateObject for better local compatibility
+        const result = await generateText({
             model: this.model,
-            schema: EntitySchema,
-            prompt: `Analyze the following text and extract entities (characters, places, items, etc.) and their relationships for a knowledge graph.
+            prompt: `Analyze the following text and extract entities and relationships.
+            
+Output ONLY valid JSON matching this structure:
+{
+  "entities": [
+    { "name": "string", "nodeType": "string", "metadata": ["string"] }
+  ],
+  "relationships": [
+    { "from": "string", "to": "string", "edgeType": "string" }
+  ]
+}
 
 ${typeHint}
 
 Common relationship types: located_in, owns, member_of, allied_with, enemy_of, knows, related_to, part_of, started_by, completed_by.
 
 Text to analyze:
-"${text}"
-
-Extract all entities mentioned and any relationships between them. Be thorough but accurate.`,
+"${text}"`,
         });
 
-        return result.object;
+        try {
+            // Robust Parsing: Find the first { and the last }
+            const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+            const jsonString = jsonMatch ? jsonMatch[0] : result.text;
+
+            // Clean up potentially malformed markdown if regex failed or captured too much
+            const cleanJson = jsonString
+                .replace(/```json/g, '')
+                .replace(/```/g, '')
+                .trim();
+
+            const parsed = JSON.parse(cleanJson);
+
+            // Basic validation
+            if (!parsed.entities) parsed.entities = [];
+            if (!parsed.relationships) parsed.relationships = [];
+
+            return parsed as ExtractionResult;
+        } catch (e) {
+            // Fallback: If JSON parsing fails, return empty result instead of throwing
+            return { entities: [], relationships: [] };
+        }
     }
 
     /**
