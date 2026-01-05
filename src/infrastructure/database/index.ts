@@ -78,6 +78,16 @@ export function getDatabase(): BetterSQLite3Database<typeof schema> {
 }
 
 /**
+ * Get the raw SQLite instance (for raw queries)
+ */
+export function getSqliteInstance(): Database.Database {
+    if (!sqlite) {
+        initDatabase();
+    }
+    return sqlite!;
+}
+
+/**
  * Close the database connection
  */
 export function closeDatabase(): void {

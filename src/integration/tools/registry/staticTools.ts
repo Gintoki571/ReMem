@@ -279,11 +279,32 @@ export const metadataTools: Tool[] = [
 ];
 
 /**
+ * SQL-related tools for querying the relational database
+ */
+export const sqlTools: Tool[] = [
+    {
+        name: "query_sql_db",
+        description: "Execute a read-only SQL query against the internal database. Tables: nodes, edges, embeddings.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                query: {
+                    type: "string",
+                    description: "The SELECT query to execute. Example: 'SELECT * FROM nodes WHERE node_type = 'npc''"
+                }
+            },
+            required: ["query"]
+        }
+    }
+];
+
+/**
  * Combined array of all static tools
  */
 export const allStaticTools: Tool[] = [
     ...graphTools,
     ...searchTools,
     ...metadataTools,
-    ...autoMemoryTools
+    ...autoMemoryTools,
+    ...sqlTools
 ];
