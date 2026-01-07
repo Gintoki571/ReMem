@@ -1,11 +1,11 @@
 {
-  "name": "memorymesh",
-  "version": "0.2.8",
-  "description": "An MCP server that uses a knowledge graph to store and recall structured memory for AI models",
+  "name": "remem",
+  "version": "1.0.0",
+  "description": "A dynamic, privacy-focused Memory Mesh for AI agents.",
   "license": "MIT",
-  "author": "CheMiguel23",
-  "homepage": "https://github.com/CheMiguel23/memorymesh",
-  "bugs": "https://github.com/CheMiguel23/memorymesh/issues",
+  "author": "Bindesh Kandel",
+  "homepage": "https://github.com/Gintoki571/ReMem",
+  "bugs": "https://github.com/Gintoki571/ReMem/issues",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

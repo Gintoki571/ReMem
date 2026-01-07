@@ -37,8 +37,8 @@ yarn-error.log*
 coverage/
 .nyc_output/
 
-# Ignore the memory file
-src/data/memory.json
+# Ignore the local data directory (User Memories)
+data/
 
 # Ignore schema changes
 scr/data/schemas/*.json

@@ -3,13 +3,10 @@ import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from './schema.js';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { CONFIG } from '@config/config.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Database file path - stored in data directory
-const DB_PATH = path.resolve(__dirname, '../../data/memorymesh.db');
+// Database file path - stored in root data directory
+const DB_PATH = path.join(CONFIG.PATHS.DATA_DIR, 'memorymesh.db');
 
 let db: BetterSQLite3Database<typeof schema> | null = null;
 let sqlite: Database.Database | null = null;

@@ -1,9 +1,16 @@
 // src/config/config.ts
 
 import path from 'path';
-import {fileURLToPath} from 'url';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+/**
+ * Helper to get the project root directory
+ * Since this file is in src/config/ or dist/config/, 
+ * the root is two levels up.
+ */
+const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
 interface ServerConfig {
     NAME: string;
@@ -11,6 +18,8 @@ interface ServerConfig {
 }
 
 interface PathsConfig {
+    PROJECT_ROOT: string;
+    DATA_DIR: string;
     SCHEMAS_DIR: string;
     MEMORY_FILE: string;
 }
@@ -35,10 +44,13 @@ export const CONFIG: Config = {
     },
 
     PATHS: {
+        PROJECT_ROOT,
+        /** Root data directory */
+        DATA_DIR: path.join(PROJECT_ROOT, 'data'),
         /** Path to schema files directory. */
-        SCHEMAS_DIR: path.join(__dirname, '..', 'data', 'schemas'),
+        SCHEMAS_DIR: path.join(PROJECT_ROOT, 'src', 'data', 'schemas'),
         /** Path to the memory JSON file. */
-        MEMORY_FILE: path.join(__dirname, '..', 'data', 'memory.json'),
+        MEMORY_FILE: path.join(PROJECT_ROOT, 'data', 'memory.json'),
     },
 
     SCHEMA: {

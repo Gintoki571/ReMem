@@ -1,12 +1,9 @@
 import { connect, Table, Connection } from '@lancedb/lancedb';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { CONFIG } from '@config/config.js';
 
 // LanceDB storage path
-const LANCEDB_PATH = path.resolve(__dirname, '../../data/lancedb');
+const LANCEDB_PATH = path.join(CONFIG.PATHS.DATA_DIR, 'lancedb');
 
 interface VectorRecord {
     id: string;
