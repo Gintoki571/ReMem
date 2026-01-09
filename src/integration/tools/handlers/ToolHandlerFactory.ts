@@ -46,7 +46,7 @@ export class ToolHandlerFactory {
         }
 
         // Check auto memory tools first
-        if (toolName === 'auto_add_memory' || toolName === 'semantic_search') {
+        if (toolName === 'auto_add_memory' || toolName === 'semantic_search' || toolName === 'hybrid_search') {
             return this.autoMemoryHandler;
         }
 

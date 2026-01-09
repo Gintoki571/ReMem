@@ -1,6 +1,6 @@
 // src/application/managers/ApplicationManager.ts
 
-import type {IStorage} from '@infrastructure/index.js';
+import type { IStorage } from '@infrastructure/index.js';
 import type {
     Node,
     Edge,
@@ -19,7 +19,7 @@ import {
     SearchManager,
     TransactionManager
 } from "@application/index.js";
-import {JsonLineStorage} from '@infrastructure/index.js';
+import { JsonLineStorage } from '@infrastructure/index.js';
 
 /**
  * Main facade that coordinates between specialized managers
@@ -77,12 +77,12 @@ export class ApplicationManager {
         return this.searchManager.readGraph();
     }
 
-    async searchNodes(query: string): Promise<OpenNodesResult> {
-        return this.searchManager.searchNodes(query);
+    async searchNodes(query: string, depth?: number): Promise<OpenNodesResult> {
+        return this.searchManager.searchNodes(query, depth);
     }
 
-    async openNodes(names: string[]): Promise<OpenNodesResult> {
-        return this.searchManager.openNodes(names);
+    async openNodes(names: string[], depth?: number): Promise<OpenNodesResult> {
+        return this.searchManager.openNodes(names, depth);
     }
 
     // Transaction operations delegated to TransactionManager

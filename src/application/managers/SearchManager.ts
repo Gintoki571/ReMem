@@ -1,8 +1,8 @@
 // src/application/managers/SearchManager.ts
 
-import {ISearchManager} from './interfaces/ISearchManager.js';
-import {IManager} from './interfaces/IManager.js';
-import type {Graph} from '@core/index.js';
+import { ISearchManager } from './interfaces/ISearchManager.js';
+import { IManager } from './interfaces/IManager.js';
+import type { Graph, Node, Edge } from '@core/index.js';
 
 /**
  * Implements search-related operations for the knowledge graph.
@@ -13,14 +13,14 @@ export class SearchManager extends IManager implements ISearchManager {
      * Searches for nodes in the knowledge graph based on a query.
      * Includes both matching nodes and their immediate neighbors.
      */
-    async searchNodes(query: string): Promise<Graph> {
+    async searchNodes(query: string, depth: number = 1): Promise<Graph> {
         try {
-            this.emit('beforeSearch', {query});
+            this.emit('beforeSearch', { query });
 
             const graph = await this.storage.loadGraph();
 
             // Find directly matching nodes
-            const matchingNodes = graph.nodes.filter(node =>
+            const startNodes = graph.nodes.filter(node =>
                 node.name.toLowerCase().includes(query.toLowerCase()) ||
                 node.nodeType.toLowerCase().includes(query.toLowerCase()) ||
                 node.metadata.some(meta =>
@@ -28,37 +28,7 @@ export class SearchManager extends IManager implements ISearchManager {
                 )
             );
 
-            // Get names of matching nodes for efficient lookup
-            const matchingNodeNames = new Set(matchingNodes.map(node => node.name));
-
-            // Find all edges connected to matching nodes
-            const connectedEdges = graph.edges.filter(edge =>
-                matchingNodeNames.has(edge.from) || matchingNodeNames.has(edge.to)
-            );
-
-            // Get names of all neighbor nodes from the edges
-            const neighborNodeNames = new Set<string>();
-            connectedEdges.forEach(edge => {
-                if (matchingNodeNames.has(edge.from)) {
-                    neighborNodeNames.add(edge.to);
-                }
-                if (matchingNodeNames.has(edge.to)) {
-                    neighborNodeNames.add(edge.from);
-                }
-            });
-
-            // Get all neighbor nodes
-            const neighborNodes = graph.nodes.filter(node =>
-                !matchingNodeNames.has(node.name) && neighborNodeNames.has(node.name)
-            );
-
-            // Combine matching nodes and their neighbors
-            const resultNodes = [...matchingNodes, ...neighborNodes];
-
-            const result: Graph = {
-                nodes: resultNodes,
-                edges: connectedEdges
-            };
+            const result = await this.bfsTraverse(startNodes.map(n => n.name), depth, graph);
 
             this.emit('afterSearch', result);
             return result;
@@ -69,50 +39,15 @@ export class SearchManager extends IManager implements ISearchManager {
     }
 
     /**
-     * Retrieves specific nodes and their immediate neighbors from the knowledge graph.
+     * Retrieves specific nodes and their neighbors from the knowledge graph.
      */
-    async openNodes(names: string[]): Promise<Graph> {
+    async openNodes(names: string[], depth: number = 1): Promise<Graph> {
         try {
-            this.emit('beforeOpenNodes', {names});
+            this.emit('beforeOpenNodes', { names });
 
             const graph = await this.storage.loadGraph();
 
-            // Get the requested nodes
-            const requestedNodes = graph.nodes.filter(node =>
-                names.includes(node.name)
-            );
-
-            // Get names of requested nodes for efficient lookup
-            const requestedNodeNames = new Set(requestedNodes.map(node => node.name));
-
-            // Find all edges connected to requested nodes
-            const connectedEdges = graph.edges.filter(edge =>
-                requestedNodeNames.has(edge.from) || requestedNodeNames.has(edge.to)
-            );
-
-            // Get names of all neighbor nodes from the edges
-            const neighborNodeNames = new Set<string>();
-            connectedEdges.forEach(edge => {
-                if (requestedNodeNames.has(edge.from)) {
-                    neighborNodeNames.add(edge.to);
-                }
-                if (requestedNodeNames.has(edge.to)) {
-                    neighborNodeNames.add(edge.from);
-                }
-            });
-
-            // Get all neighbor nodes
-            const neighborNodes = graph.nodes.filter(node =>
-                !requestedNodeNames.has(node.name) && neighborNodeNames.has(node.name)
-            );
-
-            // Combine requested nodes and their neighbors
-            const resultNodes = [...requestedNodes, ...neighborNodes];
-
-            const result: Graph = {
-                nodes: resultNodes,
-                edges: connectedEdges
-            };
+            const result = await this.bfsTraverse(names, depth, graph);
 
             this.emit('afterOpenNodes', result);
             return result;
@@ -120,6 +55,66 @@ export class SearchManager extends IManager implements ISearchManager {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
             throw new Error(`Failed to open nodes: ${message}`);
         }
+    }
+
+    /**
+     * Internal BFS traversal to find nodes and edges up to a certain depth.
+     */
+    private async bfsTraverse(startNodeNames: string[], maxDepth: number, graph: Graph): Promise<Graph> {
+        const resultNodes = new Map<string, Node>();
+        const resultEdges = new Set<string>();
+        const visited = new Set<string>();
+        let queue: string[] = startNodeNames.filter(name =>
+            graph.nodes.some(n => n.name === name)
+        );
+
+        // Track level to stop at maxDepth
+        for (let depth = 0; depth <= maxDepth; depth++) {
+            const nextLevel: string[] = [];
+
+            // Add current queue nodes to results and mark as visited
+            for (const name of queue) {
+                if (!visited.has(name)) {
+                    visited.add(name);
+                    const node = graph.nodes.find(n => n.name === name);
+                    if (node) resultNodes.set(name, node);
+                }
+            }
+
+            // If we are not at the final depth, find neighbors
+            if (depth < maxDepth) {
+                for (const name of queue) {
+                    const connections = graph.edges.filter(e => e.from === name || e.to === name);
+                    for (const edge of connections) {
+                        // Add edge to result (use a string key for set deduplication)
+                        const edgeKey = `${edge.from}-${edge.to}-${edge.edgeType}`;
+                        resultEdges.add(JSON.stringify(edge));
+
+                        // Add target to next level if not visited
+                        const neighbor = edge.from === name ? edge.to : edge.from;
+                        if (!visited.has(neighbor)) {
+                            nextLevel.push(neighbor);
+                        }
+                    }
+                }
+            } else {
+                // Final level: still add edges between nodes we already have
+                const currentNames = new Set(resultNodes.keys());
+                graph.edges.forEach(edge => {
+                    if (currentNames.has(edge.from) && currentNames.has(edge.to)) {
+                        resultEdges.add(JSON.stringify(edge));
+                    }
+                });
+            }
+
+            queue = nextLevel;
+            if (queue.length === 0) break;
+        }
+
+        return {
+            nodes: Array.from(resultNodes.values()),
+            edges: Array.from(resultEdges).map(e => JSON.parse(e))
+        };
     }
 
     /**

@@ -1,7 +1,7 @@
 // src/tools/handlers/AutoMemoryToolHandler.ts
 
 import { BaseToolHandler } from './BaseToolHandler.js';
-import { handleAutoAddMemory, handleSemanticSearch } from './autoMemoryHandler.js';
+import { handleAutoAddMemory, handleSemanticSearch, handleHybridSearch } from './autoMemoryHandler.js';
 import type { ToolResponse } from '@shared/index.js';
 import type { ApplicationManager } from '@application/index.js';
 
@@ -23,6 +23,11 @@ export class AutoMemoryToolHandler extends BaseToolHandler {
             case 'semantic_search':
                 return handleSemanticSearch(
                     args as { query: string; limit?: number },
+                    this.knowledgeGraphManager
+                );
+            case 'hybrid_search':
+                return handleHybridSearch(
+                    args as { query: string; limit?: number; depth?: number },
                     this.knowledgeGraphManager
                 );
             default:

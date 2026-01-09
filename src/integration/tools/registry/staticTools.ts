@@ -195,6 +195,10 @@ export const searchTools: Tool[] = [
                     type: "string",
                     description: "The search query to match against node names, types, and metadata content"
                 },
+                depth: {
+                    type: "number",
+                    description: "BFS depth for exploring connected memories. Defaults to 1."
+                }
             },
             required: ["query"],
         },
@@ -211,6 +215,10 @@ export const searchTools: Tool[] = [
                     items: { type: "string", description: "Node name to open" },
                     description: "An array of node names to retrieve",
                 },
+                depth: {
+                    type: "number",
+                    description: "BFS depth for exploring connected memories. Defaults to 1."
+                }
             },
             required: ["names"],
         },

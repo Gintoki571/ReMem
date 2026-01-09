@@ -1,8 +1,8 @@
 // src/tools/handlers/SearchToolHandler.ts
 
-import {BaseToolHandler} from './BaseToolHandler.js';
-import {formatToolResponse, formatToolError} from '@shared/index.js';
-import type {ToolResponse} from '@shared/index.js';
+import { BaseToolHandler } from './BaseToolHandler.js';
+import { formatToolResponse, formatToolError, formatGraphAsNarrative } from '@shared/index.js';
+import type { ToolResponse } from '@shared/index.js';
 
 export class SearchToolHandler extends BaseToolHandler {
     async handleTool(name: string, args: Record<string, any>): Promise<ToolResponse> {
@@ -18,17 +18,19 @@ export class SearchToolHandler extends BaseToolHandler {
                     });
 
                 case "search_nodes":
-                    const searchResults = await this.knowledgeGraphManager.searchNodes(args.query);
+                    const searchResults = await this.knowledgeGraphManager.searchNodes(args.query, args.depth);
                     return formatToolResponse({
                         data: searchResults,
-                        actionTaken: `Searched nodes with query: ${args.query}`
+                        actionTaken: `Searched nodes with query: ${args.query} (depth: ${args.depth || 1})`,
+                        message: formatGraphAsNarrative(searchResults)
                     });
 
                 case "open_nodes":
-                    const nodes = await this.knowledgeGraphManager.openNodes(args.names);
+                    const nodes = await this.knowledgeGraphManager.openNodes(args.names, args.depth);
                     return formatToolResponse({
                         data: nodes,
-                        actionTaken: `Retrieved nodes: ${args.names.join(', ')}`
+                        actionTaken: `Retrieved nodes: ${args.names.join(', ')} (depth: ${args.depth || 1})`,
+                        message: formatGraphAsNarrative(nodes)
                     });
 
                 default:
@@ -38,7 +40,7 @@ export class SearchToolHandler extends BaseToolHandler {
             return formatToolError({
                 operation: name,
                 error: error instanceof Error ? error.message : 'Unknown error occurred',
-                context: {args},
+                context: { args },
                 suggestions: [
                     "Check node names exist",
                     "Verify search query format"

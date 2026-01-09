@@ -5,3 +5,4 @@ export {
     formatToolError,
     formatPartialSuccess
 } from './responseFormatter.js';
+export { formatGraphAsNarrative } from './narrative.js';

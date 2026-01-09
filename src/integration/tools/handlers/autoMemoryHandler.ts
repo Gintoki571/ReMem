@@ -2,6 +2,7 @@ import { analyzer } from '@application/services/Analyzer.js';
 import { addVector, searchVectors, VectorRecord } from '@infrastructure/vector/VectorManager.js';
 import { getDatabase, schema } from '@infrastructure/database/index.js';
 import type { Tool, ToolResponse } from '@shared/index.js';
+import { formatGraphAsNarrative } from '@shared/index.js';
 import type { ApplicationManager } from '@application/index.js';
 import type { Node, Edge } from '@core/index.js';
 
@@ -45,6 +46,32 @@ export const semanticSearchTool: Tool = {
                 type: 'number',
                 description: 'Maximum number of results to return. Defaults to 5.',
             },
+        },
+        required: ['query'],
+    },
+};
+
+/**
+ * hybrid_search - Search memories using both keywords and semantic similarity
+ */
+export const hybridSearchTool: Tool = {
+    name: 'hybrid_search',
+    description: 'Advanced search that combines semantic meaning with keyword matching for high accuracy results. It uses Reciprocal Rank Fusion (RRF) to score results.',
+    inputSchema: {
+        type: 'object',
+        properties: {
+            query: {
+                type: 'string',
+                description: 'The search query - describe what you are looking for',
+            },
+            limit: {
+                type: 'number',
+                description: 'Maximum number of results to return. Defaults to 5.',
+            },
+            depth: {
+                type: 'number',
+                description: 'BFS depth for exploring connected memories. Defaults to 1.',
+            }
         },
         required: ['query'],
     },
@@ -341,4 +368,93 @@ export async function handleSemanticSearch(
     }
 }
 
-export const autoMemoryTools = [autoAddMemoryTool, semanticSearchTool];
+/**
+ * Handle hybrid_search tool call
+ */
+export async function handleHybridSearch(
+    args: { query: string; limit?: number; depth?: number },
+    manager: ApplicationManager
+): Promise<ToolResponse> {
+    try {
+        const limit = args.limit || 5;
+        const depth = args.depth || 1;
+
+        // 1. Keyword search (with BFS)
+        const keywordResult = await manager.searchNodes(args.query, depth);
+
+        // 2. Semantic search
+        let semanticResults: any[] = [];
+        if (process.env.OPENAI_API_KEY) {
+            const queryEmbedding = await analyzer.generateEmbedding(args.query);
+            semanticResults = await searchVectors(queryEmbedding, limit * 2);
+        }
+
+        // 3. Reciprocal Rank Fusion (RRF)
+        const scores = new Map<string, number>();
+        const nodeData = new Map<string, Node>();
+
+        // Score Keyword results
+        keywordResult.nodes.forEach((node, index) => {
+            const score = 1 / (60 + (index + 1));
+            scores.set(node.name, (scores.get(node.name) || 0) + score);
+            nodeData.set(node.name, node);
+        });
+
+        // Score Semantic results
+        semanticResults.forEach((res, index) => {
+            const score = 1 / (60 + (index + 1));
+            scores.set(res.nodeName, (scores.get(res.nodeName) || 0) + score);
+        });
+
+        // Fetch nodes found by semantic search but not by keyword search
+        const missingNames = semanticResults
+            .map(r => r.nodeName)
+            .filter(name => !nodeData.has(name));
+
+        if (missingNames.length > 0) {
+            const extraNodes = await manager.openNodes(missingNames, depth);
+            extraNodes.nodes.forEach(n => nodeData.set(n.name, n));
+        }
+
+        // Final Sort
+        const finalResults = Array.from(scores.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, limit)
+            .map(([name, score]) => ({
+                name,
+                score: score.toFixed(4),
+                node: nodeData.get(name)
+            }));
+
+        return {
+            toolResult: {
+                isError: false,
+                data: finalResults,
+                actionTaken: `Hybrid search completed for "${args.query}"`,
+                timestamp: new Date().toISOString(),
+                content: [{
+                    type: 'text',
+                    text: formatGraphAsNarrative({
+                        nodes: finalResults.map(r => r.node!).filter(Boolean),
+                        edges: [] // We could potentially pull in edges here too if we wanted deeper narrative
+                    })
+                }],
+            },
+        };
+    } catch (error) {
+        return {
+            toolResult: {
+                isError: true,
+                data: null,
+                actionTaken: 'hybrid_search failed',
+                timestamp: new Date().toISOString(),
+                content: [{
+                    type: 'text',
+                    text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                }],
+            },
+        };
+    }
+}
+
+export const autoMemoryTools = [autoAddMemoryTool, semanticSearchTool, hybridSearchTool];

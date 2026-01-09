@@ -1,7 +1,7 @@
 // src/application/managers/interfaces/ISearchManager.ts
 
-import {IManager} from './IManager.js';
-import type {Graph} from '@core/index.js';
+import { IManager } from './IManager.js';
+import type { Graph } from '@core/index.js';
 
 /**
  * Interface for search-related operations in the knowledge graph.
@@ -11,12 +11,12 @@ export interface ISearchManager extends IManager {
     /**
      * Searches for nodes in the knowledge graph based on a query.
      */
-    searchNodes(query: string): Promise<Graph>;
+    searchNodes(query: string, depth?: number): Promise<Graph>;
 
     /**
      * Retrieves specific nodes from the knowledge graph by their names.
      */
-    openNodes(names: string[]): Promise<Graph>;
+    openNodes(names: string[], depth?: number): Promise<Graph>;
 
     /**
      * Reads and returns the entire knowledge graph.

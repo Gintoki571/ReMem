@@ -33,6 +33,7 @@ async function main(): Promise<void> {
             const essentialTools = [
                 'auto_add_memory',
                 'semantic_search',
+                'hybrid_search',
                 'search_nodes',
                 'open_nodes',
                 'delete_nodes',
