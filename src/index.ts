@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-import {Server} from "@modelcontextprotocol/sdk/server/index.js";
-import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import {ApplicationManager} from '@application/managers/ApplicationManager.js';
-import {handleCallToolRequest} from '@integration/tools/callToolHandler.js';
-import {toolsRegistry} from '@integration/tools/registry/toolsRegistry.js';
-import {CONFIG} from './config/config.js';
-import {formatToolError} from "@shared/utils/responseFormatter.js";
+import { ApplicationManager } from '@application/managers/ApplicationManager.js';
+import { handleCallToolRequest } from '@integration/tools/callToolHandler.js';
+import { toolsRegistry } from '@integration/tools/registry/toolsRegistry.js';
+import { CONFIG } from './config/config.js';
+import { formatToolError } from "@shared/utils/responseFormatter.js";
 
 const knowledgeGraphManager = new ApplicationManager();
 
@@ -27,8 +27,24 @@ async function main(): Promise<void> {
         await toolsRegistry.initialize(knowledgeGraphManager);
 
         server.setRequestHandler(ListToolsRequestSchema, async () => {
+            // [MINIMALIST MODE - OPTION B]
+            // We only expose a small set of "Smart" tools to the AI to save context space.
+            // The "Manual" tools still exist in the code but are hidden from the AI's view.
+            const essentialTools = [
+                'auto_add_memory',
+                'semantic_search',
+                'search_nodes',
+                'open_nodes',
+                'delete_nodes',
+                'read_graph',
+                'query_sql_db'
+            ];
+
+            const allTools = toolsRegistry.getAllTools();
+            const visibleTools = allTools.filter(tool => essentialTools.includes(tool.name));
+
             return {
-                tools: toolsRegistry.getAllTools().map(tool => ({
+                tools: visibleTools.map(tool => ({
                     name: tool.name,
                     description: tool.description,
                     inputSchema: tool.inputSchema
@@ -59,7 +75,7 @@ async function main(): Promise<void> {
                 const formattedError = formatToolError({
                     operation: "callTool",
                     error: error instanceof Error ? error.message : 'Unknown error occurred',
-                    context: {request},
+                    context: { request },
                     suggestions: ["Examine the tool input parameters for correctness.", "Verify that the requested operation is supported."],
                     recoverySteps: ["Adjust the input parameters based on the schema definition."]
                 });

@@ -80,61 +80,122 @@ export async function handleAutoAddMemory(
             };
         }
 
-        // Step 2: Add nodes to graph (JSON)
-        // Note: Node is an interface/type, so we create a plain object
-        const nodesToAdd: Node[] = extraction.entities.map(e => ({
-            type: 'node',
-            name: e.name,
-            nodeType: e.nodeType,
-            metadata: e.metadata,
-        }));
+        // Step 2: Add/Merge nodes in graph
+        const today = new Date().toISOString().split('T')[0];
+        const extractionNames = extraction.entities.map(e => e.name);
 
-        if (nodesToAdd.length > 0) {
+        // Fetch existing nodes to check for conflicts
+        const existingResult = await manager.openNodes(extractionNames);
+        const existingNodesMap = new Map(
+            existingResult.nodes
+                .filter(n => extractionNames.includes(n.name))
+                .map(n => [n.name, n])
+        );
+
+        const nodesToCreate: Node[] = [];
+        const nodesToUpdate: Partial<Node>[] = [];
+
+        for (const entity of extraction.entities) {
+            const existingNode = existingNodesMap.get(entity.name);
+
+            if (existingNode) {
+                // [SMART MERGE]
+                // Archive current metadata and add new ones
+                const archivedMetadata = existingNode.metadata.map(m =>
+                    m.startsWith('[OLD') ? m : `[OLD - ${today}] ${m}`
+                );
+
+                nodesToUpdate.push({
+                    name: entity.name,
+                    metadata: [...archivedMetadata, ...entity.metadata]
+                });
+            } else {
+                // [NEW NODE]
+                nodesToCreate.push({
+                    type: 'node',
+                    name: entity.name,
+                    nodeType: entity.nodeType,
+                    metadata: entity.metadata,
+                });
+            }
+        }
+
+        // Process Additions
+        if (nodesToCreate.length > 0) {
             try {
-                const addedNodeResults = await manager.addNodes(nodesToAdd);
+                const addedNodeResults = await manager.addNodes(nodesToCreate);
                 addedNodeResults.forEach(n => addedNodes.push(n.name));
 
-                // Also add to SQLite for relational queries
-                for (const entity of extraction.entities) {
+                // SQLite sync for new nodes
+                for (const node of nodesToCreate) {
                     try {
                         db.insert(schema.nodes).values({
-                            name: entity.name,
-                            nodeType: entity.nodeType,
-                            metadata: JSON.stringify(entity.metadata),
+                            name: node.name,
+                            nodeType: node.nodeType,
+                            metadata: JSON.stringify(node.metadata),
                         }).onConflictDoNothing().run();
                     } catch (dbError) {
-                        // console.error('[AutoAdd] SQLite error:', dbError);
-                    }
-                }
-
-                // Step 3: Generate embeddings if requested
-                if (args.generateEmbeddings !== false && process.env.OPENAI_API_KEY) {
-                    for (const entity of extraction.entities) {
-                        try {
-                            const textForEmbedding = analyzer.summarizeForEmbedding(
-                                entity.name,
-                                entity.nodeType,
-                                entity.metadata
-                            );
-                            const embedding = await analyzer.generateEmbedding(textForEmbedding);
-
-                            const vectorRecord: VectorRecord = {
-                                id: `${entity.name}-${Date.now()}`,
-                                text: textForEmbedding,
-                                vector: embedding,
-                                nodeName: entity.name,
-                                nodeType: entity.nodeType,
-                                metadata: JSON.stringify(entity.metadata),
-                            };
-
-                            await addVector(vectorRecord);
-                        } catch (embedError) {
-                            console.error('[AutoAdd] Embedding error:', embedError);
-                        }
+                        // Silent fail for SQLite sync
                     }
                 }
             } catch (nodeError) {
-                errors.push(`Failed to add nodes: ${nodeError}`);
+                errors.push(`Failed to add new nodes: ${nodeError}`);
+            }
+        }
+
+        // Process Updates (Smart Merges)
+        if (nodesToUpdate.length > 0) {
+            try {
+                const updatedNodeResults = await manager.updateNodes(nodesToUpdate);
+                updatedNodeResults.forEach(n => addedNodes.push(`${n.name} (Merged)`));
+
+                // SQLite sync for merged nodes
+                for (const node of nodesToUpdate) {
+                    try {
+                        // Using raw sql or drizzle to update metadata
+                        db.update(schema.nodes)
+                            .set({
+                                metadata: JSON.stringify(node.metadata),
+                                updatedAt: new Date()
+                            })
+                            .where(require('drizzle-orm').eq(schema.nodes.name, node.name))
+                            .run();
+                    } catch (dbError) {
+                        // Silent fail for SQLite sync
+                    }
+                }
+            } catch (updateError) {
+                errors.push(`Failed to merge existing nodes: ${updateError}`);
+            }
+        }
+
+        // Step 3: Generate embeddings for ALL affected entities (new and updated)
+        if (args.generateEmbeddings !== false && process.env.OPENAI_API_KEY) {
+            const allAffected = [...nodesToCreate, ...nodesToUpdate];
+            for (const entity of allAffected) {
+                try {
+                    // We need the full node data for embedding
+                    const fullNode = entity.name && nodesToUpdate.find(u => u.name === entity.name) || entity as Node;
+                    const textForEmbedding = analyzer.summarizeForEmbedding(
+                        fullNode.name!,
+                        fullNode.nodeType || 'entity',
+                        fullNode.metadata || []
+                    );
+                    const embedding = await analyzer.generateEmbedding(textForEmbedding);
+
+                    const vectorRecord: VectorRecord = {
+                        id: `${fullNode.name}-${Date.now()}`,
+                        text: textForEmbedding,
+                        vector: embedding,
+                        nodeName: fullNode.name!,
+                        nodeType: fullNode.nodeType || 'entity',
+                        metadata: JSON.stringify(fullNode.metadata),
+                    };
+
+                    await addVector(vectorRecord);
+                } catch (embedError) {
+                    console.error('[AutoAdd] Embedding error:', embedError);
+                }
             }
         }
 

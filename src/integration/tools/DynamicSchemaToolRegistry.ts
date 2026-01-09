@@ -1,6 +1,6 @@
 // src/tools/DynamicSchemaToolRegistry.ts
 
-import {promises as fs} from 'fs';
+import { promises as fs } from 'fs';
 import path from 'path';
 import {
     SchemaLoader,
@@ -8,11 +8,11 @@ import {
     handleSchemaUpdate,
     handleSchemaDelete
 } from '@core/index.js';
-import {CONFIG} from '@config/index.js';
-import {formatToolResponse, formatToolError} from '@shared/index.js';
-import type {ApplicationManager} from '@application/index.js';
-import type {Tool, ToolResponse} from '@shared/index.js';
-import type {SchemaBuilder} from '@core/index.js';
+import { CONFIG } from '@config/index.js';
+import { formatToolResponse, formatToolError } from '@shared/index.js';
+import type { ApplicationManager } from '@application/index.js';
+import type { Tool, ToolResponse } from '@shared/index.js';
+import type { SchemaBuilder } from '@core/index.js';
 
 /**
  * Interface defining the public contract for dynamic schema tool registry
@@ -154,7 +154,7 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
             return formatToolError({
                 operation: toolName,
                 error: `Schema not found: ${schemaName}`,
-                context: {availableSchemas: Array.from(this.schemas.keys())},
+                context: { availableSchemas: Array.from(this.schemas.keys()) },
                 suggestions: ["Verify schema name exists"]
             });
         }
@@ -171,7 +171,7 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
                         throw new Error(`Node already exists: ${nodeData.name}`);
                     }
 
-                    const {nodes, edges} = await createSchemaNode(nodeData, schema, schemaName);
+                    const { nodes, edges } = await createSchemaNode(nodeData, schema, schemaName);
 
                     await knowledgeGraphManager.beginTransaction();
                     try {
@@ -182,7 +182,7 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
                         await knowledgeGraphManager.commit();
 
                         return formatToolResponse({
-                            data: {nodes, edges},
+                            data: { nodes, edges },
                             actionTaken: `Created ${schemaName}: ${nodeData.name}`
                         });
                     } catch (error) {
@@ -201,7 +201,7 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
                 }
 
                 case 'delete': {
-                    const {name} = args[`delete_${schemaName}`];
+                    const { name } = args[`delete_${schemaName}`];
                     if (!name) {
                         return formatToolError({
                             operation: toolName,
@@ -223,7 +223,7 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
             return formatToolError({
                 operation: toolName,
                 error: error instanceof Error ? error.message : 'Unknown error occurred',
-                context: {args},
+                context: { args },
                 suggestions: [
                     "Check input parameters against schema",
                     "Verify entity existence for updates/deletes"

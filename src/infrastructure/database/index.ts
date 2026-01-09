@@ -6,7 +6,7 @@ import path from 'path';
 import { CONFIG } from '@config/config.js';
 
 // Database file path - stored in root data directory
-const DB_PATH = path.join(CONFIG.PATHS.DATA_DIR, 'memorymesh.db');
+const DB_PATH = path.join(CONFIG.PATHS.DATA_DIR, 'ReMem_RPG.db');
 
 let db: BetterSQLite3Database<typeof schema> | null = null;
 let sqlite: Database.Database | null = null;
