@@ -1,5 +1,18 @@
 ## Changelog
 
+### v0.3.0 (2025-01-10)
+
+#### 🚀 Major Architectural Refactor
+- **Unified Tool Dispatch:** Consolidated all tool calls through `ToolsRegistry` and `ToolHandlerFactory`.
+- **Infrastructure Synchronization:** Introduced `InfrastructureSyncService` for automatic, event-driven mirroring of graph changes to SQLite and Vector stores.
+- **Minimalist Mode:** Expose only high-value tools to the AI to prevent context bloat.
+- **Improved Performance:** Optimized WAL mode in SQLite and pre-emptive handler initialization.
+
+#### 📁 Project Structure Cleanup
+- Moved `schemas` to `data/schemas` at the project root.
+- Cleaned up redundant files and unified configuration paths.
+
+
 ### v0.2.8 (2024-12-24)
 
 #### Features
