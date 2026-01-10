@@ -1,5 +1,0 @@
-# .gitignore for LanceDB data
-# Keep the directory tracked, but ignore database files
-*.lance
-*.arrow
-*.version

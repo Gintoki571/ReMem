@@ -152,19 +152,6 @@ export async function handleAutoAddMemory(
             try {
                 const addedNodeResults = await manager.addNodes(nodesToCreate);
                 addedNodeResults.forEach(n => addedNodes.push(n.name));
-
-                // SQLite sync for new nodes
-                for (const node of nodesToCreate) {
-                    try {
-                        db.insert(schema.nodes).values({
-                            name: node.name,
-                            nodeType: node.nodeType,
-                            metadata: JSON.stringify(node.metadata),
-                        }).onConflictDoNothing().run();
-                    } catch (dbError) {
-                        // Silent fail for SQLite sync
-                    }
-                }
             } catch (nodeError) {
                 errors.push(`Failed to add new nodes: ${nodeError}`);
             }
@@ -175,22 +162,6 @@ export async function handleAutoAddMemory(
             try {
                 const updatedNodeResults = await manager.updateNodes(nodesToUpdate);
                 updatedNodeResults.forEach(n => addedNodes.push(`${n.name} (Merged)`));
-
-                // SQLite sync for merged nodes
-                for (const node of nodesToUpdate) {
-                    try {
-                        // Using raw sql or drizzle to update metadata
-                        db.update(schema.nodes)
-                            .set({
-                                metadata: JSON.stringify(node.metadata),
-                                updatedAt: new Date()
-                            })
-                            .where(require('drizzle-orm').eq(schema.nodes.name, node.name))
-                            .run();
-                    } catch (dbError) {
-                        // Silent fail for SQLite sync
-                    }
-                }
             } catch (updateError) {
                 errors.push(`Failed to merge existing nodes: ${updateError}`);
             }
@@ -239,19 +210,6 @@ export async function handleAutoAddMemory(
             try {
                 const addedEdgeResults = await manager.addEdges(edgesToAdd);
                 addedEdgeResults.forEach(e => addedEdges.push(`${e.from} -[${e.edgeType}]-> ${e.to}`));
-
-                // Also add to SQLite
-                for (const rel of extraction.relationships) {
-                    try {
-                        db.insert(schema.edges).values({
-                            fromNode: rel.from,
-                            toNode: rel.to,
-                            edgeType: rel.edgeType,
-                        }).onConflictDoNothing().run();
-                    } catch (dbError) {
-                        console.error('[AutoAdd] SQLite edge error:', dbError);
-                    }
-                }
             } catch (edgeError) {
                 errors.push(`Failed to add edges: ${edgeError}`);
             }

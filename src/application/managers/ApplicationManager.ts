@@ -20,6 +20,7 @@ import {
     TransactionManager
 } from "@application/index.js";
 import { JsonLineStorage } from '@infrastructure/index.js';
+import { InfrastructureSyncService } from '@application/services/InfrastructureSyncService.js';
 
 /**
  * Main facade that coordinates between specialized managers
@@ -33,6 +34,16 @@ export class ApplicationManager {
         this.graphManager = new GraphManager(storage);
         this.searchManager = new SearchManager(storage);
         this.transactionManager = new TransactionManager(storage);
+
+        // Initialize synchronization with secondary stores (SQLite, Vector Store)
+        new InfrastructureSyncService(this.getGraphOperations());
+    }
+
+    /**
+     * Helper to get graph operations for event binding
+     */
+    private getGraphOperations(): any {
+        return (this.graphManager as any).graphOperations;
     }
 
     // Graph operations delegated to GraphManager

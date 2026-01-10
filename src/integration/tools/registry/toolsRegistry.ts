@@ -1,10 +1,11 @@
 // src/tools/registry/toolsRegistry.ts
 
-import {allStaticTools} from './staticTools.js';
-import {dynamicToolManager} from './dynamicTools.js';
-import {formatToolError} from '@shared/index.js';
-import type {Tool, ToolResponse} from '@shared/index.js';
-import type {ApplicationManager} from '@application/index.js';
+import { allStaticTools } from './staticTools.js';
+import { dynamicToolManager } from './dynamicTools.js';
+import { formatToolError } from '@shared/index.js';
+import type { Tool, ToolResponse } from '@shared/index.js';
+import { ToolHandlerFactory } from '../handlers/ToolHandlerFactory.js';
+import type { ApplicationManager } from '@application/index.js';
 
 /**
  * Central registry for all tools (both static and dynamic)
@@ -90,38 +91,30 @@ export class ToolsRegistry {
         }
 
         try {
+            // Ensure tool actually exists in our registry
             if (!this.tools.has(toolName)) {
                 return formatToolError({
                     operation: toolName,
                     error: `Tool not found: ${toolName}`,
-                    context: {availableTools: Array.from(this.tools.keys())},
-                    suggestions: ["Verify tool name exists"]
+                    context: { availableTools: Array.from(this.tools.keys()) },
+                    suggestions: ["Verify tool name exists"],
+                    recoverySteps: ["Check available tools list"]
                 });
             }
 
-            if (dynamicToolManager.isDynamicTool(toolName)) {
-                return await dynamicToolManager.handleToolCall(
-                    toolName,
-                    args,
-                    this.knowledgeGraphManager
-                );
+            // Ensure handlers are initialized
+            if (!ToolHandlerFactory.isInitialized()) {
+                ToolHandlerFactory.initialize(this.knowledgeGraphManager);
             }
 
-            // For static tools, return success response
-            return {
-                toolResult: {
-                    isError: false,
-                    data: args,
-                    actionTaken: `Executed tool: ${toolName}`,
-                    timestamp: new Date().toISOString(),
-                    content: []
-                }
-            };
+            // Delegate execution to our centralized factory
+            const handler = ToolHandlerFactory.getHandler(toolName);
+            return await handler.handleTool(toolName, args);
         } catch (error) {
             return formatToolError({
                 operation: toolName,
                 error: error instanceof Error ? error.message : 'Unknown error occurred',
-                context: {toolName, args},
+                context: { toolName, args },
                 suggestions: [
                     "Check tool name and arguments",
                     "Verify tool registration"

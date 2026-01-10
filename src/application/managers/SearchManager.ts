@@ -62,7 +62,7 @@ export class SearchManager extends IManager implements ISearchManager {
      */
     private async bfsTraverse(startNodeNames: string[], maxDepth: number, graph: Graph): Promise<Graph> {
         const resultNodes = new Map<string, Node>();
-        const resultEdges = new Set<string>();
+        const edgeMap = new Map<string, Edge>(); // Use map for deduplication by key
         const visited = new Set<string>();
         let queue: string[] = startNodeNames.filter(name =>
             graph.nodes.some(n => n.name === name)
@@ -86,9 +86,11 @@ export class SearchManager extends IManager implements ISearchManager {
                 for (const name of queue) {
                     const connections = graph.edges.filter(e => e.from === name || e.to === name);
                     for (const edge of connections) {
-                        // Add edge to result (use a string key for set deduplication)
+                        // Add edge to result
                         const edgeKey = `${edge.from}-${edge.to}-${edge.edgeType}`;
-                        resultEdges.add(JSON.stringify(edge));
+                        if (!edgeMap.has(edgeKey)) {
+                            edgeMap.set(edgeKey, edge);
+                        }
 
                         // Add target to next level if not visited
                         const neighbor = edge.from === name ? edge.to : edge.from;
@@ -102,7 +104,10 @@ export class SearchManager extends IManager implements ISearchManager {
                 const currentNames = new Set(resultNodes.keys());
                 graph.edges.forEach(edge => {
                     if (currentNames.has(edge.from) && currentNames.has(edge.to)) {
-                        resultEdges.add(JSON.stringify(edge));
+                        const edgeKey = `${edge.from}-${edge.to}-${edge.edgeType}`;
+                        if (!edgeMap.has(edgeKey)) {
+                            edgeMap.set(edgeKey, edge);
+                        }
                     }
                 });
             }
@@ -113,7 +118,7 @@ export class SearchManager extends IManager implements ISearchManager {
 
         return {
             nodes: Array.from(resultNodes.values()),
-            edges: Array.from(resultEdges).map(e => JSON.parse(e))
+            edges: Array.from(edgeMap.values())
         };
     }
 

@@ -48,7 +48,7 @@ export const CONFIG: Config = {
         /** Root data directory */
         DATA_DIR: path.join(PROJECT_ROOT, 'data'),
         /** Path to schema files directory. */
-        SCHEMAS_DIR: path.join(PROJECT_ROOT, 'src', 'data', 'schemas'),
+        SCHEMAS_DIR: path.join(PROJECT_ROOT, 'data', 'schemas'),
         /** Path to the memory JSON file. */
         MEMORY_FILE: path.join(PROJECT_ROOT, 'data', 'memory.json'),
     },

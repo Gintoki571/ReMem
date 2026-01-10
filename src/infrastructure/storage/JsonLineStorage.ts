@@ -1,28 +1,18 @@
 // src/core/storage/JsonLineStorage.ts
 
-import {promises as fs} from 'fs';
+import { promises as fs } from 'fs';
 import path from 'path';
-import {CONFIG} from '@config/config.js';
-import type {IStorage} from './IStorage.js';
-import type {Edge, Graph} from '@core/index.js';
+import { CONFIG } from '@config/config.js';
+import type { IStorage } from './IStorage.js';
+import type { Edge, Graph } from '@core/index.js';
 
 /**
  * Handles persistent storage of the knowledge graph using a JSON Lines file format.
  */
 export class JsonLineStorage implements IStorage {
-    private edgeIndex: {
-        byFrom: Map<string, Set<string>>;
-        byTo: Map<string, Set<string>>;
-        byType: Map<string, Set<string>>;
-    };
     private initialized: boolean;
 
     constructor() {
-        this.edgeIndex = {
-            byFrom: new Map(),
-            byTo: new Map(),
-            byType: new Map()
-        };
         this.initialized = false;
     }
 
@@ -42,7 +32,7 @@ export class JsonLineStorage implements IStorage {
             try {
                 await fs.access(dir);
             } catch {
-                await fs.mkdir(dir, {recursive: true});
+                await fs.mkdir(dir, { recursive: true });
             }
 
             // Check if file exists, create if it doesn't
@@ -70,10 +60,8 @@ export class JsonLineStorage implements IStorage {
             const data = await fs.readFile(MEMORY_FILE_PATH, "utf-8");
             const lines = data.split("\n").filter(line => line.trim() !== "");
 
-            // Clear existing indices before rebuilding
-            this.clearIndices();
 
-            const graph: Graph = {nodes: [], edges: []};
+            const graph: Graph = { nodes: [], edges: [] };
 
             for (const line of lines) {
                 try {
@@ -91,7 +79,7 @@ export class JsonLineStorage implements IStorage {
             return graph;
         } catch (error) {
             if (error instanceof Error && 'code' in error && error.code === "ENOENT") {
-                return {nodes: [], edges: []};
+                return { nodes: [], edges: [] };
             }
             throw error;
         }
@@ -111,7 +99,7 @@ export class JsonLineStorage implements IStorage {
         }));
 
         const lines = [
-            ...graph.nodes.map(node => JSON.stringify({...node, type: 'node'})),
+            ...graph.nodes.map(node => JSON.stringify({ ...node, type: 'node' })),
             ...processedEdges.map(edge => JSON.stringify(edge))
         ];
 
@@ -133,43 +121,9 @@ export class JsonLineStorage implements IStorage {
     }
 
     /**
-     * Indexes a single edge by adding it to all relevant indices.
-     */
-    private indexEdge(edge: Edge): void {
-        const edgeId = this.generateEdgeId(edge);
-
-        // Index by 'from' node
-        if (!this.edgeIndex.byFrom.has(edge.from)) {
-            this.edgeIndex.byFrom.set(edge.from, new Set());
-        }
-        this.edgeIndex.byFrom.get(edge.from)?.add(edgeId);
-
-        // Index by 'to' node
-        if (!this.edgeIndex.byTo.has(edge.to)) {
-            this.edgeIndex.byTo.set(edge.to, new Set());
-        }
-        this.edgeIndex.byTo.get(edge.to)?.add(edgeId);
-
-        // Index by edge type
-        if (!this.edgeIndex.byType.has(edge.edgeType)) {
-            this.edgeIndex.byType.set(edge.edgeType, new Set());
-        }
-        this.edgeIndex.byType.get(edge.edgeType)?.add(edgeId);
-    }
-
-    /**
      * Generates a unique ID for an edge based on its properties.
      */
     private generateEdgeId(edge: Edge): string {
         return `${edge.from}|${edge.to}|${edge.edgeType}`;
-    }
-
-    /**
-     * Clears all edge indices.
-     */
-    private clearIndices(): void {
-        this.edgeIndex.byFrom.clear();
-        this.edgeIndex.byTo.clear();
-        this.edgeIndex.byType.clear();
     }
 }

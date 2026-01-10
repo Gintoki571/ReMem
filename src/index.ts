@@ -6,10 +6,8 @@ import {
     ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { ApplicationManager } from '@application/managers/ApplicationManager.js';
-import { handleCallToolRequest } from '@integration/tools/callToolHandler.js';
 import { toolsRegistry } from '@integration/tools/registry/toolsRegistry.js';
 import { CONFIG } from './config/config.js';
-import { formatToolError } from "@shared/utils/responseFormatter.js";
 
 const knowledgeGraphManager = new ApplicationManager();
 
@@ -29,7 +27,6 @@ async function main(): Promise<void> {
         server.setRequestHandler(ListToolsRequestSchema, async () => {
             // [MINIMALIST MODE - OPTION B]
             // We only expose a small set of "Smart" tools to the AI to save context space.
-            // The "Manual" tools still exist in the code but are hidden from the AI's view.
             const essentialTools = [
                 'auto_add_memory',
                 'semantic_search',
@@ -54,36 +51,11 @@ async function main(): Promise<void> {
         });
 
         server.setRequestHandler(CallToolRequestSchema, async (request) => {
-            try {
-                if (!request.params.arguments) {
-                    throw new Error("Tool arguments are required");
-                }
-
-                const toolRequest = {
-                    params: {
-                        name: request.params.name,
-                        arguments: request.params.arguments
-                    }
-                };
-
-                const result = await handleCallToolRequest(toolRequest, knowledgeGraphManager);
-
-                return {
-                    toolResult: result.toolResult
-                };
-            } catch (error) {
-                console.error("Error in handleCallToolRequest:", error);
-                const formattedError = formatToolError({
-                    operation: "callTool",
-                    error: error instanceof Error ? error.message : 'Unknown error occurred',
-                    context: { request },
-                    suggestions: ["Examine the tool input parameters for correctness.", "Verify that the requested operation is supported."],
-                    recoverySteps: ["Adjust the input parameters based on the schema definition."]
-                });
-                return {
-                    toolResult: formattedError.toolResult
-                };
-            }
+            const { name, arguments: args } = request.params;
+            const result = await toolsRegistry.handleToolCall(name, args ?? {});
+            return {
+                toolResult: result.toolResult
+            };
         });
 
         server.onerror = (error: Error) => {
