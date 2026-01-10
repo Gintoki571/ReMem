@@ -1,42 +1,114 @@
-# ReMem: Unified Modular Memory Mesh
+# <img src="docs/images/logo.png" alt="ReMem Logo" width="50" align="center"/> ReMem: Unified Modular Memory Mesh 🧠
 
-Welcome to the unified **ReMem** engine—a powerful, domain-aware long-term memory system for AI agents.
+![Status](https://img.shields.io/badge/Status-Active-brightgreen)
+![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue)
+![MCP](https://img.shields.io/badge/Protocol-MCP-orange)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+**ReMem** is a local-first, privacy-focused persistent memory engine for AI agents. Built on the **Model Context Protocol (MCP)**, it gives LLMs the ability to "remember" facts, relationships, and context across sessions without tool bloat or context window exhaustion.
+
+![Architecture Diagram](docs/images/triad.png)
+
+---
 
 ## 🚀 One Engine, Many Domains
 
-Previously split into RPG and Coding projects, **ReMem** is now a single, high-performance engine that uses a **Modular Mesh Architecture**. It allows your AI to handle complex world-building and expert software engineering in one session without overloading its context window.
+Previously split into separate RPG and Coding projects, **ReMem Unified** uses a core **Modular Mesh Architecture**. This allows your AI to handle complex storytelling AND expert software engineering in a single session, dynamically loading only the tools it needs.
 
-### Key Features
-- **🧠 Unified Intelligence**: Single core for Graph, Vector, and SQL storage.
-- **🧩 Modular Mesh**: On-demand loading of domain-specific tools (RPG, Coding, etc.).
-- **📖 Librarian Layer**: Automatic module suggestions based on your conversation context.
-- **⚡ Local-Model Optimized**: Designed to run efficiently with local LLMs (13b, 20b+) by preventing tool bloat.
+### ✨ The Modular Advantage
+- **🧠 Unified Intelligence**: A single core for Graph, Vector, and SQL storage.
+- **🧩 Dynamic context**: On-demand loading of domain-specific tools (RPG, Coding, etc.).
+- **⚡ Local-Model Optimized**: Proven to run efficiently on 13b and 20b models by keeping the toolset lean.
 
-## 🛠️ Getting Started
+---
 
-### Installation
-```bash
-npm install
-npm run build
+## 🛑 The Problem: LLM Amnesia & Tool Bloat
+
+Standard AI memory solutions suffer from two critical flaws:
+
+1.  **Transient Context:** Once a conversation ends, the model forgets everything.
+2.  **Tool Overload:** Giving a model too many tools (RPG + Coding + Math + Search) at once confuses the AI and eats up its limited context window.
+
+---
+
+## 🛡️ The Solution: The "Librarian" Intelligence
+
+ReMem introduces the **Librarian Service**—a smart orchestration layer that manages the engine's cognitive load.
+
+- **`librarian_suggest`**: Analyzes your current prompt and recommends exactly which module to activate.
+- **On-the-Fly Expertise**: Switch from "Coding Mode" to "RPG Mode" instantly without restarting the server.
+- **Zero Confusion**: Only relevant tools are exposed to the AI at any given time.
+
+---
+
+## 🆚 ReMem vs. Traditional RAG
+
+| Feature | ❌ Standard RAG | ✅ ReMem (Modular Mesh) |
+| :--- | :--- | :--- |
+| **Understanding** | "These words are similar." | "These concepts are related." |
+| **Updating** | **Static.** Facts often conflict. | **Dynamic.** Auto-updates graph nodes. |
+| **Tool Footprint** | Static/Bloated. | **Lean.** Dynamic tool registration. |
+| **Sync** | Often manual. | **Instant.** Unified infrastructure sync. |
+
+![ReMem vs RAG](docs/images/comparison.png)
+
+---
+
+## 🧰 The Master Toolset
+
+### Core Memory Tools
+| Tool Name | Capability |
+| :--- | :--- |
+| **`auto_add_memory`** | **The Magic Button.** Extracts facts from any text and saves them to all three stores. |
+| **`hybrid_search`** | **Deep Search.** Combines keyword matching with semantic meaning. |
+| **`query_sql_db`** | **Data Analyst.** Runs real SQL queries for complex filtering. |
+
+### Librarian Tools
+| Tool Name | Capability |
+| :--- | :--- |
+| **`librarian_suggest`**| **The Orchestrator.** Recommends which expertise module to load. |
+| **`activate_module`** | **Payload Expert.** Loads specialized tools (e.g., Coding or RPG). |
+| **`list_modules`** | **Catalog.** Shows all available and active expert domains. |
+
+---
+
+## 🛠️ Installation & Usage
+
+### Setup
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/Gintoki571/ReMem.git
+    cd ReMem/ReMem_Engine
+    ```
+2.  **Install & Build:**
+    ```bash
+    npm install
+    npm run build
+    ```
+
+### Configuration
+Update your MCP settings file:
+
+```json
+"remem": {
+  "command": "node",
+  "args": ["/absolute/path/to/ReMem/ReMem_Engine/dist/index.js"]
+}
 ```
 
-### Usage
-Start the MCP server:
-```bash
-npm start
-```
+---
 
-### Managing Modules
-Use the built-in Librarian tools:
-- `list_modules`: See status of available expertise.
-- `activate_module`: Load "RPG" or "Coding" tools on the fly.
-- `librarian_suggest`: Let the engine decide what it needs based on your prompt.
-
-## 📂 Project Structure
+## 📂 Architecture
 - `src/core`: Core graph and schema logic.
-- `src/infrastructure`: Database (SQLite) and Vector (LanceDB) management.
-- `src/modules`: Domain-specific experts (RPG, Coding).
+- `src/infrastructure`: Unified Database (SQLite) and Vector (LanceDB) management.
+- `src/modules`: Domain-specific modular experts (RPG, Coding).
 - `src/tests`: Comprehensive verification suite.
 
-## 📜 License
-MIT
+---
+
+## 👨‍💻 Author
+**Bindesh Kandel**
+*Software Engineering Student & AI Enthusiast*
+
+---
+*Built with ❤️ using TypeScript, SQLite, and the Model Context Protocol.*
