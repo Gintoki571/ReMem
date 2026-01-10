@@ -1,0 +1,19 @@
+{
+    "name": "rpg",
+    "description": "Specialized tools and memory structures for Role-Playing Games, world-building, and storytelling.",
+    "keywords": [
+        "character",
+        "npc",
+        "quest",
+        "location",
+        "artifact",
+        "inventory",
+        "skill",
+        "faction",
+        "currency",
+        "temporal",
+        "narrative",
+        "story",
+        "game"
+    ]
+}

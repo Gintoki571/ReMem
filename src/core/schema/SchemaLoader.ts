@@ -1,9 +1,9 @@
-// src/schema/loader/schemaLoader.ts
+// src/core/schema/SchemaLoader.ts
 
-import {promises as fs} from 'fs';
-import {SchemaBuilder} from './SchemaBuilder.js';
+import { promises as fs } from 'fs';
+import { SchemaBuilder } from './SchemaBuilder.js';
 import path from 'path';
-import {CONFIG} from '@config/index.js';
+import { CONFIG } from '@config/index.js';
 
 interface RawSchemaProperty {
     type: string;
@@ -25,17 +25,42 @@ interface RawSchema {
 }
 
 /**
- * Responsible for loading and converting schema definitions from JSON files into SchemaBuilder instances.
+ * Responsible for loading and converting schema definitions from core and modules.
  */
 export class SchemaLoader {
+    /**
+     * Finds the file path for a schema, searching core then modules.
+     */
+    private static async findSchemaPath(schemaName: string): Promise<string> {
+        // 1. Check Core
+        const corePath = path.join(CONFIG.PATHS.SCHEMAS_DIR, `${schemaName}.schema.json`);
+        try {
+            await fs.access(corePath);
+            return corePath;
+        } catch {
+            // Not in core
+        }
+
+        // 2. Check Active Modules
+        for (const module of CONFIG.MODULES.ACTIVE) {
+            const modulePath = path.join(CONFIG.PATHS.MODULES_DIR, module, 'schemas', `${schemaName}.schema.json`);
+            try {
+                await fs.access(modulePath);
+                return modulePath;
+            } catch {
+                continue;
+            }
+        }
+
+        throw new Error(`Schema not found: ${schemaName}`);
+    }
+
     /**
      * Loads a specific schema by name.
      */
     static async loadSchema(schemaName: string): Promise<SchemaBuilder> {
-        const SCHEMAS_DIR = CONFIG.PATHS.SCHEMAS_DIR;
-        const schemaPath = path.join(SCHEMAS_DIR, `${schemaName}.schema.json`);
-
         try {
+            const schemaPath = await this.findSchemaPath(schemaName);
             const schemaContent = await fs.readFile(schemaPath, 'utf-8');
             const schema = JSON.parse(schemaContent) as RawSchema;
             this.validateSchema(schema);
@@ -71,7 +96,6 @@ export class SchemaLoader {
                 );
             }
 
-            // Add relationship if defined
             if (propConfig.relationship) {
                 builder.addRelationship(
                     propName,
@@ -90,47 +114,43 @@ export class SchemaLoader {
     }
 
     /**
-     * Loads all schema files from the schemas directory.
+     * Loads ALL schemas from Core and ALL Active Modules.
      */
     static async loadAllSchemas(): Promise<Record<string, SchemaBuilder>> {
-        const SCHEMAS_DIR = CONFIG.PATHS.SCHEMAS_DIR;
+        const schemas: Record<string, SchemaBuilder> = {};
 
+        // 1. Load Core
+        await this.loadFromDir(CONFIG.PATHS.SCHEMAS_DIR, schemas);
+
+        // 2. Load Modules
+        for (const module of CONFIG.MODULES.ACTIVE) {
+            const moduleSchemaDir = path.join(CONFIG.PATHS.MODULES_DIR, module, 'schemas');
+            await this.loadFromDir(moduleSchemaDir, schemas);
+        }
+
+        return schemas;
+    }
+
+    private static async loadFromDir(dir: string, registry: Record<string, SchemaBuilder>): Promise<void> {
         try {
-            const files = await fs.readdir(SCHEMAS_DIR);
-            const schemaFiles = files.filter(file => file.endsWith('.schema.json'));
+            const files = await fs.readdir(dir);
+            const schemaFiles = files.filter((file: string) => file.endsWith('.schema.json'));
 
-            const schemas: Record<string, SchemaBuilder> = {};
             for (const file of schemaFiles) {
                 const schemaName = path.basename(file, '.schema.json');
-                schemas[schemaName] = await this.loadSchema(schemaName);
+                // Avoid redundant loading if already in registry
+                if (!registry[schemaName]) {
+                    registry[schemaName] = await this.loadSchema(schemaName);
+                }
             }
-
-            return schemas;
-        } catch (error) {
-            if (error instanceof Error) {
-                throw new Error(`Failed to load schemas: ${error.message}`);
-            }
-            throw new Error('Failed to load schemas');
+        } catch {
+            // Directory might not exist or be empty
         }
     }
 
-    /**
-     * Validates a schema definition.
-     * @throws {Error} If the schema is invalid
-     */
     private static validateSchema(schema: RawSchema): void {
         if (!schema.name || !schema.description || !schema.properties) {
             throw new Error('Schema must have name, description, and properties');
         }
-
-        Object.entries(schema.properties).forEach(([propName, propConfig]) => {
-            if (!propConfig.type || !propConfig.description) {
-                throw new Error(`Property ${propName} must have type and description`);
-            }
-
-            if (propConfig.relationship && !propConfig.relationship.edgeType) {
-                throw new Error(`Relationship property ${propName} must have edgeType`);
-            }
-        });
     }
 }

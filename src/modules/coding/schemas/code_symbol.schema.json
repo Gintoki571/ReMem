@@ -1,0 +1,40 @@
+{
+    "name": "add_code_symbol",
+    "description": "Add a new code symbol (function, class, interface) to the knowledge graph",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The name of the function, class, or variable",
+            "required": true
+        },
+        "symbol_type": {
+            "type": "string",
+            "description": "Type of symbol: function, class, interface, variable, constant, type_alias",
+            "enum": [
+                "function",
+                "class",
+                "interface",
+                "variable",
+                "constant",
+                "type_alias"
+            ],
+            "required": true
+        },
+        "file_path": {
+            "type": "string",
+            "description": "Path to the file containing this symbol",
+            "relationship": {
+                "edgeType": "defined_in",
+                "description": "Symbol is defined in file"
+            }
+        },
+        "signature": {
+            "type": "string",
+            "description": "Type signature or function definition"
+        },
+        "docstring": {
+            "type": "string",
+            "description": "Documentation or comment associated with the symbol"
+        }
+    }
+}

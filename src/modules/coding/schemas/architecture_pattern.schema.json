@@ -1,0 +1,19 @@
+{
+    "name": "add_architecture_pattern",
+    "description": "Add an architecture or design pattern used in the codebase",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "Name of the pattern (e.g., 'Singleton', 'MVC', 'Factory')",
+            "required": true
+        },
+        "description": {
+            "type": "string",
+            "description": "Explanation of how the pattern is implemented"
+        },
+        "benefits": {
+            "type": "string",
+            "description": "Why this pattern is used in the project"
+        }
+    }
+}

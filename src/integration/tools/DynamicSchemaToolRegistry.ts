@@ -1,14 +1,11 @@
-// src/tools/DynamicSchemaToolRegistry.ts
+// src/integration/tools/DynamicSchemaToolRegistry.ts
 
-import { promises as fs } from 'fs';
-import path from 'path';
 import {
     SchemaLoader,
     createSchemaNode,
     handleSchemaUpdate,
     handleSchemaDelete
 } from '@core/index.js';
-import { CONFIG } from '@config/index.js';
 import { formatToolResponse, formatToolError } from '@shared/index.js';
 import type { ApplicationManager } from '@application/index.js';
 import type { Tool, ToolResponse } from '@shared/index.js';
@@ -19,12 +16,12 @@ import type { SchemaBuilder } from '@core/index.js';
  */
 export interface IDynamicSchemaToolRegistry {
     getTools(): Tool[];
-
     handleToolCall(toolName: string, args: Record<string, any>, knowledgeGraphManager: ApplicationManager): Promise<ToolResponse>;
+    refresh(): Promise<void>;
 }
 
 /**
- * Manages dynamic tools generated from schema definitions
+ * Manages dynamic tools generated from schema definitions across core and modules.
  */
 class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
     private schemas: Map<string, SchemaBuilder>;
@@ -36,9 +33,6 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
         this.toolsCache = new Map();
     }
 
-    /**
-     * Gets the singleton instance
-     */
     public static getInstance(): DynamicSchemaToolRegistry {
         if (!DynamicSchemaToolRegistry.instance) {
             DynamicSchemaToolRegistry.instance = new DynamicSchemaToolRegistry();
@@ -47,20 +41,24 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
     }
 
     /**
-     * Initializes the registry by loading schemas and generating tools
+     * Initializes the registry by loading modular schemas
      */
     public async initialize(): Promise<void> {
-        try {
-            const SCHEMAS_DIR = CONFIG.PATHS.SCHEMAS_DIR;
-            const schemaFiles = await fs.readdir(SCHEMAS_DIR);
+        return this.refresh();
+    }
 
-            // Process schema files
-            for (const file of schemaFiles) {
-                if (file.endsWith('.schema.json')) {
-                    const schemaName = path.basename(file, '.schema.json');
-                    const schema = await SchemaLoader.loadSchema(schemaName);
-                    this.schemas.set(schemaName, schema);
-                }
+    /**
+     * Reloads all schemas from core and active modules
+     */
+    public async refresh(): Promise<void> {
+        try {
+            this.schemas.clear();
+            this.toolsCache.clear();
+
+            // Load all modular schemas
+            const loadedSchemas = await SchemaLoader.loadAllSchemas();
+            for (const [name, builder] of Object.entries(loadedSchemas)) {
+                this.schemas.set(name, builder);
             }
 
             // Generate tools for each schema
@@ -69,23 +67,17 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
                 tools.forEach(tool => this.toolsCache.set(tool.name, tool));
             }
 
-            console.error(`[DynamicSchemaTools] Initialized ${this.schemas.size} schemas and ${this.toolsCache.size} tools`);
+            console.error(`[ModularTools] Initialized ${this.schemas.size} schemas and ${this.toolsCache.size} tools`);
         } catch (error) {
-            console.error('[DynamicSchemaTools] Initialization error:', error);
+            console.error('[ModularTools] Initialization error:', error);
             throw error;
         }
     }
 
-    /**
-     * Retrieves all generated tools
-     */
     public getTools(): Tool[] {
         return Array.from(this.toolsCache.values());
     }
 
-    /**
-     * Generates tools for a given schema
-     */
     private async generateToolsForSchema(schemaName: string, schema: SchemaBuilder): Promise<Tool[]> {
         const tools: Tool[] = [];
         const baseSchema = schema.build();
@@ -100,13 +92,7 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
         // Delete tool
         const deleteSchema: Tool = {
             name: `delete_${schemaName}`,
-            description: `Delete
-            an existing
-            ${schemaName}
-            from
-            the
-            knowledge
-            graph`,
+            description: `Delete an existing ${schemaName} from the knowledge graph`,
             inputSchema: {
                 type: "object",
                 properties: {
@@ -130,9 +116,6 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
         return tools;
     }
 
-    /**
-     * Handles tool calls for dynamically generated schema-based tools
-     */
     public async handleToolCall(
         toolName: string,
         args: Record<string, any>,
@@ -153,9 +136,9 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
         if (!schemaBuilder) {
             return formatToolError({
                 operation: toolName,
-                error: `Schema not found: ${schemaName}`,
-                context: { availableSchemas: Array.from(this.schemas.keys()) },
-                suggestions: ["Verify schema name exists"]
+                error: `Schema not found: ${schemaName}. Module might not be active.`,
+                context: { availableTools: Array.from(this.toolsCache.keys()) },
+                suggestions: ["Activate the appropriate module to use this tool"]
             });
         }
 
@@ -201,7 +184,8 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
                 }
 
                 case 'delete': {
-                    const { name } = args[`delete_${schemaName}`];
+                    const params = args[`delete_${schemaName}`];
+                    const name = params?.name;
                     if (!name) {
                         return formatToolError({
                             operation: toolName,
@@ -237,12 +221,8 @@ class DynamicSchemaToolRegistry implements IDynamicSchemaToolRegistry {
     }
 }
 
-// Create and export singleton instance
 export const dynamicSchemaTools = DynamicSchemaToolRegistry.getInstance();
 
-/**
- * Initializes the dynamic tools registry
- */
 export async function initializeDynamicTools(): Promise<IDynamicSchemaToolRegistry> {
     await dynamicSchemaTools.initialize();
     return dynamicSchemaTools;

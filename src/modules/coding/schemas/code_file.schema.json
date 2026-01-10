@@ -1,0 +1,35 @@
+{
+    "name": "add_code_file",
+    "description": "Add a new code file to the knowledge graph",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The filename or path (e.g., 'src/index.ts')",
+            "required": true
+        },
+        "language": {
+            "type": "string",
+            "description": "Programming language (e.g., 'TypeScript', 'Python', 'JavaScript')"
+        },
+        "purpose": {
+            "type": "string",
+            "description": "Detailed explanation of what this file does"
+        },
+        "dependencies": {
+            "type": "array",
+            "description": "List of file paths or modules this file imports"
+        },
+        "exports": {
+            "type": "array",
+            "description": "List of functions, classes, or variables exported by this file"
+        },
+        "project": {
+            "type": "string",
+            "description": "The project this file belongs to",
+            "relationship": {
+                "edgeType": "part_of",
+                "description": "File is part of project"
+            }
+        }
+    }
+}

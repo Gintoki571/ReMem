@@ -1,44 +1,32 @@
 {
-  "name": "remem",
-  "version": "1.0.0",
-  "description": "A dynamic, privacy-focused Memory Mesh for AI agents.",
-  "license": "MIT",
-  "author": "Bindesh Kandel",
-  "homepage": "https://github.com/Gintoki571/ReMem",
-  "bugs": "https://github.com/Gintoki571/ReMem/issues",
-  "type": "module",
-  "main": "dist/index.js",
-  "bin": {
-    "memorymesh": "./dist/index.js"
-  },
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "tsc && tsc-alias && shx chmod +x dist/*.js && copyfiles -u 1 src/data/schemas/*.json src/data/*.json dist/",
-    "prepare": "npm run build",
-    "watch": "tsc --watch",
-    "start": "ts-node --esm src/index.ts",
-    "start:claude": "ts-node --esm src/index.ts",
-    "start:prod": "node dist/index.js"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.5.0",
-    "ai": "^4.0.0",
-    "@ai-sdk/openai": "^1.0.0",
-    "@lancedb/lancedb": "^0.22.3",
-    "dotenv": "^16.4.5",
-    "better-sqlite3": "^11.6.0",
-    "drizzle-orm": "^0.38.2"
-  },
-  "devDependencies": {
-    "@types/node": "^20.11.24",
-    "@types/better-sqlite3": "^7.6.11",
-    "drizzle-kit": "^0.30.1",
-    "copyfiles": "^2.4.1",
-    "shx": "^0.3.4",
-    "ts-node": "^10.9.2",
-    "tsc-alias": "^1.8.8",
-    "typescript": "^5.3.3"
-  }
+    "name": "remem-unified",
+    "version": "1.0.0",
+    "description": "Unified Modular Memory Mesh - One brain for any domain (RPG, Coding, and more).",
+    "type": "module",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc && tsc-alias && shx chmod +x dist/*.js",
+        "watch": "tsc --watch",
+        "start": "ts-node --esm src/index.ts",
+        "start:prod": "node dist/index.js"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^0.5.0",
+        "ai": "^4.0.0",
+        "@ai-sdk/openai": "^1.0.0",
+        "@lancedb/lancedb": "^0.22.3",
+        "dotenv": "^16.4.5",
+        "better-sqlite3": "^11.6.0",
+        "drizzle-orm": "^0.38.2"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.24",
+        "@types/better-sqlite3": "^7.6.11",
+        "drizzle-kit": "^0.30.1",
+        "copyfiles": "^2.4.1",
+        "shx": "^0.3.4",
+        "ts-node": "^10.9.2",
+        "tsc-alias": "^1.8.8",
+        "typescript": "^5.3.3"
+    }
 }

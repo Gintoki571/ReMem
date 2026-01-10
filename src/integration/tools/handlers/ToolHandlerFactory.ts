@@ -6,6 +6,7 @@ import { MetadataToolHandler } from './MetadataToolHandler.js';
 import { DynamicToolHandler } from './DynamicToolHandler.js';
 import { AutoMemoryToolHandler } from './AutoMemoryToolHandler.js';
 import { SqlToolHandler } from './SqlToolHandler.js';
+import { ModuleHandler } from './ModuleHandler.js';
 import { toolsRegistry } from '@integration/index.js';
 import type { ApplicationManager } from '@application/index.js';
 import type { BaseToolHandler } from './BaseToolHandler.js';
@@ -17,6 +18,7 @@ export class ToolHandlerFactory {
     private static dynamicHandler: DynamicToolHandler;
     private static autoMemoryHandler: AutoMemoryToolHandler;
     private static sqlHandler: SqlToolHandler;
+    private static moduleHandler: ModuleHandler;
     private static initialized = false;
 
     /**
@@ -33,7 +35,7 @@ export class ToolHandlerFactory {
         this.dynamicHandler = new DynamicToolHandler(knowledgeGraphManager);
         this.autoMemoryHandler = new AutoMemoryToolHandler(knowledgeGraphManager);
         this.sqlHandler = new SqlToolHandler(knowledgeGraphManager);
-
+        this.moduleHandler = new ModuleHandler(knowledgeGraphManager);
         this.initialized = true;
     }
 
@@ -62,6 +64,11 @@ export class ToolHandlerFactory {
         }
         if (toolName === 'query_sql_db') {
             return this.sqlHandler;
+        }
+
+        // Module tools
+        if (toolName.match(/^(list|activate|deactivate)_modules$/)) {
+            return this.moduleHandler;
         }
 
         // Then check dynamic tools

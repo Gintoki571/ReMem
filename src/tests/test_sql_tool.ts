@@ -1,6 +1,7 @@
+// src/tests/test_sql_tool.ts
 
-import { SqlToolHandler } from './dist/integration/tools/handlers/SqlToolHandler.js';
-import { ApplicationManager } from './dist/application/managers/ApplicationManager.js';
+import { SqlToolHandler } from '../integration/tools/handlers/SqlToolHandler.js';
+import { ApplicationManager } from '../application/managers/ApplicationManager.js';
 
 async function testSql() {
     console.log('--- SQL TOOL TEST ---');
@@ -9,7 +10,7 @@ async function testSql() {
     // Test 1: Valid SELECT
     console.log('\n1. Testing VALID SELECT usage...');
     const result1 = await handler.handleTool('query_sql_db', {
-        query: "SELECT name, node_type FROM nodes LIMIT 2"
+        query: "SELECT name, nodeType FROM nodes LIMIT 2"
     });
     console.log('Result:', JSON.stringify(result1.toolResult.data || result1.toolResult.content, null, 2));
 

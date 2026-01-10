@@ -1,6 +1,7 @@
 
-import { getDatabase, schema } from './dist/infrastructure/database/index.js';
+import { getDatabase, schema } from '../infrastructure/database/index.js';
 import fs from 'fs';
+import path from 'path';
 
 // Manual JSON Write Test
 const jsonPath = './dist/data/memory.json';

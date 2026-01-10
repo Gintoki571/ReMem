@@ -27,7 +27,7 @@ async function main(): Promise<void> {
         server.setRequestHandler(ListToolsRequestSchema, async () => {
             // [MINIMALIST MODE - OPTION B]
             // We only expose a small set of "Smart" tools to the AI to save context space.
-            const essentialTools = [
+            const coreTools = [
                 'auto_add_memory',
                 'semantic_search',
                 'hybrid_search',
@@ -35,11 +35,20 @@ async function main(): Promise<void> {
                 'open_nodes',
                 'delete_nodes',
                 'read_graph',
-                'query_sql_db'
+                'query_sql_db',
+                'list_modules',
+                'activate_module',
+                'deactivate_module'
             ];
 
             const allTools = toolsRegistry.getAllTools();
-            const visibleTools = allTools.filter(tool => essentialTools.includes(tool.name));
+            // Show all Core tools + any tools from ACTIVE modules
+            const visibleTools = allTools.filter(tool => {
+                const isCore = coreTools.includes(tool.name);
+                // Dynamic tools follow the pattern add_|update_|delete_
+                // We show them if they are in the registry (Registry already filters by active modules)
+                return isCore || tool.name.includes('_');
+            });
 
             return {
                 tools: visibleTools.map(tool => ({

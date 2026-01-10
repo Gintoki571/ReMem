@@ -7,8 +7,6 @@ const __dirname = path.dirname(__filename);
 
 /**
  * Helper to get the project root directory
- * Since this file is in src/config/ or dist/config/, 
- * the root is two levels up.
  */
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
@@ -21,6 +19,7 @@ interface PathsConfig {
     PROJECT_ROOT: string;
     DATA_DIR: string;
     SCHEMAS_DIR: string;
+    MODULES_DIR: string;
     MEMORY_FILE: string;
 }
 
@@ -28,33 +27,42 @@ interface SchemaConfig {
     SUPPORTED_VERSIONS: string[];
 }
 
+interface ModuleConfig {
+    ACTIVE: string[];
+}
+
 interface Config {
     SERVER: ServerConfig;
     PATHS: PathsConfig;
     SCHEMA: SchemaConfig;
+    MODULES: ModuleConfig;
 }
 
 /**
- * Centralized configuration for MemoryMesh.
+ * Centralized configuration for the ReMem Modular Engine.
  */
 export const CONFIG: Config = {
     SERVER: {
-        NAME: 'memorymesh',
-        VERSION: '0.2.8',
+        NAME: 'remem-engine',
+        VERSION: '0.3.0',
     },
 
     PATHS: {
         PROJECT_ROOT,
-        /** Root data directory */
         DATA_DIR: path.join(PROJECT_ROOT, 'data'),
-        /** Path to schema files directory. */
-        SCHEMAS_DIR: path.join(PROJECT_ROOT, 'data', 'schemas'),
-        /** Path to the memory JSON file. */
+        SCHEMAS_DIR: path.join(PROJECT_ROOT, 'data', 'schemas'), // Core schemas
+        MODULES_DIR: path.join(PROJECT_ROOT, 'src', 'modules'), // Modular schemas/tools
         MEMORY_FILE: path.join(PROJECT_ROOT, 'data', 'memory.json'),
     },
 
     SCHEMA: {
-        /** Supported schema versions (not yet implemented). */
-        SUPPORTED_VERSIONS: ['0.1', '0.2'], // TODO: Add schema versioning
+        SUPPORTED_VERSIONS: ['0.1', '0.2', '0.3'],
+    },
+
+    MODULES: {
+        // Load modules from environment or default to common ones
+        ACTIVE: process.env.REMEM_MODULES
+            ? process.env.REMEM_MODULES.split(',').map(m => m.trim())
+            : ['rpg', 'coding'], // Default to both for now, filter logic later
     },
 };

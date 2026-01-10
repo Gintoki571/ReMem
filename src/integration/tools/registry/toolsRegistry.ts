@@ -1,4 +1,4 @@
-// src/tools/registry/toolsRegistry.ts
+// src/integration/tools/registry/toolsRegistry.ts
 
 import { allStaticTools } from './staticTools.js';
 import { dynamicToolManager } from './dynamicTools.js';
@@ -16,12 +16,8 @@ export class ToolsRegistry {
     private tools: Map<string, Tool> = new Map();
     private knowledgeGraphManager: ApplicationManager | null = null;
 
-    private constructor() {
-    }
+    private constructor() { }
 
-    /**
-     * Gets the singleton instance of ToolsRegistry
-     */
     static getInstance(): ToolsRegistry {
         if (!ToolsRegistry.instance) {
             ToolsRegistry.instance = new ToolsRegistry();
@@ -29,30 +25,13 @@ export class ToolsRegistry {
         return ToolsRegistry.instance;
     }
 
-    /**
-     * Initializes the registry with both static and dynamic tools
-     */
     async initialize(knowledgeGraphManager: ApplicationManager): Promise<void> {
-        if (this.initialized) {
-            return;
-        }
+        if (this.initialized) return;
 
         try {
             this.knowledgeGraphManager = knowledgeGraphManager;
-
-            // Register static tools
-            allStaticTools.forEach(tool => {
-                this.tools.set(tool.name, tool);
-            });
-
-            // Initialize and register dynamic tools
-            await dynamicToolManager.initialize();
-            dynamicToolManager.getTools().forEach(tool => {
-                this.tools.set(tool.name, tool);
-            });
-
+            await this.refresh();
             this.initialized = true;
-            console.error(`[ToolsRegistry] Initialized with ${this.tools.size} tools`);
         } catch (error) {
             console.error('[ToolsRegistry] Initialization error:', error);
             throw error;
@@ -60,101 +39,70 @@ export class ToolsRegistry {
     }
 
     /**
-     * Gets a specific tool by name
+     * Refreshes the tools list, especially after module changes
      */
+    async refresh(): Promise<void> {
+        this.tools.clear();
+
+        // 1. Register static tools
+        allStaticTools.forEach(tool => {
+            this.tools.set(tool.name, tool);
+        });
+
+        // 2. Initialize and register dynamic tools (Modular)
+        await dynamicToolManager.initialize();
+        dynamicToolManager.getTools().forEach(tool => {
+            this.tools.set(tool.name, tool);
+        });
+
+        console.error(`[ToolsRegistry] Refreshed: ${this.tools.size} tools active.`);
+    }
+
     getTool(name: string): Tool | undefined {
-        this.ensureInitialized();
         return this.tools.get(name);
     }
 
-    /**
-     * Gets all registered tools
-     */
     getAllTools(): Tool[] {
-        this.ensureInitialized();
         return Array.from(this.tools.values());
     }
 
-    /**
-     * Handles a tool call by delegating to the appropriate handler
-     */
     async handleToolCall(toolName: string, args: Record<string, any>): Promise<ToolResponse> {
-        this.ensureInitialized();
-
-        if (!this.knowledgeGraphManager) {
+        if (!this.initialized || !this.knowledgeGraphManager) {
             return formatToolError({
                 operation: toolName,
-                error: 'KnowledgeGraphManager not initialized',
-                suggestions: ["Initialize registry with KnowledgeGraphManager"],
-                recoverySteps: ["Reinitialize ToolsRegistry with proper dependencies"]
+                error: 'ToolsRegistry not fully initialized',
+                suggestions: ["Wait for initialization"]
             });
         }
 
         try {
-            // Ensure tool actually exists in our registry
             if (!this.tools.has(toolName)) {
                 return formatToolError({
                     operation: toolName,
                     error: `Tool not found: ${toolName}`,
-                    context: { availableTools: Array.from(this.tools.keys()) },
-                    suggestions: ["Verify tool name exists"],
-                    recoverySteps: ["Check available tools list"]
+                    context: { activeTools: Array.from(this.tools.keys()) },
+                    suggestions: ["Check if the module for this tool is active"]
                 });
             }
 
-            // Ensure handlers are initialized
             if (!ToolHandlerFactory.isInitialized()) {
                 ToolHandlerFactory.initialize(this.knowledgeGraphManager);
             }
 
-            // Delegate execution to our centralized factory
             const handler = ToolHandlerFactory.getHandler(toolName);
             return await handler.handleTool(toolName, args);
         } catch (error) {
             return formatToolError({
                 operation: toolName,
-                error: error instanceof Error ? error.message : 'Unknown error occurred',
-                context: { toolName, args },
-                suggestions: [
-                    "Check tool name and arguments",
-                    "Verify tool registration"
-                ],
-                recoverySteps: [
-                    "Review tool documentation",
-                    "Ensure tool is properly registered"
-                ]
+                error: error instanceof Error ? error.message : 'Unknown error',
+                context: { toolName, args }
             });
         }
     }
 
-    /**
-     * Checks if a specific tool exists
-     */
     hasTool(name: string): boolean {
-        this.ensureInitialized();
         return this.tools.has(name);
-    }
-
-    /**
-     * Ensures the registry is initialized before use
-     */
-    private ensureInitialized(): void {
-        if (!this.initialized) {
-            throw new Error('Tools registry not initialized');
-        }
     }
 }
 
-/**
- * Singleton instance of the ToolsRegistry
- */
 export const toolsRegistry = ToolsRegistry.getInstance();
-
-/**
- * Re-export types that might be needed by consumers
- */
-export type {
-    Tool,
-    ToolResponse,
-    ApplicationManager
-};

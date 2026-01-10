@@ -1,44 +1,31 @@
-# Node.js
+# Dependencies
 node_modules/
-npm-debug.log*
-yarn-error.log*
+jspm_packages/
 
-# TypeScript
+# Build
 dist/
+build/
+*.tsbuildinfo
 
-# System Files (macOS)
-.DS_Store
+# Data
+data/*.db
+data/*.json
+!data/schemas/
+lancedb/
 
-# IDE-specific files
-.idea/
-
-# Log files
-*.log
-*.log.*
-
-# Temporary files
-*.tmp
-*.temp
-
-# OS generated files
-Thumbs.db
-ehthumbs.db
-
-# dotenv
+# Environment
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Ignore cache and log files created by npm
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# Coverage reports
-coverage/
-.nyc_output/
-
-# Ignore the local data directory (User Memories)
-data/
-
-# Ignore schema changes
-scr/data/schemas/*.json
+# OS
+.DS_Store
+Thumbs.db

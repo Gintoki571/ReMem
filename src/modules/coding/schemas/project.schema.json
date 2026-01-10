@@ -1,0 +1,28 @@
+{
+    "name": "add_project",
+    "description": "Add a new software project to the knowledge graph",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The unique name/identifier of the project",
+            "required": true
+        },
+        "description": {
+            "type": "string",
+            "description": "High-level description of what the project does",
+            "required": true
+        },
+        "tech_stack": {
+            "type": "array",
+            "description": "List of technologies used (e.g., 'TypeScript', 'React', 'MCP')"
+        },
+        "architecture_type": {
+            "type": "string",
+            "description": "Architecture style (e.g., 'Microservices', 'Monolith', 'Event-Driven')"
+        },
+        "root_path": {
+            "type": "string",
+            "description": "Absolute path to the project root directory"
+        }
+    }
+}

@@ -1,5 +1,5 @@
 
-import { analyzer } from './src/application/services/Analyzer.ts';
+import { analyzer } from '../application/services/Analyzer.js';
 import 'dotenv/config';
 
 async function testAnaylzer() {
