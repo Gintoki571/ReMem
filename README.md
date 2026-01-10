@@ -54,6 +54,26 @@ ReMem introduces the **Librarian Service**—a smart orchestration layer that ma
 
 ---
 
+## 🏠 Local-First Intelligence (LM Studio)
+
+You can run ReMem entirely offline by using **LM Studio** as your provider for both the LLM and the Embedding model.
+
+### 1. LM Studio Setup
+- Download and install [LM Studio](https://lmstudio.ai/).
+- Under the **Local Server** tab, load a Chat model (e.g., `Llama-3`) and an Embedding model (e.g., `nomic-embed-text-v1.5`).
+- Ensure the server is running on `http://localhost:1234`.
+
+### 2. Configure `.env`
+Update your `.env` file in the `ReMem_Engine` directory:
+```bash
+OPENAI_BASE_URL=http://localhost:1234/v1
+OPENAI_API_KEY=lm-studio
+LLM_MODEL=model-identifier-from-lm-studio
+EMBEDDING_MODEL=embedding-model-identifier
+```
+
+---
+
 ## 🧰 The Master Toolset
 
 ### Core Memory Tools

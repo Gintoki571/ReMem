@@ -168,7 +168,8 @@ export async function handleAutoAddMemory(
         }
 
         // Step 3: Generate embeddings for ALL affected entities (new and updated)
-        if (args.generateEmbeddings !== false && process.env.OPENAI_API_KEY) {
+        const canEmbed = process.env.OPENAI_API_KEY || (process.env.OPENAI_BASE_URL && process.env.OPENAI_BASE_URL.includes('localhost'));
+        if (args.generateEmbeddings !== false && canEmbed) {
             const allAffected = [...nodesToCreate, ...nodesToUpdate];
             for (const entity of allAffected) {
                 try {
@@ -255,16 +256,17 @@ export async function handleSemanticSearch(
     _manager: ApplicationManager
 ): Promise<ToolResponse> {
     try {
-        if (!process.env.OPENAI_API_KEY) {
+        const canEmbed = process.env.OPENAI_API_KEY || (process.env.OPENAI_BASE_URL && process.env.OPENAI_BASE_URL.includes('localhost'));
+        if (!canEmbed) {
             return {
                 toolResult: {
                     isError: true,
                     data: null,
-                    actionTaken: 'semantic_search requires OPENAI_API_KEY',
+                    actionTaken: 'semantic_search requires OPENAI_API_KEY or local provider',
                     timestamp: new Date().toISOString(),
                     content: [{
                         type: 'text',
-                        text: 'Semantic search requires OPENAI_API_KEY to be set for generating query embeddings.',
+                        text: 'Semantic search requires OPENAI_API_KEY or a local embedding provider (set OPENAI_BASE_URL).',
                     }],
                 },
             };
@@ -342,7 +344,8 @@ export async function handleHybridSearch(
 
         // 2. Semantic search
         let semanticResults: any[] = [];
-        if (process.env.OPENAI_API_KEY) {
+        const canEmbed = process.env.OPENAI_API_KEY || (process.env.OPENAI_BASE_URL && process.env.OPENAI_BASE_URL.includes('localhost'));
+        if (canEmbed) {
             const queryEmbedding = await analyzer.generateEmbedding(args.query);
             semanticResults = await searchVectors(queryEmbedding, limit * 2);
         }

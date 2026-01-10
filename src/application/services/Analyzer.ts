@@ -108,10 +108,12 @@ Text to analyze:
         }
 
         const baseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+        const apiKey = process.env.OPENAI_API_KEY || 'lm-studio';
+
         const response = await fetch(`${baseUrl}/embeddings`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
