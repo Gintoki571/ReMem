@@ -47,12 +47,14 @@ export async function initVectorStore(): Promise<void> {
 export async function addVector(record: VectorRecord): Promise<void> {
     if (!db) await initVectorStore();
 
-    if (!table) {
+    if (table) {
+        // Prevent duplication by deleting existing vectors for this node first
+        await table.delete(`nodeName = '${record.nodeName}'`);
+        await table.add([record as Record<string, unknown>]);
+    } else {
         // Create table with first record - cast for LanceDB compatibility
         table = await db!.createTable(TABLE_NAME, [record as Record<string, unknown>]);
         console.error('[VectorDB] Created table with first record');
-    } else {
-        await table.add([record as Record<string, unknown>]);
     }
 }
 

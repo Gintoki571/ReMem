@@ -1,5 +1,5 @@
 
-import { getDatabase, schema } from '../infrastructure/database/index.js';
+import { getDatabase, schema } from '@infrastructure/database/index.js';
 import fs from 'fs';
 import path from 'path';
 

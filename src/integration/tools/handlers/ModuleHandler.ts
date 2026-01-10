@@ -118,9 +118,11 @@ export class ModuleHandler extends BaseToolHandler {
         // Activate
         CONFIG.MODULES.ACTIVE.push(moduleName);
 
-        // Refresh dynamic tools
+        // Refresh dynamic tools and Librarian catalogs
         await dynamicSchemaTools.refresh();
         await toolsRegistry.refresh();
+        const { librarianService } = await import('../../../application/services/LibrarianService.js');
+        await librarianService.refresh();
 
         return formatToolResponse({
             data: { moduleName, status: "ACTIVATED" },
@@ -140,9 +142,11 @@ export class ModuleHandler extends BaseToolHandler {
         // Deactivate
         CONFIG.MODULES.ACTIVE.splice(index, 1);
 
-        // Refresh dynamic tools
+        // Refresh dynamic tools and Librarian catalogs
         await dynamicSchemaTools.refresh();
         await toolsRegistry.refresh();
+        const { librarianService } = await import('../../../application/services/LibrarianService.js');
+        await librarianService.refresh();
 
         return formatToolResponse({
             data: { moduleName, status: "DEACTIVATED" },

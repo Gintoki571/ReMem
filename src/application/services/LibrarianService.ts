@@ -23,8 +23,15 @@ export class LibrarianService {
      */
     async initialize(): Promise<void> {
         if (this.initialized) return;
+        return this.refresh();
+    }
 
+    /**
+     * Re-scans the modules directory for metadata changes.
+     */
+    async refresh(): Promise<void> {
         try {
+            this.moduleMetadata = []; // Clear current cache
             const modulesDir = CONFIG.PATHS.MODULES_DIR;
             const entries = await fs.readdir(modulesDir, { withFileTypes: true });
 
@@ -42,9 +49,9 @@ export class LibrarianService {
                 }
             }
             this.initialized = true;
-            console.error(`[Librarian] Initialized with ${this.moduleMetadata.length} modules.`);
+            console.error(`[Librarian] Refreshed: ${this.moduleMetadata.length} modules catalogs.`);
         } catch (error) {
-            console.error('[Librarian] Initialization failed:', error);
+            console.error('[Librarian] Refresh failed:', error);
         }
     }
 

@@ -1,7 +1,7 @@
 // src/tests/test_handler.ts
 
-import { ToolHandlerFactory } from '../integration/tools/handlers/ToolHandlerFactory.js';
-import { ApplicationManager } from '../application/managers/ApplicationManager.js';
+import { ToolHandlerFactory } from '@integration/tools/handlers/ToolHandlerFactory.js';
+import { ApplicationManager } from '@application/managers/ApplicationManager.js';
 
 async function testHandlers() {
     console.log('--- Tool Handler Factory Test ---');

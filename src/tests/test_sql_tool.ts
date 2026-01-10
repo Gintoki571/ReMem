@@ -1,7 +1,7 @@
 // src/tests/test_sql_tool.ts
 
-import { SqlToolHandler } from '../integration/tools/handlers/SqlToolHandler.js';
-import { ApplicationManager } from '../application/managers/ApplicationManager.js';
+import { SqlToolHandler } from '@integration/tools/handlers/SqlToolHandler.js';
+import { ApplicationManager } from '@application/managers/ApplicationManager.js';
 
 async function testSql() {
     console.log('--- SQL TOOL TEST ---');

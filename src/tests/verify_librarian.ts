@@ -1,7 +1,7 @@
 // tests/verify_librarian.ts
 
-import { librarianService } from '../application/services/LibrarianService.js';
-import { CONFIG } from '../config/config.js';
+import { librarianService } from '@application/services/LibrarianService.js';
+import { CONFIG } from '@config/config.js';
 
 async function runTest() {
     console.log("--- Librarian Verification ---");
