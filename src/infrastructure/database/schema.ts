@@ -29,6 +29,23 @@ export const embeddings = sqliteTable('embeddings', {
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// Messages table - stores conversation history for context management (Letta style)
+export const messages = sqliteTable('messages', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    role: text('role').notNull(), // 'user' | 'assistant' | 'system'
+    content: text('content').notNull(),
+    tokenCount: integer('token_count'), // Approx token count
+    isSummarized: integer('is_summarized', { mode: 'boolean' }).default(false), // True if this message has been compressed into the summary
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+// Global State table - stores the current "Rolling Summary" and other singleton data
+export const globalState = sqliteTable('global_state', {
+    key: text('key').primaryKey(), // e.g., 'rolling_summary'
+    value: text('value').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
 // Types for TypeScript
 export type Node = typeof nodes.$inferSelect;
 export type NewNode = typeof nodes.$inferInsert;
@@ -36,3 +53,6 @@ export type Edge = typeof edges.$inferSelect;
 export type NewEdge = typeof edges.$inferInsert;
 export type Embedding = typeof embeddings.$inferSelect;
 export type NewEmbedding = typeof embeddings.$inferInsert;
+export type Message = typeof messages.$inferSelect;
+export type NewMessage = typeof messages.$inferInsert;
+export type GlobalState = typeof globalState.$inferSelect;

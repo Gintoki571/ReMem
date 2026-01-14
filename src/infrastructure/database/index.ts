@@ -58,6 +58,24 @@ export function initDatabase(): BetterSQLite3Database<typeof schema> {
         CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_node);
         CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_node);
         CREATE INDEX IF NOT EXISTS idx_embeddings_node ON embeddings(node_name);
+
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            token_count INTEGER,
+            is_summarized INTEGER DEFAULT 0,
+            created_at INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+
+        CREATE TABLE IF NOT EXISTS global_state (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_messages_summarized ON messages(is_summarized);
+        CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
     `);
 
     console.error('[DB] SQLite database initialized at:', DB_PATH);

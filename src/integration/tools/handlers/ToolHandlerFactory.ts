@@ -7,6 +7,7 @@ import { DynamicToolHandler } from './DynamicToolHandler.js';
 import { AutoMemoryToolHandler } from './AutoMemoryToolHandler.js';
 import { SqlToolHandler } from './SqlToolHandler.js';
 import { ModuleHandler } from './ModuleHandler.js';
+import { ContextToolHandler } from './ContextToolHandler.js';
 import { toolsRegistry } from '@integration/index.js';
 import type { ApplicationManager } from '@application/index.js';
 import type { BaseToolHandler } from './BaseToolHandler.js';
@@ -19,6 +20,7 @@ export class ToolHandlerFactory {
     private static autoMemoryHandler: AutoMemoryToolHandler;
     private static sqlHandler: SqlToolHandler;
     private static moduleHandler: ModuleHandler;
+    private static contextHandler: ContextToolHandler;
     private static initialized = false;
 
     /**
@@ -36,6 +38,7 @@ export class ToolHandlerFactory {
         this.autoMemoryHandler = new AutoMemoryToolHandler(knowledgeGraphManager);
         this.sqlHandler = new SqlToolHandler(knowledgeGraphManager);
         this.moduleHandler = new ModuleHandler(knowledgeGraphManager);
+        this.contextHandler = new ContextToolHandler(knowledgeGraphManager);
         this.initialized = true;
     }
 
@@ -45,6 +48,11 @@ export class ToolHandlerFactory {
     static getHandler(toolName: string): BaseToolHandler {
         if (!this.initialized) {
             throw new Error('ToolHandlerFactory not initialized');
+        }
+
+        // Context tools
+        if (toolName === 'log_interaction' || toolName === 'get_context') {
+            return this.contextHandler;
         }
 
         // Check auto memory tools first

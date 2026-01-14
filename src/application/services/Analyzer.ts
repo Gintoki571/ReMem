@@ -72,11 +72,19 @@ Text to analyze:
         });
 
         try {
-            // Robust Parsing: Find the first { and the last }
-            const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-            const jsonString = jsonMatch ? jsonMatch[0] : result.text;
+            // Robust Parsing: Priority 1 - Markdown Code Block
+            const codeBlockMatch = result.text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+            
+            let jsonString = '';
+            if (codeBlockMatch) {
+                jsonString = codeBlockMatch[1];
+            } else {
+                // Priority 2 - First plausible JSON object in text
+                const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+                jsonString = jsonMatch ? jsonMatch[0] : result.text;
+            }
 
-            // Clean up potentially malformed markdown if regex failed or captured too much
+            // Cleanup
             const cleanJson = jsonString
                 .replace(/```json/g, '')
                 .replace(/```/g, '')
@@ -123,7 +131,7 @@ Text to analyze:
         });
 
         if (!response.ok) {
-            console.error('[Analyzer] Embedding API error, using placeholder');
+            console.error(`[Analyzer] Embedding API error: ${response.status} ${response.statusText}`, await response.text());
             return this.simpleHashEmbedding(text);
         }
 
@@ -150,6 +158,94 @@ Text to analyze:
      */
     summarizeForEmbedding(name: string, nodeType: string, metadata: string[]): string {
         return `${nodeType}: ${name}. ${metadata.join('. ')}`;
+    }
+
+    /**
+     * Summarize a list of messages into a concise narrative
+     * (Letta-style Rolling Summary)
+     */
+    async summarizeMessages(messages: { role: string, content: string }[], previousSummary: string = ''): Promise<string> {
+        const messageText = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+        
+        const prompt = `Your job is to summarize a history of previous messages in a conversation between an AI assistant and a human.
+The conversation you are given is from a fixed context window and may not be complete.
+
+Current Summary of previous history:
+"${previousSummary || 'None'}"
+
+New Messages to incorporate:
+${messageText}
+
+Instructions:
+1. Update the "Current Summary" by incorporating the key events/facts from the "New Messages".
+2. Keep the summary concise (under 200 words).
+3. Maintain a narrative flow from the perspective of the AI.
+4. Do NOT lose important details from the previous summary.
+
+Output ONLY the new summary text.`;
+
+        const result = await generateText({
+            model: this.model,
+            prompt: prompt,
+        });
+
+        return result.text.trim();
+    }
+
+    /**
+     * Decision logic for Memory Updates (mem0 style)
+     * Decides whether to ADD, UPDATE, or DELETE based on new facts vs old memory
+     */
+    async determineMemoryUpdates(
+        newFacts: string[], 
+        existingMemories: { id: string, text: string }[]
+    ): Promise<{ action: 'ADD' | 'UPDATE' | 'DELETE' | 'NONE', id?: string, text: string }[]> {
+        const prompt = `You are a smart memory manager.
+Compare newly retrieved facts with existing memories.
+
+Existing Memories:
+${JSON.stringify(existingMemories, null, 2)}
+
+New Facts:
+${JSON.stringify(newFacts, null, 2)}
+
+Decide for EACH new fact:
+- ADD: New info not present.
+- UPDATE: Info exists but is different/more detailed. (Reuse ID)
+- DELETE: Info contradicts memory. (Reuse ID)
+- NONE: Info is already there.
+
+Return JSON array:
+[
+  { "action": "ADD", "text": "..." },
+  { "action": "UPDATE", "id": "...", "text": "..." },
+  ...
+]`;
+
+        const result = await generateText({
+            model: this.model,
+            prompt: prompt,
+        });
+
+        try {
+            // Robust Parsing: Priority 1 - Markdown Code Block (Array)
+            const codeBlockMatch = result.text.match(/```(?:json)?\s*(\[\s*[\s\S]*?\s*\])\s*```/);
+            
+            let jsonString = '';
+            if (codeBlockMatch) {
+                jsonString = codeBlockMatch[1];
+            } else {
+                 // Priority 2 - First plausible JSON array
+                 const jsonMatch = result.text.match(/\[[\s\S]*\]/);
+                 jsonString = jsonMatch ? jsonMatch[0] : result.text;
+            }
+
+            const cleanJson = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
+            return JSON.parse(cleanJson);
+        } catch (e) {
+            console.error('[Analyzer] Failed to parse memory update decision', e);
+            return newFacts.map(f => ({ action: 'ADD', text: f })); // Fallback
+        }
     }
 }
 

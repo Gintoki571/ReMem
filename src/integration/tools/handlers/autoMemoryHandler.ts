@@ -126,15 +126,60 @@ export async function handleAutoAddMemory(
             const existingNode = existingNodesMap.get(entity.name);
 
             if (existingNode) {
-                // [SMART MERGE]
-                // Archive current metadata and add new ones
-                const archivedMetadata = existingNode.metadata.map(m =>
-                    m.startsWith('[OLD') ? m : `[OLD - ${today}] ${m}`
-                );
+                // [SMART MERGE - mem0 Style]
+                // Use LLM to decide whether to ADD, UPDATE, or DELETE metadata facts
+                
+                // 1. Flatten existing metadata (handle legacy strings vs objects if any)
+                const currentFacts = existingNode.metadata ? existingNode.metadata : [];
+                
+                // 2. Get decisions from LLM
+                // We treat the node's metadata as a list of facts
+                let newMetadata = [...currentFacts];
+                
+                if (entity.metadata && entity.metadata.length > 0) {
+                     try {
+                        const updates = await analyzer.determineMemoryUpdates(
+                            entity.metadata,
+                            currentFacts.map((text, idx) => ({ id: idx.toString(), text }))
+                        );
+
+                        // Apply updates
+                        const tempMap = new Map(currentFacts.map((text, idx) => [idx.toString(), text]));
+                        
+                        updates.forEach(op => {
+                            if (op.action === 'ADD') {
+                                // Add new fact
+                                tempMap.set(`new-${Date.now()}-${Math.random()}`, op.text);
+                            } else if (op.action === 'UPDATE' && op.id) {
+                                // Update existing fact (Safety check: ensure ID exists)
+                                if (tempMap.has(op.id)) {
+                                    tempMap.set(op.id, op.text);
+                                } else {
+                                    console.warn(`[AutoAdd] LLM tried to UPDATE non-existent ID: ${op.id}`);
+                                    // Fallback: Add as new if it looks important? No, safer to ignore or just add.
+                                    // Let's treat it as an ADD to be safe against data loss
+                                    tempMap.set(`fallback-${Date.now()}-${Math.random()}`, op.text);
+                                }
+                            } else if (op.action === 'DELETE' && op.id) {
+                                // Delete fact (Safety check: ensure ID exists)
+                                if (tempMap.has(op.id)) {
+                                    tempMap.delete(op.id);
+                                } else {
+                                    console.warn(`[AutoAdd] LLM tried to DELETE non-existent ID: ${op.id}`);
+                                }
+                            }
+                        });
+
+                        newMetadata = Array.from(tempMap.values());
+                    } catch (e) {
+                        console.error('[AutoAdd] Smart merge failed, falling back to append:', e);
+                        newMetadata = [...currentFacts, ...entity.metadata];
+                    }
+                }
 
                 nodesToUpdate.push({
                     name: entity.name,
-                    metadata: [...archivedMetadata, ...entity.metadata]
+                    metadata: newMetadata
                 });
             } else {
                 // [NEW NODE]
@@ -168,7 +213,7 @@ export async function handleAutoAddMemory(
         }
 
         // Step 3: Generate embeddings for ALL affected entities (new and updated)
-        const canEmbed = process.env.OPENAI_API_KEY || (process.env.OPENAI_BASE_URL && process.env.OPENAI_BASE_URL.includes('localhost'));
+        const canEmbed = process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL;
         if (args.generateEmbeddings !== false && canEmbed) {
             const allAffected = [...nodesToCreate, ...nodesToUpdate];
             for (const entity of allAffected) {
@@ -256,7 +301,7 @@ export async function handleSemanticSearch(
     _manager: ApplicationManager
 ): Promise<ToolResponse> {
     try {
-        const canEmbed = process.env.OPENAI_API_KEY || (process.env.OPENAI_BASE_URL && process.env.OPENAI_BASE_URL.includes('localhost'));
+        const canEmbed = process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL;
         if (!canEmbed) {
             return {
                 toolResult: {
@@ -344,7 +389,7 @@ export async function handleHybridSearch(
 
         // 2. Semantic search
         let semanticResults: any[] = [];
-        const canEmbed = process.env.OPENAI_API_KEY || (process.env.OPENAI_BASE_URL && process.env.OPENAI_BASE_URL.includes('localhost'));
+        const canEmbed = process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL;
         if (canEmbed) {
             const queryEmbedding = await analyzer.generateEmbedding(args.query);
             semanticResults = await searchVectors(queryEmbedding, limit * 2);
