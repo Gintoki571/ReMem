@@ -8,6 +8,7 @@ import { AutoMemoryToolHandler } from './AutoMemoryToolHandler.js';
 import { SqlToolHandler } from './SqlToolHandler.js';
 import { ModuleHandler } from './ModuleHandler.js';
 import { ContextToolHandler } from './ContextToolHandler.js';
+import { GlobalMemoryHandler } from './GlobalMemoryHandler.js';
 import { toolsRegistry } from '@integration/index.js';
 import type { ApplicationManager } from '@application/index.js';
 import type { BaseToolHandler } from './BaseToolHandler.js';
@@ -21,6 +22,7 @@ export class ToolHandlerFactory {
     private static sqlHandler: SqlToolHandler;
     private static moduleHandler: ModuleHandler;
     private static contextHandler: ContextToolHandler;
+    private static globalHandler: GlobalMemoryHandler;
     private static initialized = false;
 
     /**
@@ -39,6 +41,7 @@ export class ToolHandlerFactory {
         this.sqlHandler = new SqlToolHandler(knowledgeGraphManager);
         this.moduleHandler = new ModuleHandler(knowledgeGraphManager);
         this.contextHandler = new ContextToolHandler(knowledgeGraphManager);
+        this.globalHandler = new GlobalMemoryHandler(knowledgeGraphManager);
         this.initialized = true;
     }
 
@@ -53,6 +56,10 @@ export class ToolHandlerFactory {
         // Context tools
         if (toolName === 'log_interaction' || toolName === 'get_context') {
             return this.contextHandler;
+        }
+
+        if (toolName === 'add_global_memory') {
+            return this.globalHandler;
         }
 
         // Check auto memory tools first

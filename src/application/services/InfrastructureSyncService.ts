@@ -10,15 +10,25 @@ import { eq, and } from 'drizzle-orm';
  * Service that synchronizes graph operations with secondary storage (SQLite, Vector Store)
  */
 export class InfrastructureSyncService {
+    private cleanupFunctions: Array<() => void> = [];
+
     constructor(private graphOperations: GraphOperations) {
         this.initializeListeners();
+    }
+
+    /**
+     * Cleanup event listeners to prevent memory leaks
+     */
+    public cleanup(): void {
+        this.cleanupFunctions.forEach(fn => fn());
+        this.cleanupFunctions = [];
     }
 
     private initializeListeners(): void {
         const db = getDatabase();
 
         // Node synchronization
-        this.graphOperations.on('afterAddNodes', ({ nodes }: { nodes: Node[] }) => {
+        const afterAddNodesHandler = ({ nodes }: { nodes: Node[] }) => {
             for (const node of nodes) {
                 try {
                     db.insert(schema.nodes).values({
@@ -28,11 +38,16 @@ export class InfrastructureSyncService {
                     }).onConflictDoNothing().run();
                 } catch (error) {
                     console.error(`[Sync] Error syncing added node "${node.name}" to SQLite:`, error);
+                    if (error instanceof Error) {
+                        console.error(`[Sync] Stack trace:`, error.stack);
+                    }
                 }
             }
-        });
+        };
+        this.graphOperations.on('afterAddNodes', afterAddNodesHandler);
+        this.cleanupFunctions.push(() => this.graphOperations.off('afterAddNodes', afterAddNodesHandler));
 
-        this.graphOperations.on('afterUpdateNodes', async ({ nodes }: { nodes: Partial<Node>[] }) => {
+        const afterUpdateNodesHandler = async ({ nodes }: { nodes: Partial<Node>[] }) => {
             for (const node of nodes) {
                 if (!node.name) continue;
                 try {
@@ -66,9 +81,11 @@ export class InfrastructureSyncService {
                     console.error(`[Sync] Error syncing updated node "${node.name}":`, error);
                 }
             }
-        });
+        };
+        this.graphOperations.on('afterUpdateNodes', afterUpdateNodesHandler);
+        this.cleanupFunctions.push(() => this.graphOperations.off('afterUpdateNodes', afterUpdateNodesHandler));
 
-        this.graphOperations.on('afterDeleteNodes', async ({ nodeNames }: { nodeNames: string[] }) => {
+        const afterDeleteNodesHandler = async ({ nodeNames }: { nodeNames: string[] }) => {
             for (const name of nodeNames) {
                 try {
                     // Sync with SQLite
@@ -82,10 +99,12 @@ export class InfrastructureSyncService {
                     console.error(`[Sync] Error syncing deleted node "${name}":`, error);
                 }
             }
-        });
+        };
+        this.graphOperations.on('afterDeleteNodes', afterDeleteNodesHandler);
+        this.cleanupFunctions.push(() => this.graphOperations.off('afterDeleteNodes', afterDeleteNodesHandler));
 
         // Edge synchronization
-        this.graphOperations.on('afterAddEdges', ({ edges }: { edges: Edge[] }) => {
+        const afterAddEdgesHandler = ({ edges }: { edges: Edge[] }) => {
             for (const edge of edges) {
                 try {
                     db.insert(schema.edges).values({
@@ -98,9 +117,11 @@ export class InfrastructureSyncService {
                     console.error(`[Sync] Error syncing added edge to SQLite:`, error);
                 }
             }
-        });
+        };
+        this.graphOperations.on('afterAddEdges', afterAddEdgesHandler);
+        this.cleanupFunctions.push(() => this.graphOperations.off('afterAddEdges', afterAddEdgesHandler));
 
-        this.graphOperations.on('afterDeleteEdges', ({ edges }: { edges: Edge[] }) => {
+        const afterDeleteEdgesHandler = ({ edges }: { edges: Edge[] }) => {
             for (const edge of edges) {
                 try {
                     db.delete(schema.edges)
@@ -116,6 +137,8 @@ export class InfrastructureSyncService {
                     console.error(`[Sync] Error syncing deleted edge:`, error);
                 }
             }
-        });
+        };
+        this.graphOperations.on('afterDeleteEdges', afterDeleteEdgesHandler);
+        this.cleanupFunctions.push(() => this.graphOperations.off('afterDeleteEdges', afterDeleteEdgesHandler));
     }
 }

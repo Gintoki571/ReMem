@@ -22,6 +22,8 @@ import {
 import { JsonLineStorage } from '@infrastructure/index.js';
 import { InfrastructureSyncService } from '@application/services/InfrastructureSyncService.js';
 
+import { ContextManager } from '@core/context/ContextManager.js';
+
 /**
  * Main facade that coordinates between specialized managers
  */
@@ -29,14 +31,24 @@ export class ApplicationManager {
     private readonly graphManager: GraphManager;
     private readonly searchManager: SearchManager;
     private readonly transactionManager: TransactionManager;
+    public readonly contextManager: ContextManager;
+    private readonly syncService: InfrastructureSyncService;
 
     constructor(storage: IStorage = new JsonLineStorage()) {
         this.graphManager = new GraphManager(storage);
         this.searchManager = new SearchManager(storage);
         this.transactionManager = new TransactionManager(storage);
+        this.contextManager = new ContextManager();
 
         // Initialize synchronization with secondary stores (SQLite, Vector Store)
-        new InfrastructureSyncService(this.getGraphOperations());
+        this.syncService = new InfrastructureSyncService(this.getGraphOperations());
+    }
+
+    /**
+     * Cleanup resources (event listeners, connections, etc.)
+     */
+    public cleanup(): void {
+        this.syncService.cleanup();
     }
 
     /**
@@ -44,6 +56,11 @@ export class ApplicationManager {
      */
     private getGraphOperations(): any {
         return (this.graphManager as any).graphOperations;
+    }
+
+    // Context operations
+    async getEffectiveContext(userId?: string): Promise<any> {
+        return this.contextManager.getEffectiveContext(userId);
     }
 
     // Graph operations delegated to GraphManager

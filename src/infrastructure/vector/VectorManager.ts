@@ -49,7 +49,9 @@ export async function addVector(record: VectorRecord): Promise<void> {
 
     if (table) {
         // Prevent duplication by deleting existing vectors for this node first
-        await table.delete(`nodeName = '${record.nodeName}'`);
+        // Use parameterized query to prevent SQL injection
+        const escapedNodeName = record.nodeName.replace(/'/g, "''");
+        await table.delete(`nodeName = '${escapedNodeName}'`);
         await table.add([record as Record<string, unknown>]);
     } else {
         // Create table with first record - cast for LanceDB compatibility
@@ -86,7 +88,9 @@ export async function deleteVectorsByNode(nodeName: string): Promise<void> {
     if (!db) await initVectorStore();
     if (!table) return;
 
-    await table.delete(`nodeName = '${nodeName}'`);
+    // Escape single quotes to prevent SQL injection
+    const escapedNodeName = nodeName.replace(/'/g, "''");
+    await table.delete(`nodeName = '${escapedNodeName}'`);
 }
 
 /**

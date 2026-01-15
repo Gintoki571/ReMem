@@ -1,0 +1,5 @@
+src/application/managers/ManagerFactory.ts(80,9): error TS2740: Type 'TransactionManager' is missing the following properties from type 'ITransactionManager': initialize, eventListeners, on, off, and 6 more.
+src/application/managers/TransactionManager.ts(12,14): error TS2720: Class 'TransactionManager' incorrectly implements class 'ITransactionManager'. Did you mean to extend 'ITransactionManager' and inherit its members as a subclass?
+  Type 'TransactionManager' is missing the following properties from type 'ITransactionManager': initialize, eventListeners, on, off, and 6 more.
+src/application/managers/TransactionManager.ts(107,20): error TS2693: 'Graph' only refers to a type, but is being used as a value here.
+src/application/managers/TransactionManager.ts(134,94): error TS2552: Cannot find name 'step'. Did you mean 'steps'?

@@ -2,8 +2,10 @@ import { eq, and, asc, not } from 'drizzle-orm';
 import { getDatabase, schema } from '@infrastructure/database/index.js';
 import { analyzer } from '@application/services/Analyzer.js';
 
-const TOKEN_LIMIT = 4000; // Trigger summarization at ~4k tokens
-const KEEP_RECENT = 10;   // Always keep the last 10 messages raw
+import { CONFIG } from '@config/config.js';
+
+const TOKEN_LIMIT = CONFIG.CONTEXT.TOKEN_LIMIT;
+const KEEP_RECENT = CONFIG.CONTEXT.KEEP_RECENT_MESSAGES;
 
 export class ContextManager {
     private isOptimizing = false;
@@ -39,7 +41,7 @@ export class ContextManager {
         const summaryRecord = await db.query.globalState.findFirst({
             where: eq(schema.globalState.key, 'rolling_summary')
         });
-        const summary = summaryRecord ? summaryRecord.value : '';
+        const summary = summaryRecord ? summaryRecord.content : '';
 
         // 2. Get Unsummarized Messages
         const recentMessages = await db.query.messages.findMany({
@@ -70,7 +72,7 @@ export class ContextManager {
 
             if (totalTokens < TOKEN_LIMIT) return;
 
-            console.log(`[ContextManager] Token limit exceeded (${totalTokens} > ${TOKEN_LIMIT}). Summarizing...`);
+            console.error(`[ContextManager] Token limit exceeded (${totalTokens} > ${TOKEN_LIMIT}). Summarizing...`);
 
             // 2. Select messages to summarize (All except the last KEEP_RECENT)
             if (unsummarized.length <= KEEP_RECENT) return; // Not enough messages to compress
@@ -82,7 +84,7 @@ export class ContextManager {
             const summaryRecord = await db.query.globalState.findFirst({
                 where: eq(schema.globalState.key, 'rolling_summary')
             });
-            const currentSummary = summaryRecord ? summaryRecord.value : '';
+            const currentSummary = summaryRecord ? summaryRecord.content : '';
 
             // 4. Generate new summary
             const newSummary = await analyzer.summarizeMessages(
@@ -94,8 +96,8 @@ export class ContextManager {
             await db.transaction(async (tx) => {
                 // Update Summary
                 await tx.insert(schema.globalState)
-                    .values({ key: 'rolling_summary', value: newSummary })
-                    .onConflictDoUpdate({ target: schema.globalState.key, set: { value: newSummary, updatedAt: new Date() } });
+                    .values({ key: 'rolling_summary', content: newSummary })
+                    .onConflictDoUpdate({ target: schema.globalState.key, set: { content: newSummary, updatedAt: new Date() } });
 
                 // Mark messages as summarized
                 for (const id of idsToMark) {
@@ -105,7 +107,7 @@ export class ContextManager {
                 }
             });
 
-            console.log(`[ContextManager] Context optimized. Summary updated.`);
+            console.error(`[ContextManager] Context optimized. Summary updated.`);
         } finally {
             this.isOptimizing = false;
         }

@@ -5,12 +5,15 @@ import path from 'path';
 import { CONFIG } from '@config/config.js';
 import type { IStorage } from './IStorage.js';
 import type { Edge, Graph } from '@core/index.js';
+import { randomBytes } from 'crypto';
 
 /**
  * Handles persistent storage of the knowledge graph using a JSON Lines file format.
+ * Uses atomic write-rename pattern to prevent corruption from concurrent writes.
  */
 export class JsonLineStorage implements IStorage {
     private initialized: boolean;
+    private writeLock: Promise<void> = Promise.resolve();
 
     constructor() {
         this.initialized = false;
@@ -87,23 +90,44 @@ export class JsonLineStorage implements IStorage {
 
     /**
      * Saves the entire knowledge graph to storage.
+     * Uses atomic write-rename pattern to prevent corruption.
      */
     async saveGraph(graph: Graph): Promise<void> {
         await this.ensureStorageExists();
 
-        const MEMORY_FILE_PATH = CONFIG.PATHS.MEMORY_FILE;
+        // Serialize write operations to prevent race conditions
+        this.writeLock = this.writeLock.then(async () => {
+            const MEMORY_FILE_PATH = CONFIG.PATHS.MEMORY_FILE;
+            const tempPath = `${MEMORY_FILE_PATH}.tmp.${randomBytes(8).toString('hex')}`;
 
-        const processedEdges = graph.edges.map(edge => ({
-            ...edge,
-            type: 'edge'
-        }));
+            try {
+                const processedEdges = graph.edges.map(edge => ({
+                    ...edge,
+                    type: 'edge'
+                }));
 
-        const lines = [
-            ...graph.nodes.map(node => JSON.stringify({ ...node, type: 'node' })),
-            ...processedEdges.map(edge => JSON.stringify(edge))
-        ];
+                const lines = [
+                    ...graph.nodes.map(node => JSON.stringify({ ...node, type: 'node' })),
+                    ...processedEdges.map(edge => JSON.stringify(edge))
+                ];
 
-        await fs.writeFile(MEMORY_FILE_PATH, lines.join("\n") + (lines.length > 0 ? "\n" : ""));
+                // Write to temp file first
+                await fs.writeFile(tempPath, lines.join("\n") + (lines.length > 0 ? "\n" : ""));
+                
+                // Atomic rename (overwrites destination)
+                await fs.rename(tempPath, MEMORY_FILE_PATH);
+            } catch (error) {
+                // Clean up temp file on error
+                try {
+                    await fs.unlink(tempPath);
+                } catch {
+                    // Ignore cleanup errors
+                }
+                throw error;
+            }
+        });
+
+        await this.writeLock;
     }
 
     /**

@@ -72,6 +72,15 @@ async function main(): Promise<void> {
         };
 
         process.on('SIGINT', async () => {
+            console.error('[Server] Shutting down gracefully...');
+            knowledgeGraphManager.cleanup();
+            await server.close();
+            process.exit(0);
+        });
+
+        process.on('SIGTERM', async () => {
+            console.error('[Server] Shutting down gracefully...');
+            knowledgeGraphManager.cleanup();
             await server.close();
             process.exit(0);
         });

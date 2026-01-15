@@ -41,7 +41,9 @@ async function test() {
                     const data = await resp2.json();
                     console.log('Available models:', data.data.map((m: any) => m.id));
                 }
-            } catch (e2) { }
+            } catch (e2) {
+            console.error('[Test] Cleanup failed:', e2);
+        }
         }
 
     } catch (error: any) {

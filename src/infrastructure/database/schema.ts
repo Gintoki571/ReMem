@@ -6,6 +6,7 @@ export const nodes = sqliteTable('nodes', {
     name: text('name').notNull().unique(),
     nodeType: text('node_type').notNull(),
     metadata: text('metadata'), // JSON string array
+    version: integer('version').default(1).notNull(), // Optimistic Locking
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
@@ -41,8 +42,10 @@ export const messages = sqliteTable('messages', {
 
 // Global State table - stores the current "Rolling Summary" and other singleton data
 export const globalState = sqliteTable('global_state', {
-    key: text('key').primaryKey(), // e.g., 'rolling_summary'
-    value: text('value').notNull(),
+    key: text('key').primaryKey(),
+    content: text('content').notNull(),
+    isSummarized: integer('is_summarized', { mode: 'boolean' }).default(false),
+    createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 

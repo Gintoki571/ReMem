@@ -4,6 +4,7 @@ import type { Tool } from '@shared/index.js';
 import { autoMemoryTools } from '../handlers/autoMemoryHandler.js';
 import { moduleTools } from '../handlers/ModuleHandler.js';
 import { contextTools } from '../handlers/contextTools.js';
+import { globalTools } from './globalTools.js';
 
 /**
  * Graph manipulation tools for managing nodes and edges
@@ -318,5 +319,6 @@ export const allStaticTools: Tool[] = [
     ...autoMemoryTools,
     ...sqlTools,
     ...moduleTools,
-    ...contextTools
+    ...contextTools,
+    ...globalTools
 ];
