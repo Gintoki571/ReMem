@@ -19,7 +19,7 @@ import {
     SearchManager,
     TransactionManager
 } from "@application/index.js";
-import { JsonLineStorage } from '@infrastructure/index.js';
+import { SqliteStorage } from '@infrastructure/index.js';
 import { InfrastructureSyncService } from '@application/services/InfrastructureSyncService.js';
 
 import { ContextManager } from '@core/context/ContextManager.js';
@@ -34,7 +34,7 @@ export class ApplicationManager {
     public readonly contextManager: ContextManager;
     private readonly syncService: InfrastructureSyncService;
 
-    constructor(storage: IStorage = new JsonLineStorage()) {
+    constructor(storage: IStorage = new SqliteStorage()) {
         this.graphManager = new GraphManager(storage);
         this.searchManager = new SearchManager(storage);
         this.transactionManager = new TransactionManager(storage);

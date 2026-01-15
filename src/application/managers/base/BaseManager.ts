@@ -1,8 +1,8 @@
 // src/application/managers/base/BaseManager.ts
 
-import type {IStorage} from '@infrastructure/index.js';
-import {JsonLineStorage} from '@infrastructure/index.js';
-import {ManagerFactory} from '@application/index.js';
+import type { IStorage } from '@infrastructure/index.js';
+import { SqliteStorage } from '@infrastructure/index.js';
+import { ManagerFactory } from '@application/index.js';
 
 /**
  * Base class that handles initialization and common functionality
@@ -10,7 +10,7 @@ import {ManagerFactory} from '@application/index.js';
 export abstract class BaseManager {
     protected readonly storage: IStorage;
 
-    constructor(storage: IStorage = new JsonLineStorage()) {
+    constructor(storage: IStorage = new SqliteStorage()) {
         this.storage = storage;
     }
 

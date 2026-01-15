@@ -5,6 +5,7 @@ import type { Tool, ToolResponse } from '@shared/index.js';
 import { formatGraphAsNarrative } from '@shared/index.js';
 import type { ApplicationManager } from '@application/index.js';
 import type { Node, Edge } from '@core/index.js';
+import { retryWithBackoff } from '../../../utils/retryWithBackoff.js';
 
 import { CONFIG } from '@config/config.js';
 import { PROMPTS } from '@config/prompts.js';
@@ -227,7 +228,12 @@ export async function handleAutoAddMemory(
                 }
 
                 if (nodesToUpdate.length > 0) {
-                    const res = await manager.updateNodes(nodesToUpdate);
+                    // Use retry logic for concurrency safety
+                    const res = await retryWithBackoff(
+                        () => manager.updateNodes(nodesToUpdate),
+                        3, // Max 3 retries
+                        100 // 100ms base delay
+                    );
                     res.forEach(n => addedNodes.push(`${n.name} (Merged)`));
                 }
 

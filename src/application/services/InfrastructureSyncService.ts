@@ -51,33 +51,52 @@ export class InfrastructureSyncService {
             for (const node of nodes) {
                 if (!node.name) continue;
                 try {
-                    // 1. Sync with SQLite
-                    db.update(schema.nodes)
+                    // Fetch the current version before updating
+                    const existingNode = db.select({ version: schema.nodes.version })
+                        .from(schema.nodes)
+                        .where(eq(schema.nodes.name, node.name))
+                        .get();
+
+                    if (!existingNode) {
+                        console.warn(`[Sync] Node "${node.name}" not found in SQLite, skipping update sync.`);
+                        continue;
+                    }
+
+                    const currentVersion = existingNode.version;
+
+                    // 1. Sync with SQLite using Conditional Update (Optimistic Locking)
+                    const result = db.update(schema.nodes)
                         .set({
                             ...(node.nodeType && { nodeType: node.nodeType }),
                             ...(node.metadata && { metadata: JSON.stringify(node.metadata) }),
+                            version: currentVersion + 1, // Increment version
                             updatedAt: new Date()
                         })
-                        .where(eq(schema.nodes.name, node.name))
+                        .where(and(eq(schema.nodes.name, node.name), eq(schema.nodes.version, currentVersion)))
                         .run();
+
+                    if (result.changes === 0) {
+                        // Version mismatch - throw ConcurrencyError
+                        const { ConcurrencyError } = await import('@core/errors/index.js');
+                        throw new ConcurrencyError(node.name, currentVersion);
+                    }
 
                     // 2. Sync with Vector Store (if nodeType changed)
                     if (node.nodeType) {
-                        // Check if node has an embedding
                         const nodeEmbedding = db.select()
                             .from(schema.embeddings)
                             .where(eq(schema.embeddings.nodeName, node.name))
                             .get();
 
                         if (nodeEmbedding) {
-                            // Since LanceDB doesn't easily support metadata updates without re-inserting,
-                            // we'd normally need the vector. But for now, we'll log this as a limitation
-                            // or implement a basic update if LanceDB allows.
-                            // UPDATE: We should ideally re-embed or just update the metadata in LanceDB.
-                            console.error(`[Sync] Node type updated for "${node.name}". Vector metadata should be refreshed.`);
+                            console.warn(`[Sync] Node type updated for "${node.name}". Vector metadata should be refreshed.`);
                         }
                     }
                 } catch (error) {
+                    // Re-throw ConcurrencyError for caller to handle
+                    if (error instanceof Error && error.name === 'ConcurrencyError') {
+                        throw error;
+                    }
                     console.error(`[Sync] Error syncing updated node "${node.name}":`, error);
                 }
             }
