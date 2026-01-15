@@ -1,6 +1,7 @@
 import { connect, Table, Connection } from '@lancedb/lancedb';
 import path from 'path';
 import { CONFIG } from '@config/config.js';
+import { Logger } from '@core/logging/Logger.js';
 
 // LanceDB storage path
 const LANCEDB_PATH = path.join(CONFIG.PATHS.DATA_DIR, 'lancedb');
@@ -34,10 +35,10 @@ export async function initVectorStore(): Promise<void> {
     if (!tables.includes(TABLE_NAME)) {
         // Create table with initial empty schema (LanceDB needs at least one record)
         // We'll create it on first insert
-        console.error('[VectorDB] LanceDB initialized, table will be created on first insert');
+        Logger.info('VectorDB', 'LanceDB initialized, table will be created on first insert');
     } else {
         table = await db.openTable(TABLE_NAME);
-        console.error('[VectorDB] LanceDB table opened:', TABLE_NAME);
+        Logger.info('VectorDB', `LanceDB table opened: ${TABLE_NAME}`);
     }
 }
 
@@ -56,7 +57,7 @@ export async function addVector(record: VectorRecord): Promise<void> {
     } else {
         // Create table with first record - cast for LanceDB compatibility
         table = await db!.createTable(TABLE_NAME, [record as Record<string, unknown>]);
-        console.error('[VectorDB] Created table with first record');
+        Logger.info('VectorDB', 'Created table with first record');
     }
 }
 
@@ -69,7 +70,7 @@ export async function searchVectors(
 ): Promise<VectorRecord[]> {
     if (!db) await initVectorStore();
     if (!table) {
-        console.error('[VectorDB] No vectors in store yet');
+        Logger.warn('VectorDB', 'No vectors in store yet');
         return [];
     }
 
@@ -112,7 +113,7 @@ export async function closeVectorStore(): Promise<void> {
         // LanceDB doesn't have explicit close, but we can reset references
         db = null;
         table = null;
-        console.error('[VectorDB] Vector store connection reset');
+        Logger.info('VectorDB', 'Vector store connection reset');
     }
 }
 

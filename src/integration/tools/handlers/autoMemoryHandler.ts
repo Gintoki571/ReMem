@@ -4,6 +4,7 @@ import { getDatabase, schema, getSqliteInstance } from '@infrastructure/database
 import type { Tool, ToolResponse } from '@shared/index.js';
 import { formatGraphAsNarrative } from '@shared/index.js';
 import type { ApplicationManager } from '@application/index.js';
+import { Logger } from '@core/logging/Logger.js';
 import type { Node, Edge } from '@core/index.js';
 import { retryWithBackoff } from '../../../utils/retryWithBackoff.js';
 
@@ -109,7 +110,7 @@ export async function handleAutoAddMemory(
                 }).join('. ');
             }
         } catch (e) {
-            console.warn('[AutoAdd] Failed to fetch global context:', e);
+            Logger.warn('AutoAdd', 'Failed to fetch global context', e);
         }
 
         // --- Step 1: Extract entities using LLM (Think Phase) ---
@@ -192,7 +193,7 @@ export async function handleAutoAddMemory(
 
                                 newMetadata = Array.from(tempMap.values());
                             } catch (e) {
-                                console.error('[AutoAdd] Smart merge failed, falling back to append:', e);
+                                Logger.error('AutoAdd', 'Smart merge failed, falling back to append', e);
                                 newMetadata = [...currentFacts, ...entity.metadata];
                             }
                         }
@@ -279,7 +280,7 @@ export async function handleAutoAddMemory(
                         };
                         await addVector(vectorRecord);
                     } catch (embedError) {
-                        console.error(`[AutoAdd] Embedding failed for ${node.name}`, embedError);
+                        Logger.error('AutoAdd', `Embedding failed for ${node.name}`, embedError);
                         // CRITICAL: SAGA ROLLBACK TRIGGER
                         throw new Error(`Embedding failed for ${node.name}: ${embedError}`);
                     }
@@ -287,12 +288,12 @@ export async function handleAutoAddMemory(
             }
 
         } catch (transactionError) {
-            console.error('[AutoAdd] Transaction Failed. Initiating Rollback...', transactionError);
+            Logger.error('AutoAdd', 'Transaction Failed. Initiating Rollback...', transactionError);
 
             // ROLLBACK: Delete the nodes we created to avoid "Zombie Memories" (Nodes without Vectors)
             if (nodesToRollback.length > 0) {
                 try {
-                    console.error(`[AutoAdd] Rolling back ${nodesToRollback.length} nodes...`);
+                    Logger.warn('AutoAdd', `Rolling back ${nodesToRollback.length} nodes...`);
                     // We assume deleteNodes is available or we use a raw query
                     // manager.deleteNodes(nodesToRollback) - assuming this exists or similar
                     // For now logging it as a TODO since deleteNodes tool exists but maybe not manager method directly exposed?

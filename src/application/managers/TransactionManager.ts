@@ -1,6 +1,7 @@
 import { ITransactionManager } from './interfaces/ITransactionManager.js';
 import { getDatabase, getSqliteInstance } from '@infrastructure/database/index.js';
 import type { IStorage } from '@infrastructure/index.js';
+import { Logger } from '@core/logging/Logger.js';
 
 import { Graph } from '@core/index.js';
 
@@ -13,13 +14,27 @@ export class TransactionManager extends ITransactionManager {
     private inTransactionState: boolean = false;
     private rollbackActions: Array<{ action: () => Promise<void>, description: string }> = [];
 
+    /**
+     * Specialized emit wrapper that handles errors in listeners
+     * and logs activity via structured Logger.
+     */
+    protected safeEmit(event: string, ...args: any[]): boolean {
+        try {
+            Logger.debug('TransactionManager', `Emitting event: ${event}`, { args });
+            return this.emit(event, ...args);
+        } catch (error) {
+            Logger.error('TransactionManager', `Error in event listener for ${event}`, error);
+            return false;
+        }
+    }
+
     // ApplicationManager passes storage, so we must accept it and pass to super
     constructor(storage: IStorage) {
         super(storage);
     }
 
     public async initialize(): Promise<void> {
-        this.emit('initialized', { manager: 'TransactionManager' });
+        this.safeEmit('initialized', { manager: 'TransactionManager' });
     }
 
     /**
@@ -69,20 +84,20 @@ export class TransactionManager extends ITransactionManager {
             try {
                 sqlite.prepare('ROLLBACK').run();
             } catch (e) {
-                console.error('[TransactionManager] SQL Rollback failed:', e);
+                Logger.error('TransactionManager', 'SQL Rollback failed', e);
             }
             this.inTransactionState = false;
         }
 
         // Execute compensating actions in reverse order
-        console.log(`[TransactionManager] Executing ${this.rollbackActions.length} rollback actions...`);
+        Logger.info('TransactionManager', `Executing ${this.rollbackActions.length} rollback actions...`);
         for (let i = this.rollbackActions.length - 1; i >= 0; i--) {
             const { action, description } = this.rollbackActions[i];
             try {
-                console.log(`[TransactionManager] Rolling back: ${description}`);
+                Logger.info('TransactionManager', `Rolling back: ${description}`);
                 await action();
             } catch (e) {
-                console.error(`[TransactionManager] Rollback action failed: ${description}`, e);
+                Logger.error('TransactionManager', `Rollback action failed: ${description}`, e);
             }
         }
         this.rollbackActions = [];

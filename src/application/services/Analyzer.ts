@@ -3,6 +3,7 @@ import { generateText } from 'ai';
 import { z } from 'zod';
 import 'dotenv/config';
 import { CONFIG } from '@config/config.js';
+import { ENV } from '@config/env.js';
 import { PROMPTS } from '@config/prompts.js';
 import { LLMError } from '@shared/errors/index.js';
 
@@ -24,12 +25,12 @@ type ExtractionResult = z.infer<typeof EntitySchema>;
 
 // Configure OpenAI client - supports both OpenAI and LM Studio
 const openai = createOpenAI({
-    apiKey: process.env.OPENAI_API_KEY || 'lm-studio',
-    baseURL: process.env.OPENAI_BASE_URL || CONFIG.LLM.DEFAULT_BASE_URL,
+    apiKey: ENV.OPENAI_API_KEY,
+    baseURL: ENV.OPENAI_BASE_URL || CONFIG.LLM.DEFAULT_BASE_URL,
 });
 
 // Model name - use LLM_MODEL env var or default
-const modelName = process.env.LLM_MODEL || CONFIG.LLM.DEFAULT_MODEL;
+const modelName = ENV.LLM_MODEL;
 
 /**
  * Analyzer module - extracts entities and relationships from natural language text
@@ -204,6 +205,19 @@ ${messageText}`;
         newFacts: string[],
         existingMemories: { id: string, text: string }[]
     ): Promise<{ action: 'ADD' | 'UPDATE' | 'DELETE' | 'NONE', id?: string, text: string }[]> {
+        // --- High Efficiency Strategies (Skip LLM) ---
+        if (ENV.MEMORY_STRATEGY === 'append') {
+            return newFacts.map(f => ({ action: 'ADD', text: f }));
+        }
+
+        if (ENV.MEMORY_STRATEGY === 'overwrite') {
+            // Mark all existing as DELETE, then ADD all new
+            const updates: any[] = existingMemories.map(m => ({ action: 'DELETE', id: m.id, text: '' }));
+            newFacts.forEach(f => updates.push({ action: 'ADD', text: f }));
+            return updates;
+        }
+
+        // --- 'Smart' Strategy (Default LLM Merge) ---
         const prompt = `${PROMPTS.SMART_MERGE.SYSTEM}
 
 Existing Memories:

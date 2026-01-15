@@ -4,6 +4,7 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from './schema.js';
 import path from 'path';
 import { CONFIG } from '@config/config.js';
+import { Logger } from '@core/logging/Logger.js';
 
 // Database file path - stored in root data directory
 const DB_PATH = path.join(CONFIG.PATHS.DATA_DIR, 'remem.db');
@@ -78,7 +79,7 @@ export function initDatabase(): BetterSQLite3Database<typeof schema> {
         CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
     `);
 
-    console.error('[DB] SQLite database initialized at:', DB_PATH);
+    Logger.info('DB', `SQLite database initialized at: ${DB_PATH}`);
     return db;
 }
 
@@ -110,7 +111,7 @@ export function closeDatabase(): void {
         sqlite.close();
         sqlite = null;
         db = null;
-        console.error('[DB] Database connection closed');
+        Logger.info('DB', 'Database connection closed');
     }
 }
 

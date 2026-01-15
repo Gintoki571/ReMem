@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+import { ENV } from './env.js';
 
 /**
  * Helper to get the project root directory
@@ -102,8 +103,8 @@ export const CONFIG: Config = {
 
     MODULES: {
         // Load modules from environment or default to common ones
-        ACTIVE: process.env.REMEM_MODULES
-            ? process.env.REMEM_MODULES.split(',').map(m => m.trim())
+        ACTIVE: ENV.REMEM_MODULES
+            ? ENV.REMEM_MODULES.split(',').map(m => m.trim())
             : ['rpg', 'coding'], // Default to both for now, filter logic later
     },
 
@@ -129,11 +130,11 @@ export const CONFIG: Config = {
     },
 
     LLM: {
-        DEFAULT_MODEL: 'gpt-4o-mini',
+        DEFAULT_MODEL: ENV.LLM_MODEL,
         MAX_RETRIES: 3,
         RETRY_DELAY_MS: 1000,
         TIMEOUT_MS: 30000,
-        DEFAULT_BASE_URL: 'https://api.openai.com/v1',
+        DEFAULT_BASE_URL: ENV.OPENAI_BASE_URL || 'https://api.openai.com/v1',
         CHARS_PER_TOKEN: 4,
     },
 
