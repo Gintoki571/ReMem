@@ -2,9 +2,9 @@
 
 /**
  * Represents metadata information associated with a node
- * Each string in the array represents a metadata entry in the format "key: value"
+ * Key-value pairs describing the entity
  */
-export type Metadata = string[];
+export type Metadata = Record<string, unknown>;
 
 export interface MetadataEntry {
     key: string;
@@ -13,12 +13,12 @@ export interface MetadataEntry {
 
 export interface MetadataAddition {
     nodeName: string;
-    contents: string[];
+    contents: Record<string, unknown>;
 }
 
 export interface MetadataDeletion {
     nodeName: string;
-    metadata: string[];
+    keys: string[];
 }
 
 export interface MetadataResult {

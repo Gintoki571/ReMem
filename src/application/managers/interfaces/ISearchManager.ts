@@ -21,5 +21,5 @@ export interface ISearchManager extends IManager {
     /**
      * Reads and returns the entire knowledge graph.
      */
-    readGraph(): Promise<Graph>;
+    readGraph(limit?: number, offset?: number): Promise<Graph>;
 }

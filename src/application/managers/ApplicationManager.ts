@@ -101,8 +101,8 @@ export class ApplicationManager {
     }
 
     // Search operations delegated to SearchManager
-    async readGraph(): Promise<Graph> {
-        return this.searchManager.readGraph();
+    async readGraph(limit?: number, offset?: number): Promise<Graph> {
+        return this.searchManager.readGraph(limit, offset);
     }
 
     async searchNodes(query: string, depth?: number): Promise<OpenNodesResult> {

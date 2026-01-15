@@ -1,3 +1,0 @@
-src/application/managers/ManagerFactory.ts(80,9): error TS2739: Type 'TransactionManager' is missing the following properties from type 'ITransactionManager': eventListeners, getListeners
-src/application/managers/TransactionManager.ts(12,14): error TS2720: Class 'TransactionManager' incorrectly implements class 'ITransactionManager'. Did you mean to extend 'ITransactionManager' and inherit its members as a subclass?
-  Type 'TransactionManager' is missing the following properties from type 'ITransactionManager': eventListeners, getListeners

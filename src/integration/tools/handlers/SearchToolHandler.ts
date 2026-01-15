@@ -1,37 +1,56 @@
-// src/tools/handlers/SearchToolHandler.ts
-
 import { BaseToolHandler } from './BaseToolHandler.js';
 import { formatToolResponse, formatToolError, formatGraphAsNarrative } from '@shared/index.js';
 import type { ToolResponse } from '@shared/index.js';
+import { z } from 'zod';
+
+// Input Schemas
+const ReadGraphSchema = z.object({
+    limit: z.number().optional(),
+    offset: z.number().optional(),
+});
+
+const SearchNodesSchema = z.object({
+    query: z.string().min(1),
+    depth: z.number().optional().default(1),
+});
+
+const OpenNodesSchema = z.object({
+    names: z.array(z.string()),
+    depth: z.number().optional().default(1),
+});
 
 export class SearchToolHandler extends BaseToolHandler {
     async handleTool(name: string, args: Record<string, any>): Promise<ToolResponse> {
         try {
-            this.validateArguments(args);
-
             switch (name) {
-                case "read_graph":
-                    const graph = await this.knowledgeGraphManager.readGraph();
+                case "read_graph": {
+                    const params = this.validateSchema(ReadGraphSchema, args);
+                    const graph = await this.knowledgeGraphManager.readGraph(params.limit, params.offset);
                     return formatToolResponse({
                         data: graph,
-                        actionTaken: "Read complete knowledge graph"
+                        actionTaken: `Read knowledge graph (limit: ${params.limit || 'all'}, offset: ${params.offset || 0})`
                     });
+                }
 
-                case "search_nodes":
-                    const searchResults = await this.knowledgeGraphManager.searchNodes(args.query, args.depth);
+                case "search_nodes": {
+                    const params = this.validateSchema(SearchNodesSchema, args);
+                    const searchResults = await this.knowledgeGraphManager.searchNodes(params.query, params.depth);
                     return formatToolResponse({
                         data: searchResults,
-                        actionTaken: `Searched nodes with query: ${args.query} (depth: ${args.depth || 1})`,
+                        actionTaken: `Searched nodes with query: ${params.query} (depth: ${params.depth})`,
                         message: formatGraphAsNarrative(searchResults)
                     });
+                }
 
-                case "open_nodes":
-                    const nodes = await this.knowledgeGraphManager.openNodes(args.names, args.depth);
+                case "open_nodes": {
+                    const params = this.validateSchema(OpenNodesSchema, args);
+                    const nodes = await this.knowledgeGraphManager.openNodes(params.names, params.depth);
                     return formatToolResponse({
                         data: nodes,
-                        actionTaken: `Retrieved nodes: ${args.names.join(', ')} (depth: ${args.depth || 1})`,
+                        actionTaken: `Retrieved nodes: ${params.names.join(', ')} (depth: ${params.depth})`,
                         message: formatGraphAsNarrative(nodes)
                     });
+                }
 
                 default:
                     throw new Error(`Unknown search operation: ${name}`);
@@ -43,7 +62,8 @@ export class SearchToolHandler extends BaseToolHandler {
                 context: { args },
                 suggestions: [
                     "Check node names exist",
-                    "Verify search query format"
+                    "Verify search query format",
+                    "Ensure numeric limits are valid"
                 ],
                 recoverySteps: [
                     "Try with different node names",

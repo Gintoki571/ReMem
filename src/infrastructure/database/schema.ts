@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, unique } from 'drizzle-orm/sqlite-core';
 
 // Nodes table - stores knowledge graph nodes
 export const nodes = sqliteTable('nodes', {
@@ -19,7 +19,9 @@ export const edges = sqliteTable('edges', {
     edgeType: text('edge_type').notNull(),
     weight: real('weight').default(1.0),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-});
+}, (t) => ({
+    unq: unique().on(t.fromNode, t.toNode, t.edgeType),
+}));
 
 // Vector embeddings reference table (actual vectors stored in LanceDB)
 export const embeddings = sqliteTable('embeddings', {

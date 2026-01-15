@@ -24,13 +24,11 @@ export class GlobalMemoryHandler extends BaseToolHandler {
             type: 'node',
             name: `global_fact_${Date.now()}_${index}`,
             nodeType: 'global_fact',
-            metadata: [
-                JSON.stringify({
-                    content: fact,
-                    scope: 'global',
-                    timestamp: new Date().toISOString()
-                })
-            ]
+            metadata: {
+                content: fact,
+                scope: 'global',
+                timestamp: new Date().toISOString()
+            }
         }));
 
         await this.knowledgeGraphManager.addNodes(nodesToAdd);

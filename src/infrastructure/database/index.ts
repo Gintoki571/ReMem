@@ -58,6 +58,7 @@ export function initDatabase(): BetterSQLite3Database<typeof schema> {
         CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(node_type);
         CREATE INDEX IF NOT EXISTS idx_edges_from ON edges(from_node);
         CREATE INDEX IF NOT EXISTS idx_edges_to ON edges(to_node);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_unique ON edges(from_node, to_node, edge_type);
         CREATE INDEX IF NOT EXISTS idx_embeddings_node ON embeddings(node_name);
 
         CREATE TABLE IF NOT EXISTS messages (

@@ -1,5 +1,6 @@
 import { connect, Table, Connection } from '@lancedb/lancedb';
 import path from 'path';
+import fs from 'fs';
 import { Mutex } from 'async-mutex';
 import { CONFIG } from '@config/config.js';
 import { Logger } from '@core/logging/Logger.js';
@@ -52,19 +53,54 @@ export async function initVectorStore(): Promise<void> {
     try {
         if (db) return; // Already initialized
 
-        db = await connect(LANCEDB_PATH);
-
-        // Check if table exists, create if not
-        const tables = await db.tableNames();
-
-        if (!tables.includes(TABLE_NAME)) {
-            Logger.info('VectorDB', 'LanceDB initialized, table will be created on first insert');
-        } else {
-            table = await db.openTable(TABLE_NAME);
-            Logger.info('VectorDB', `LanceDB table opened: ${TABLE_NAME}`);
+        try {
+            await attemptConnection();
+        } catch (error) {
+            Logger.error('VectorDB', `Initialization failed: ${error instanceof Error ? error.message : 'Unknown'}. Attempting recovery...`);
+            await recoverVectorStore();
+            await attemptConnection();
         }
     } finally {
         release();
+    }
+}
+
+async function attemptConnection(): Promise<void> {
+    // Ensure directory exists
+    if (!fs.existsSync(LANCEDB_PATH)) {
+        fs.mkdirSync(LANCEDB_PATH, { recursive: true });
+    }
+
+    db = await connect(LANCEDB_PATH);
+
+    // Check if table exists, create if not
+    const tables = await db.tableNames();
+
+    if (!tables.includes(TABLE_NAME)) {
+        Logger.info('VectorDB', 'LanceDB initialized, table will be created on first insert');
+    } else {
+        table = await db.openTable(TABLE_NAME);
+        // Verify table is readable
+        await table.countRows();
+        Logger.info('VectorDB', `LanceDB table opened: ${TABLE_NAME}`);
+    }
+}
+
+async function recoverVectorStore(): Promise<void> {
+    try {
+        if (fs.existsSync(LANCEDB_PATH)) {
+            const backupPath = `${LANCEDB_PATH}_corrupt_${Date.now()}`;
+            fs.renameSync(LANCEDB_PATH, backupPath);
+            Logger.warn('VectorDB', `Corrupted vector store moved to ${backupPath}`);
+        }
+        // Reset state
+        db = null;
+        table = null;
+        // Recreate directory
+        fs.mkdirSync(LANCEDB_PATH, { recursive: true });
+    } catch (error) {
+        Logger.error('VectorDB', `Recovery failed: ${error}`);
+        throw error; // Critical failure if we can't even move the folder
     }
 }
 

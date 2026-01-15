@@ -104,8 +104,9 @@ export async function handleAutoAddMemory(
             if (relevantGlobals.length > 0) {
                 globalContext = relevantGlobals.map(n => {
                     try {
-                        const meta = JSON.parse(n.metadata?.[0] || '{}');
-                        return meta.content || '';
+                        const meta = n.metadata || {};
+                        // Start simplistic: join all values
+                        return Object.values(meta).join('. ');
                     } catch { return ''; }
                 }).join('. ');
             }
@@ -168,22 +169,31 @@ export async function handleAutoAddMemory(
                         // For now, we will increment version.
 
                         // [SMART MERGE]
-                        const currentFacts = existingNode.metadata ? existingNode.metadata : [];
-                        let newMetadata = [...currentFacts];
+                        // existingNode.metadata is Record<string, unknown>
+                        const currentFacts = existingNode.metadata ? existingNode.metadata : {};
+                        let newMetadata: Record<string, unknown> = { ...currentFacts };
 
-                        if (entity.metadata && entity.metadata.length > 0) {
+                        // If entity.metadata is present (Record<string, unknown>), we treat its values as 'new facts'
+                        if (entity.metadata && Object.keys(entity.metadata).length > 0) {
                             try {
+                                const newFactsArray = Object.values(entity.metadata).map(String);
+                                const existingFactsArray = Object.entries(currentFacts).map(([key, val]) => ({
+                                    id: key,
+                                    text: String(val)
+                                }));
+
                                 const updates = await analyzer.determineMemoryUpdates(
-                                    entity.metadata,
-                                    currentFacts.map((text, idx) => ({ id: idx.toString(), text }))
+                                    newFactsArray,
+                                    existingFactsArray
                                 );
 
-                                // Apply updates
-                                const tempMap = new Map(currentFacts.map((text, idx) => [idx.toString(), text]));
+                                // Apply updates to a temp map
+                                const tempMap = new Map<string, unknown>(Object.entries(currentFacts));
 
                                 updates.forEach(op => {
                                     if (op.action === 'ADD') {
-                                        tempMap.set(`new-${Date.now()}-${Math.random()}`, op.text);
+                                        // Generate a simple ID for new fact
+                                        tempMap.set(`fact-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, op.text);
                                     } else if (op.action === 'UPDATE' && op.id && tempMap.has(op.id)) {
                                         tempMap.set(op.id, op.text);
                                     } else if (op.action === 'DELETE' && op.id && tempMap.has(op.id)) {
@@ -191,10 +201,12 @@ export async function handleAutoAddMemory(
                                     }
                                 });
 
-                                newMetadata = Array.from(tempMap.values());
+                                newMetadata = Object.fromEntries(tempMap);
                             } catch (e) {
-                                Logger.error('AutoAdd', 'Smart merge failed, falling back to append', e);
-                                newMetadata = [...currentFacts, ...entity.metadata];
+                                Logger.error('AutoAdd', 'Smart merge failed, falling back to merge', e);
+                                // Fallback: just merge new keys in? Or append?
+                                // Since we don't have IDs for new entitymeta, we just spread
+                                newMetadata = { ...currentFacts, ...entity.metadata };
                             }
                         }
 
@@ -267,7 +279,7 @@ export async function handleAutoAddMemory(
                         const textForEmbedding = analyzer.summarizeForEmbedding(
                             node.name,
                             node.nodeType,
-                            node.metadata || []
+                            node.metadata || {}
                         );
                         const embedding = await analyzer.generateEmbedding(textForEmbedding);
                         const vectorRecord: VectorRecord = {

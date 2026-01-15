@@ -1,8 +1,8 @@
 // src/schema/loader/schemaProcessor.ts
 
-import {formatToolResponse, formatToolError, ToolResponse} from '@shared/index.js';
-import type {Node, Edge, Graph, SchemaConfig} from '@core/index.js';
-import type {ApplicationManager} from '@application/index.js';
+import { formatToolResponse, formatToolError, ToolResponse } from '@shared/index.js';
+import type { Node, Edge, Graph, SchemaConfig } from '@core/index.js';
+import type { ApplicationManager } from '@application/index.js';
 
 interface NodeData {
     name: string;
@@ -16,7 +16,7 @@ export interface ProcessedNodeResult {
 }
 
 export interface SchemaUpdateResult {
-    metadata: string[];
+    metadata: Record<string, unknown>;
     edgeChanges: {
         remove: Edge[];
         add: Edge[];
@@ -42,8 +42,8 @@ export async function createSchemaNode(
     nodeType: string
 ): Promise<ProcessedNodeResult> {
     try {
-        const {metadataConfig, relationships} = schema;
-        const metadata: string[] = [];
+        const { metadataConfig, relationships } = schema;
+        const metadata: Record<string, unknown> = {};
         const nodes: Node[] = [];
         const edges: Edge[] = [];
 
@@ -65,14 +65,14 @@ export async function createSchemaNode(
                 throw new Error(`Required field "${field}" is missing`);
             }
             if (!relationships || !relationships[field]) {
-                metadata.push(formatMetadataEntry(field, data[field]));
+                metadata[field] = data[field];
             }
         }
 
         // Process optional fields
         for (const field of metadataConfig.optionalFields) {
             if (data[field] !== undefined && (!relationships || !relationships[field])) {
-                metadata.push(formatMetadataEntry(field, data[field]));
+                metadata[field] = data[field];
             }
         }
 
@@ -98,7 +98,7 @@ export async function createSchemaNode(
                             edgeType: config.edgeType
                         });
                     }
-                    metadata.push(formatMetadataEntry(field, value));
+                    metadata[field] = value;
                 }
             }
         }
@@ -106,7 +106,7 @@ export async function createSchemaNode(
         // Process additional fields
         for (const [key, value] of Object.entries(data)) {
             if (!excludedFields.has(key) && value !== undefined) {
-                metadata.push(formatMetadataEntry(key, value));
+                metadata[key] = value;
             }
         }
 
@@ -115,11 +115,11 @@ export async function createSchemaNode(
             type: 'node',
             name: data.name,
             nodeType,
-            metadata
+            metadata: metadata as Record<string, unknown>
         };
         nodes.push(node);
 
-        return {nodes, edges};
+        return { nodes, edges };
     } catch (error) {
         throw error;
     }
@@ -131,8 +131,9 @@ export async function updateSchemaNode(
     schema: SchemaConfig,
     currentGraph: Graph
 ): Promise<SchemaUpdateResult> {
-    const {metadataConfig, relationships} = schema;
-    const metadata = new Map<string, string>();
+    const { metadataConfig, relationships } = schema;
+    // Initialize metadata with current state
+    const metadata: Record<string, unknown> = { ...currentNode.metadata } as Record<string, unknown>;
     const edgeChanges = {
         remove: [] as Edge[],
         add: [] as Edge[]
@@ -152,26 +153,11 @@ export async function updateSchemaNode(
         Object.keys(relationships).forEach(field => schemaFields.add(field));
     }
 
-    // Process existing metadata into the Map
-    currentNode.metadata.forEach(meta => {
-        const colonIndex = meta.indexOf(':');
-        if (colonIndex !== -1) {
-            const key = meta.substring(0, colonIndex).trim().toLowerCase();
-            const value = meta.substring(colonIndex + 1).trim();
-            metadata.set(key, value);
-        }
-    });
-
-    const updateMetadataEntry = (key: string, value: unknown) => {
-        const formattedValue = Array.isArray(value) ? value.join(', ') : String(value);
-        metadata.set(key.toLowerCase(), formattedValue);
-    };
-
     // Process standard metadata fields
     const allSchemaFields = [...metadataConfig.requiredFields, ...metadataConfig.optionalFields];
     for (const field of allSchemaFields) {
         if (updates[field] !== undefined && (!relationships || !relationships[field])) {
-            updateMetadataEntry(field, updates[field]);
+            metadata[field] = updates[field];
         }
     }
 
@@ -209,7 +195,7 @@ export async function updateSchemaNode(
                     });
                 }
 
-                updateMetadataEntry(field, value);
+                metadata[field] = value;
             }
         }
     }
@@ -217,17 +203,12 @@ export async function updateSchemaNode(
     // Process additional fields not defined in schema
     for (const [key, value] of Object.entries(updates)) {
         if (!schemaFields.has(key) && value !== undefined) {
-            updateMetadataEntry(key, value);
+            metadata[key] = value;
         }
     }
 
-    const updatedMetadata = Array.from(metadata).map(([key, value]) => {
-        const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
-        return `${capitalizedKey}: ${value}`;
-    });
-
     return {
-        metadata: updatedMetadata,
+        metadata,
         edgeChanges
     };
 }
@@ -254,14 +235,14 @@ export async function handleSchemaUpdate(
             return formatToolError({
                 operation: 'updateSchema',
                 error: `${nodeType} "${updates.name}" not found`,
-                context: {updates, nodeType},
+                context: { updates, nodeType },
                 suggestions: ["Verify the node exists", "Check node type matches"]
             });
         }
 
         try {
             // Process updates
-            const {metadata, edgeChanges} = await updateSchemaNode(
+            const { metadata, edgeChanges } = await updateSchemaNode(
                 updates,
                 node,
                 schema,
@@ -309,7 +290,7 @@ export async function handleSchemaUpdate(
         return formatToolError({
             operation: 'updateSchema',
             error: error instanceof Error ? error.message : 'Unknown error occurred',
-            context: {updates, schema, nodeType},
+            context: { updates, schema, nodeType },
             suggestions: [
                 "Check all required fields are provided",
                 "Verify relationship targets exist"
@@ -335,7 +316,7 @@ export async function handleSchemaDelete(
             return formatToolError({
                 operation: 'deleteSchema',
                 error: `${nodeType} "${nodeName}" not found`,
-                context: {nodeName, nodeType},
+                context: { nodeName, nodeType },
                 suggestions: ["Verify node name and type"]
             });
         }
@@ -349,7 +330,7 @@ export async function handleSchemaDelete(
         return formatToolError({
             operation: 'deleteSchema',
             error: error instanceof Error ? error.message : 'Unknown error occurred',
-            context: {nodeName, nodeType},
+            context: { nodeName, nodeType },
             suggestions: [
                 "Check node exists",
                 "Verify delete permissions"

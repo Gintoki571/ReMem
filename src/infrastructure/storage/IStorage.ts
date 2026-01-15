@@ -1,6 +1,6 @@
 // src/types/storage.ts
 
-import type {Edge, Graph} from '@core/index.js';
+import type { Edge, Graph } from '@core/index.js';
 
 /**
  * Edge indexing structure
@@ -15,7 +15,7 @@ export interface EdgeIndex {
  * Storage interface for graph operations
  */
 export interface IStorage {
-    loadGraph(): Promise<Graph>;
+    loadGraph(limit?: number, offset?: number): Promise<Graph>;
 
     saveGraph(graph: Graph): Promise<void>;
 

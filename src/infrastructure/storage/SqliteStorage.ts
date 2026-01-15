@@ -3,7 +3,7 @@
 import { getDatabase, schema } from '@infrastructure/database/index.js';
 import type { IStorage } from './IStorage.js';
 import type { Edge, Graph, Node } from '@core/index.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 
 /**
  * SQLite-based storage implementation.
@@ -14,21 +14,53 @@ export class SqliteStorage implements IStorage {
      * Loads the entire knowledge graph from SQLite.
      * This is still O(N) but much faster than file I/O and can leverage indices.
      */
-    async loadGraph(): Promise<Graph> {
+    async loadGraph(limit?: number, offset?: number): Promise<Graph> {
         const db = getDatabase();
 
-        // Load nodes
-        const nodeRows = db.select().from(schema.nodes).all();
+        // Load nodes with pagination
+        // Using dynamic query construction with Drizzle
+        let query = db.select().from(schema.nodes).$dynamic();
+
+        if (limit) {
+            query = query.limit(limit);
+        }
+        if (offset) {
+            query = query.offset(offset);
+        }
+
+        const nodeRows = query.all();
+
         const nodes: Node[] = nodeRows.map(row => ({
             type: 'node' as const,
             name: row.name,
             nodeType: row.nodeType,
-            metadata: row.metadata ? JSON.parse(row.metadata) : [],
+            metadata: row.metadata ? JSON.parse(row.metadata) : {},
             version: row.version,
         }));
 
         // Load edges
-        const edgeRows = db.select().from(schema.edges).all();
+        // Ideally we should filter edges to only include those relevant to the loaded nodes
+        // if we are paginating, otherwise we return partial graph.
+        // For partial graph reads, we typically assume we want edges between loaded nodes.
+        let edgeRows: any[] = [];
+
+        if (limit) {
+            const loadedNodeNames = nodes.map(n => n.name);
+            if (loadedNodeNames.length > 0) {
+                edgeRows = db.select()
+                    .from(schema.edges)
+                    .where(and(
+                        inArray(schema.edges.fromNode, loadedNodeNames),
+                        inArray(schema.edges.toNode, loadedNodeNames)
+                    ))
+                    .all();
+            } else {
+                edgeRows = [];
+            }
+        } else {
+            edgeRows = db.select().from(schema.edges).all();
+        }
+
         const edges: Edge[] = edgeRows.map(row => ({
             type: 'edge' as const,
             from: row.fromNode,
@@ -48,53 +80,44 @@ export class SqliteStorage implements IStorage {
     async saveGraph(graph: Graph): Promise<void> {
         const db = getDatabase();
 
-        // This is the "legacy" path - used by NodeManager.addNodes etc.
-        // We still support it for backward compatibility.
-        // In the new architecture, InfrastructureSyncService handles individual writes.
+        // 1. Batch Insert/Upsert Nodes
+        if (graph.nodes.length > 0) {
+            const nodeValues = graph.nodes.map(node => ({
+                name: node.name,
+                nodeType: node.nodeType,
+                metadata: JSON.stringify(node.metadata || {}),
+            }));
 
-        // For nodes: use upsert
-        for (const node of graph.nodes) {
+            // Use sql for accessing excluded values in upsert
+            const { sql } = await import('drizzle-orm');
+
             db.insert(schema.nodes)
-                .values({
-                    name: node.name,
-                    nodeType: node.nodeType,
-                    metadata: JSON.stringify(node.metadata || []),
-                })
+                .values(nodeValues)
                 .onConflictDoUpdate({
                     target: schema.nodes.name,
                     set: {
-                        nodeType: node.nodeType,
-                        metadata: JSON.stringify(node.metadata || []),
+                        nodeType: sql`excluded.node_type`,
+                        metadata: sql`excluded.metadata`,
                         updatedAt: new Date(),
                     },
                 })
                 .run();
         }
 
-        // For edges: use upsert based on (from, to, type) composite key
-        // Note: SQLite doesn't have a simple composite unique constraint upsert,
-        // so we delete-then-insert for simplicity
-        for (const edge of graph.edges) {
-            // Check if edge exists
-            const existing = db.select()
-                .from(schema.edges)
-                .where(and(
-                    eq(schema.edges.fromNode, edge.from),
-                    eq(schema.edges.toNode, edge.to),
-                    eq(schema.edges.edgeType, edge.edgeType)
-                ))
-                .get();
+        // 2. Batch Insert Edges
+        // Uses ON CONFLICT DO NOTHING (requires unique constraint on from|to|type)
+        if (graph.edges.length > 0) {
+            const edgeValues = graph.edges.map(edge => ({
+                fromNode: edge.from,
+                toNode: edge.to,
+                edgeType: edge.edgeType,
+                weight: edge.weight ?? 1.0,
+            }));
 
-            if (!existing) {
-                db.insert(schema.edges)
-                    .values({
-                        fromNode: edge.from,
-                        toNode: edge.to,
-                        edgeType: edge.edgeType,
-                        weight: edge.weight ?? 1.0,
-                    })
-                    .run();
-            }
+            db.insert(schema.edges)
+                .values(edgeValues)
+                .onConflictDoNothing()
+                .run();
         }
     }
 

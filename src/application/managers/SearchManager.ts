@@ -23,9 +23,10 @@ export class SearchManager extends IManager implements ISearchManager {
             const startNodes = graph.nodes.filter(node =>
                 node.name.toLowerCase().includes(query.toLowerCase()) ||
                 node.nodeType.toLowerCase().includes(query.toLowerCase()) ||
-                node.metadata.some(meta =>
-                    meta.toLowerCase().includes(query.toLowerCase())
-                )
+                (node.metadata && Object.entries(node.metadata).some(([k, v]) =>
+                    k.toLowerCase().includes(query.toLowerCase()) ||
+                    String(v).toLowerCase().includes(query.toLowerCase())
+                ))
             );
 
             const result = await this.bfsTraverse(startNodes.map(n => n.name), depth, graph);
@@ -125,10 +126,10 @@ export class SearchManager extends IManager implements ISearchManager {
     /**
      * Reads and returns the entire knowledge graph.
      */
-    async readGraph(): Promise<Graph> {
+    async readGraph(limit?: number, offset?: number): Promise<Graph> {
         try {
-            this.emit('beforeReadGraph', {});
-            const graph = await this.storage.loadGraph();
+            this.emit('beforeReadGraph', { limit, offset });
+            const graph = await this.storage.loadGraph(limit, offset);
             this.emit('afterReadGraph', graph);
             return graph;
         } catch (error) {

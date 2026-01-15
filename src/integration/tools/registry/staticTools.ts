@@ -26,9 +26,8 @@ export const graphTools: Tool[] = [
                             name: { type: "string", description: "The name of the node" },
                             nodeType: { type: "string", description: "The type of the node" },
                             metadata: {
-                                type: "array",
-                                items: { type: "string", description: "Metadata item" },
-                                description: "An array of metadata contents associated with the node"
+                                type: "object",
+                                description: "Key-value pairs of metadata associated with the node"
                             },
                         },
                         required: ["name", "nodeType", "metadata"],
@@ -55,9 +54,8 @@ export const graphTools: Tool[] = [
                             name: { type: "string", description: "The name of the node to update" },
                             nodeType: { type: "string", description: "The new type of the node" },
                             metadata: {
-                                type: "array",
-                                items: { type: "string", description: "Metadata item" },
-                                description: "An array of new metadata contents for the node"
+                                type: "object",
+                                description: "Key-value pairs of new metadata for the node"
                             },
                         },
                         required: ["name"],
@@ -184,7 +182,16 @@ export const searchTools: Tool[] = [
         description: "Read the entire knowledge graph",
         inputSchema: {
             type: "object",
-            properties: {},
+            properties: {
+                limit: {
+                    type: "number",
+                    description: "Maximum number of items to return. Defaults to all if not specified."
+                },
+                offset: {
+                    type: "number",
+                    description: "Number of items to skip. Defaults to 0."
+                }
+            },
         },
     },
 
@@ -247,9 +254,8 @@ export const metadataTools: Tool[] = [
                         properties: {
                             nodeName: { type: "string", description: "The name of the node to add the metadata to" },
                             contents: {
-                                type: "array",
-                                items: { type: "string", description: "Metadata content item" },
-                                description: "An array of metadata contents to add"
+                                type: "object",
+                                description: "Key-value pairs of metadata to add"
                             },
                         },
                         required: ["nodeName", "contents"],
@@ -274,13 +280,13 @@ export const metadataTools: Tool[] = [
                         description: "Metadata deletion",
                         properties: {
                             nodeName: { type: "string", description: "The name of the node containing the metadata" },
-                            metadata: {
+                            keys: {
                                 type: "array",
-                                items: { type: "string", description: "Metadata item to delete" },
-                                description: "An array of metadata to delete"
+                                items: { type: "string", description: "Metadata key to delete" },
+                                description: "An array of metadata keys to delete"
                             },
                         },
-                        required: ["nodeName", "metadata"],
+                        required: ["nodeName", "keys"],
                     },
                 },
             },

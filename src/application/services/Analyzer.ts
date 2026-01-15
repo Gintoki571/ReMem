@@ -14,7 +14,7 @@ const EntitySchema = z.object({
     entities: z.array(z.object({
         name: z.string().describe('Unique name/identifier for the entity'),
         nodeType: z.string().describe('Type of entity (npc, location, artifact, quest, faction, etc.)'),
-        metadata: z.array(z.string()).describe('Key-value pairs describing the entity'),
+        metadata: z.record(z.any()).describe('Key-value pairs describing the entity'),
     })),
     relationships: z.array(z.object({
         from: z.string().describe('Source entity name'),
@@ -178,8 +178,11 @@ Text to analyze:
     /**
      * Summarize metadata for a node
      */
-    summarizeForEmbedding(name: string, nodeType: string, metadata: string[]): string {
-        return `${nodeType}: ${name}. ${metadata.join('. ')}`;
+    summarizeForEmbedding(name: string, nodeType: string, metadata: Record<string, unknown> = {}): string {
+        const metaString = Object.entries(metadata)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join('. ');
+        return `${nodeType}: ${name}. ${metaString}`;
     }
 
     /**
@@ -197,12 +200,18 @@ Current Summary of previous history:
 New Messages to incorporate:
 ${messageText}`;
 
-        const result = await generateText({
-            model: this.model,
-            prompt: prompt,
-        });
+        return retryLLM(async () => {
+            const result = await generateText({
+                model: this.model,
+                prompt: prompt,
+            });
 
-        return result.text.trim();
+            return result.text.trim();
+        }, {
+            onRetry: (attempt, error) => {
+                Logger.warn('Analyzer', `Summarization retry ${attempt}: ${error.message}`);
+            }
+        });
     }
 
     /**
@@ -234,9 +243,15 @@ ${JSON.stringify(existingMemories, null, 2)}
 New Facts:
 ${JSON.stringify(newFacts, null, 2)}`;
 
-        const result = await generateText({
-            model: this.model,
-            prompt: prompt,
+        const result = await retryLLM(async () => {
+            return generateText({
+                model: this.model,
+                prompt: prompt,
+            });
+        }, {
+            onRetry: (attempt, error) => {
+                Logger.warn('Analyzer', `Merge Analysis retry ${attempt}: ${error.message}`);
+            }
         });
 
         try {

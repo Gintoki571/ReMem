@@ -1,9 +1,9 @@
 // src/core/managers/implementations/MetadataManager.ts
 
-import {IMetadataManager} from './interfaces/IMetadataManager.js';
-import {IManager} from './interfaces/IManager.js';
-import {GraphValidator} from '@core/index.js';
-import type {Metadata, MetadataAddition, MetadataResult, MetadataDeletion} from '@core/index.js';
+import { IMetadataManager } from './interfaces/IMetadataManager.js';
+import { IManager } from './interfaces/IManager.js';
+import { GraphValidator } from '@core/index.js';
+import type { Metadata, MetadataAddition, MetadataResult, MetadataDeletion } from '@core/index.js';
 
 /**
  * Implements metadata-related operations for the knowledge graph.
@@ -15,7 +15,7 @@ export class MetadataManager extends IManager implements IMetadataManager {
      */
     async addMetadata(metadata: MetadataAddition[]): Promise<MetadataResult[]> {
         try {
-            this.emit('beforeAddMetadata', {metadata});
+            this.emit('beforeAddMetadata', { metadata });
 
             const graph = await this.storage.loadGraph();
             const results: MetadataResult[] = [];
@@ -24,24 +24,28 @@ export class MetadataManager extends IManager implements IMetadataManager {
                 GraphValidator.validateNodeExists(graph, item.nodeName);
                 const node = graph.nodes.find(e => e.name === item.nodeName);
 
-                if (!Array.isArray(node!.metadata)) {
-                    node!.metadata = [];
+                if (!node!.metadata) {
+                    node!.metadata = {};
                 }
 
-                const newMetadata = item.contents.filter(content =>
-                    !node!.metadata.includes(content)
-                );
+                const newMetadata: Record<string, unknown> = {};
+                for (const [key, value] of Object.entries(item.contents)) {
+                    // Only add if different or new (optional optimization, but good for tracking 'added')
+                    if (node!.metadata[key] !== value) {
+                        node!.metadata[key] = value;
+                        newMetadata[key] = value;
+                    }
+                }
 
-                node!.metadata.push(...newMetadata);
                 results.push({
                     nodeName: item.nodeName,
-                    addedMetadata: newMetadata
+                    addedMetadata: Object.keys(newMetadata) // Return keys of added/updated items
                 });
             }
 
             await this.storage.saveGraph(graph);
 
-            this.emit('afterAddMetadata', {results});
+            this.emit('afterAddMetadata', { results });
             return results;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -54,7 +58,7 @@ export class MetadataManager extends IManager implements IMetadataManager {
      */
     async deleteMetadata(deletions: MetadataDeletion[]): Promise<void> {
         try {
-            this.emit('beforeDeleteMetadata', {deletions});
+            this.emit('beforeDeleteMetadata', { deletions });
 
             const graph = await this.storage.loadGraph();
             let deletedCount = 0;
@@ -63,18 +67,20 @@ export class MetadataManager extends IManager implements IMetadataManager {
                 GraphValidator.validateNodeExists(graph, deletion.nodeName);
                 const node = graph.nodes.find(e => e.name === deletion.nodeName);
 
-                if (node) {
-                    const initialMetadataCount = node.metadata.length;
-                    node.metadata = node.metadata.filter(o =>
-                        !deletion.metadata.includes(o)
-                    );
-                    deletedCount += initialMetadataCount - node.metadata.length;
+                if (node && node.metadata) {
+                    const initialKeys = Object.keys(node.metadata).length;
+
+                    for (const key of deletion.keys) {
+                        delete node.metadata[key];
+                    }
+
+                    deletedCount += initialKeys - Object.keys(node.metadata).length;
                 }
             }
 
             await this.storage.saveGraph(graph);
 
-            this.emit('afterDeleteMetadata', {deletedCount});
+            this.emit('afterDeleteMetadata', { deletedCount });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
             throw new Error(errorMessage);
@@ -90,7 +96,7 @@ export class MetadataManager extends IManager implements IMetadataManager {
             GraphValidator.validateNodeExists(graph, nodeName);
             const node = graph.nodes.find(e => e.name === nodeName);
 
-            return node!.metadata || [];
+            return node!.metadata || {};
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
             throw new Error(errorMessage);

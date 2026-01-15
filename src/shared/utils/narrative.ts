@@ -12,9 +12,13 @@ export function formatGraphAsNarrative(graph: Graph): string {
     }
 
     const nodeLines = graph.nodes.map(node => {
-        const metadataStr = node.metadata && node.metadata.length
-            ? ` (Attributes: ${node.metadata.join(', ')})`
-            : '';
+        let metadataStr = '';
+        if (node.metadata && Object.keys(node.metadata).length > 0) {
+            const metaEntries = Object.entries(node.metadata)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(', ');
+            metadataStr = ` (Attributes: ${metaEntries})`;
+        }
         return `- **${node.name}** [${node.nodeType}]${metadataStr}`;
     });
 
