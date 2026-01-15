@@ -9,6 +9,7 @@ import { SqlToolHandler } from './SqlToolHandler.js';
 import { ModuleHandler } from './ModuleHandler.js';
 import { ContextToolHandler } from './ContextToolHandler.js';
 import { GlobalMemoryHandler } from './GlobalMemoryHandler.js';
+import { HealthToolHandler } from './HealthToolHandler.js';
 import { toolsRegistry } from '@integration/index.js';
 import type { ApplicationManager } from '@application/index.js';
 import type { BaseToolHandler } from './BaseToolHandler.js';
@@ -23,6 +24,7 @@ export class ToolHandlerFactory {
     private static moduleHandler: ModuleHandler;
     private static contextHandler: ContextToolHandler;
     private static globalHandler: GlobalMemoryHandler;
+    private static healthHandler: HealthToolHandler;
     private static initialized = false;
 
     /**
@@ -42,6 +44,7 @@ export class ToolHandlerFactory {
         this.moduleHandler = new ModuleHandler(knowledgeGraphManager);
         this.contextHandler = new ContextToolHandler(knowledgeGraphManager);
         this.globalHandler = new GlobalMemoryHandler(knowledgeGraphManager);
+        this.healthHandler = new HealthToolHandler(knowledgeGraphManager);
         this.initialized = true;
     }
 
@@ -60,6 +63,11 @@ export class ToolHandlerFactory {
 
         if (toolName === 'add_global_memory') {
             return this.globalHandler;
+        }
+
+        // Health check tool
+        if (toolName === 'health_check') {
+            return this.healthHandler;
         }
 
         // Check auto memory tools first

@@ -4,6 +4,7 @@ import { CONFIG } from '@config/config.js';
 import { analyzer } from '@application/services/Analyzer.js';
 import { eq } from 'drizzle-orm';
 import { TokenEstimator } from '@core/tokenizer/TokenEstimator.js';
+import { Logger } from '@core/logging/Logger.js';
 
 export interface ContextTiers {
     l1_system: string;
@@ -13,6 +14,8 @@ export interface ContextTiers {
 
 
 export class ContextManager {
+    // Track message counts per user for auto-compaction
+    private messageCounter = new Map<string, number>();
 
     constructor() {
     }
@@ -201,10 +204,39 @@ You have access to a persistent Knowledge Graph to store and retrieve facts.
                 throw dbError;
             }
 
-            console.error(`[ContextManager] Compacted ${unsummarizedMessages.length} messages into L2 summary`);
+            Logger.info('ContextManager', `Compacted ${unsummarizedMessages.length} messages into L2 summary`);
         } catch (error) {
-            console.error('[ContextManager] Context compaction failed:', error);
+            Logger.error('ContextManager', `Context compaction failed: ${error instanceof Error ? error.message : 'Unknown'}`);
             throw new Error(`Context compaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+    }
+
+    /**
+     * Log a message and check if auto-compaction should trigger.
+     * Call this after storing each user/assistant message.
+     */
+    public async logMessageAndCheckCompaction(userId: string = 'default'): Promise<void> {
+        const count = (this.messageCounter.get(userId) || 0) + 1;
+        this.messageCounter.set(userId, count);
+
+        Logger.debug('ContextManager', `Message count for ${userId}: ${count}/${CONFIG.CONTEXT.COMPACTION_THRESHOLD}`);
+
+        if (count >= CONFIG.CONTEXT.COMPACTION_THRESHOLD) {
+            Logger.info('ContextManager', `Threshold reached for ${userId}, triggering auto-compaction`);
+            try {
+                await this.compactContext(userId);
+                this.messageCounter.set(userId, 0); // Reset after successful compaction
+            } catch (error) {
+                Logger.error('ContextManager', `Auto-compaction failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+                // Don't reset counter on failure - will retry next time
+            }
+        }
+    }
+
+    /**
+     * Get current message count for a user (for debugging/monitoring)
+     */
+    public getMessageCount(userId: string = 'default'): number {
+        return this.messageCounter.get(userId) || 0;
     }
 }

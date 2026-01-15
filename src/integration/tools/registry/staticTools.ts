@@ -310,6 +310,20 @@ export const sqlTools: Tool[] = [
 ];
 
 /**
+ * Health and monitoring tools
+ */
+export const healthTools: Tool[] = [
+    {
+        name: "health_check",
+        description: "Check system health including database, vector store, and memory status. Returns overall health status and component details.",
+        inputSchema: {
+            type: "object",
+            properties: {},
+        },
+    }
+];
+
+/**
  * Combined array of all static tools
  */
 export const allStaticTools: Tool[] = [
@@ -320,5 +334,6 @@ export const allStaticTools: Tool[] = [
     ...sqlTools,
     ...moduleTools,
     ...contextTools,
-    ...globalTools
+    ...globalTools,
+    ...healthTools
 ];

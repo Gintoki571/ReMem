@@ -6,6 +6,8 @@ import { CONFIG } from '@config/config.js';
 import { ENV } from '@config/env.js';
 import { PROMPTS } from '@config/prompts.js';
 import { LLMError } from '@shared/errors/index.js';
+import { retryLLM } from '@utils/retryLLM.js';
+import { Logger } from '@core/logging/Logger.js';
 
 // Schema for extracted entities
 const EntitySchema = z.object({
@@ -54,10 +56,11 @@ export class Analyzer {
 
         const globalContextSection = globalContext ? PROMPTS.EXTRACTION.GLOBAL_CONTEXT_TEMPLATE(globalContext) : '';
 
-        // Use generateText instead of generateObject for better local compatibility
-        const result = await generateText({
-            model: this.model,
-            prompt: `${PROMPTS.EXTRACTION.SYSTEM}
+        // Use generateText with retry for resilience
+        const result = await retryLLM(async () => {
+            return generateText({
+                model: this.model,
+                prompt: `${PROMPTS.EXTRACTION.SYSTEM}
 
 ${globalContextSection}
 
@@ -65,6 +68,11 @@ ${typeHint}
 
 Text to analyze:
 "${text}"`,
+            });
+        }, {
+            onRetry: (attempt, error) => {
+                Logger.warn('Analyzer', `Extraction retry ${attempt}: ${error.message}`);
+            }
         });
 
 

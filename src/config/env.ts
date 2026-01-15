@@ -34,6 +34,13 @@ const envSchema = z.object({
     // 'overwrite': Replace metadata with newest facts
     MEMORY_STRATEGY: z.enum(['smart', 'append', 'overwrite']).default('smart'),
 
+    // Optional MCP API Key for authentication
+    // If set, all MCP requests must include this key in the 'x-api-key' header
+    MCP_API_KEY: z.string().optional(),
+
+    // Default user ID for multi-tenancy (if not provided in requests)
+    DEFAULT_USER_ID: z.string().default('default'),
+
     // Optional modules
     REMEM_MODULES: z.string().optional().default('rpg,coding'),
 });

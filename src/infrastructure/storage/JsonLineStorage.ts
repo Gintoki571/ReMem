@@ -2,10 +2,12 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
+import { Mutex } from 'async-mutex';
 import { CONFIG } from '@config/config.js';
 import type { IStorage } from './IStorage.js';
 import type { Edge, Graph } from '@core/index.js';
 import { randomBytes } from 'crypto';
+import { Logger } from '@core/logging/Logger.js';
 
 /**
  * Handles persistent storage of the knowledge graph using a JSON Lines file format.
@@ -13,7 +15,7 @@ import { randomBytes } from 'crypto';
  */
 export class JsonLineStorage implements IStorage {
     private initialized: boolean;
-    private writeLock: Promise<void> = Promise.resolve();
+    private writeMutex = new Mutex(); // Proper mutex for write serialization
 
     constructor() {
         this.initialized = false;
@@ -90,13 +92,14 @@ export class JsonLineStorage implements IStorage {
 
     /**
      * Saves the entire knowledge graph to storage.
-     * Uses atomic write-rename pattern to prevent corruption.
+     * Uses mutex + atomic write-rename pattern to prevent corruption.
      */
     async saveGraph(graph: Graph): Promise<void> {
         await this.ensureStorageExists();
 
-        // Serialize write operations to prevent race conditions
-        this.writeLock = this.writeLock.then(async () => {
+        // Acquire mutex to serialize all write operations
+        const release = await this.writeMutex.acquire();
+        try {
             const MEMORY_FILE_PATH = CONFIG.PATHS.MEMORY_FILE;
             const tempPath = `${MEMORY_FILE_PATH}.tmp.${randomBytes(8).toString('hex')}`;
 
@@ -113,7 +116,7 @@ export class JsonLineStorage implements IStorage {
 
                 // Write to temp file first
                 await fs.writeFile(tempPath, lines.join("\n") + (lines.length > 0 ? "\n" : ""));
-                
+
                 // Atomic rename (overwrites destination)
                 await fs.rename(tempPath, MEMORY_FILE_PATH);
             } catch (error) {
@@ -125,9 +128,9 @@ export class JsonLineStorage implements IStorage {
                 }
                 throw error;
             }
-        });
-
-        await this.writeLock;
+        } finally {
+            release();
+        }
     }
 
     /**

@@ -1,10 +1,31 @@
 import { connect, Table, Connection } from '@lancedb/lancedb';
 import path from 'path';
+import { Mutex } from 'async-mutex';
 import { CONFIG } from '@config/config.js';
 import { Logger } from '@core/logging/Logger.js';
 
 // LanceDB storage path
 const LANCEDB_PATH = path.join(CONFIG.PATHS.DATA_DIR, 'lancedb');
+
+// Security: Whitelist pattern for node names (prevents SQL injection)
+const NODE_NAME_REGEX = /^[a-zA-Z0-9_-]{1,200}$/;
+
+class ValidationError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'ValidationError';
+    }
+}
+
+/** Validate node name against whitelist to prevent injection attacks */
+function validateNodeName(nodeName: string): void {
+    if (!NODE_NAME_REGEX.test(nodeName)) {
+        throw new ValidationError(
+            `Invalid node name: '${nodeName.substring(0, 50)}'. ` +
+            `Must match pattern: ${NODE_NAME_REGEX.source}`
+        );
+    }
+}
 
 interface VectorRecord {
     id: string;
@@ -18,44 +39,51 @@ interface VectorRecord {
 
 let db: Connection | null = null;
 let table: Table | null = null;
+const initMutex = new Mutex(); // Prevents race condition during initialization
 
 const TABLE_NAME = 'memory_vectors';
 
 /**
  * Initialize LanceDB connection and table
+ * Uses mutex to prevent race condition when multiple calls try to init simultaneously
  */
 export async function initVectorStore(): Promise<void> {
-    if (db) return;
+    const release = await initMutex.acquire();
+    try {
+        if (db) return; // Already initialized
 
-    db = await connect(LANCEDB_PATH);
+        db = await connect(LANCEDB_PATH);
 
-    // Check if table exists, create if not
-    const tables = await db.tableNames();
+        // Check if table exists, create if not
+        const tables = await db.tableNames();
 
-    if (!tables.includes(TABLE_NAME)) {
-        // Create table with initial empty schema (LanceDB needs at least one record)
-        // We'll create it on first insert
-        Logger.info('VectorDB', 'LanceDB initialized, table will be created on first insert');
-    } else {
-        table = await db.openTable(TABLE_NAME);
-        Logger.info('VectorDB', `LanceDB table opened: ${TABLE_NAME}`);
+        if (!tables.includes(TABLE_NAME)) {
+            Logger.info('VectorDB', 'LanceDB initialized, table will be created on first insert');
+        } else {
+            table = await db.openTable(TABLE_NAME);
+            Logger.info('VectorDB', `LanceDB table opened: ${TABLE_NAME}`);
+        }
+    } finally {
+        release();
     }
 }
 
 /**
  * Add a vector to the store
+ * @throws ValidationError if nodeName contains invalid characters
  */
 export async function addVector(record: VectorRecord): Promise<void> {
+    // Security: Validate node name before any DB operation
+    validateNodeName(record.nodeName);
+
     if (!db) await initVectorStore();
 
     if (table) {
-        // Prevent duplication by deleting existing vectors for this node first
-        // Use parameterized query to prevent SQL injection
-        const escapedNodeName = record.nodeName.replace(/'/g, "''");
-        await table.delete(`nodeName = '${escapedNodeName}'`);
+        // Safe delete: nodeName is now validated, no injection possible
+        await table.delete(`nodeName = '${record.nodeName}'`);
         await table.add([record as Record<string, unknown>]);
     } else {
-        // Create table with first record - cast for LanceDB compatibility
+        // Create table with first record
         table = await db!.createTable(TABLE_NAME, [record as Record<string, unknown>]);
         Logger.info('VectorDB', 'Created table with first record');
     }
@@ -84,14 +112,17 @@ export async function searchVectors(
 
 /**
  * Delete vectors by node name
+ * @throws ValidationError if nodeName contains invalid characters
  */
 export async function deleteVectorsByNode(nodeName: string): Promise<void> {
+    // Security: Validate node name before any DB operation
+    validateNodeName(nodeName);
+
     if (!db) await initVectorStore();
     if (!table) return;
 
-    // Escape single quotes to prevent SQL injection
-    const escapedNodeName = nodeName.replace(/'/g, "''");
-    await table.delete(`nodeName = '${escapedNodeName}'`);
+    // Safe delete: nodeName is now validated
+    await table.delete(`nodeName = '${nodeName}'`);
 }
 
 /**
