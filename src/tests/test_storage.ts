@@ -4,10 +4,16 @@ import fs from 'fs';
 import path from 'path';
 
 // Manual JSON Write Test
-const jsonPath = './dist/data/memory.json';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.join(__dirname, '../../');
+const jsonPath = path.join(projectRoot, 'data/memory.json');
+
 try {
     console.log('Testing JSON write to:', jsonPath);
     const data = { test: "success", timestamp: new Date().toISOString() };
+    if (!fs.existsSync(path.dirname(jsonPath))) fs.mkdirSync(path.dirname(jsonPath), { recursive: true });
     fs.writeFileSync(jsonPath, JSON.stringify(data, null, 2));
     console.log('✅ JSON Write Success');
 } catch (e) {
@@ -21,7 +27,7 @@ try {
     const result = db.insert(schema.nodes).values({
         name: 'TEST_NODE_' + Date.now(),
         nodeType: 'test',
-        metadata: '["manual_test"]'
+        metadata: { note: "manual_test", timestamp: new Date().toISOString() }
     }).onConflictDoNothing().run();
 
     console.log('✅ SQLite Write Success. Changes:', result.changes);

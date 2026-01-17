@@ -34,7 +34,7 @@ export class SqliteStorage implements IStorage {
             type: 'node' as const,
             name: row.name,
             nodeType: row.nodeType,
-            metadata: row.metadata ? JSON.parse(row.metadata) : {},
+            metadata: (row.metadata as Record<string, unknown>) || {},
             version: row.version,
         }));
 
@@ -85,7 +85,7 @@ export class SqliteStorage implements IStorage {
             const nodeValues = graph.nodes.map(node => ({
                 name: node.name,
                 nodeType: node.nodeType,
-                metadata: JSON.stringify(node.metadata || {}),
+                metadata: node.metadata || {},
             }));
 
             // Use sql for accessing excluded values in upsert

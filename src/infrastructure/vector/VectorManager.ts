@@ -34,7 +34,7 @@ interface VectorRecord {
     vector: number[];
     nodeName: string;
     nodeType: string;
-    metadata?: string;
+    metadata?: Record<string, unknown>;
     [key: string]: unknown; // Index signature for Record<string, unknown> compatibility
 }
 

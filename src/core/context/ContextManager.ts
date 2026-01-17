@@ -48,19 +48,13 @@ export class ContextManager {
         const globalFacts = globalNodes
             .map(node => {
                 if (!node.metadata) return null;
+                if (!node.metadata) return null;
                 try {
-                    // Start by checking if metadata is an array (per schema definition: text which is JSON string array)
-                    // Wait, schema says: metadata: text('metadata') // JSON string array
-                    // But Drizzle returns it as string (because SQLite stores text) or parsed object depending on configuration?
-                    // In schema.ts: metadata: text('metadata')
-                    // It is just a string. I must parse it.
-                    const meta = JSON.parse(node.metadata);
-                    // meta is string[]? No, in my handler I stored [JSON.stringify({ content, scope })].
-                    // So meta is ["{\"content\":..., ...}"]
+                    // Drizzle with mode: 'json' returns the object directly
+                    const meta = node.metadata as Record<string, any>;
 
-                    if (Array.isArray(meta) && meta.length > 0) {
-                        const payload = JSON.parse(meta[0]);
-                        return `- ${payload.content}`;
+                    if (meta.content) {
+                        return `- ${meta.content}`;
                     }
                     return null;
                 } catch (e) {
@@ -91,7 +85,7 @@ You have access to a persistent Knowledge Graph to store and retrieve facts.
         });
 
         if (summaryNode && summaryNode.metadata) {
-            const meta = JSON.parse(summaryNode.metadata);
+            const meta = summaryNode.metadata as Record<string, any>;
             return meta.content || "";
         }
         return "";
@@ -156,12 +150,8 @@ You have access to a persistent Knowledge Graph to store and retrieve facts.
 
             let currentSummary = '';
             if (summaryNode && summaryNode.metadata) {
-                try {
-                    const meta = JSON.parse(summaryNode.metadata);
-                    currentSummary = meta.content || '';
-                } catch (e) {
-                    console.error('[ContextManager] Failed to parse existing summary:', e);
-                }
+                const meta = summaryNode.metadata as Record<string, any>;
+                currentSummary = meta.content || '';
             }
 
             // 3. Generate new summary using LLM
@@ -178,7 +168,7 @@ You have access to a persistent Knowledge Graph to store and retrieve facts.
                     // Update existing summary
                     db.update(schema.nodes)
                         .set({
-                            metadata: JSON.stringify({ content: newSummary }),
+                            metadata: { content: newSummary },
                             updatedAt: new Date()
                         })
                         .where(eq(schema.nodes.name, `${userId}_summary`))
@@ -188,7 +178,7 @@ You have access to a persistent Knowledge Graph to store and retrieve facts.
                     db.insert(schema.nodes).values({
                         name: `${userId}_summary`,
                         nodeType: 'context_summary',
-                        metadata: JSON.stringify({ content: newSummary }),
+                        metadata: { content: newSummary },
                     }).run();
                 }
 

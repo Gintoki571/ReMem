@@ -5,7 +5,7 @@ export const nodes = sqliteTable('nodes', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     name: text('name').notNull().unique(),
     nodeType: text('node_type').notNull(),
-    metadata: text('metadata'), // JSON string array
+    metadata: text('metadata', { mode: 'json' }).$type<Record<string, unknown>>(), // JSON object
     version: integer('version').default(1).notNull(), // Optimistic Locking
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),

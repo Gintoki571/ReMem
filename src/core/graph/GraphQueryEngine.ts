@@ -128,7 +128,7 @@ export class GraphQueryEngine {
             type: 'node',
             name: row.name,
             nodeType: row.node_type,
-            metadata: row.metadata ? JSON.parse(row.metadata) : {}
+            metadata: (row.metadata as Record<string, unknown>) || {}
         };
     }
 

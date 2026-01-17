@@ -25,15 +25,22 @@ async function testGraphBridge() {
         // 1. Setup Graph Data
         console.log('[Test] Creating Nodes/Edges...');
         await db.insert(schema.nodes).values([
-            { name: 'Bridge_A', nodeType: 'concept', metadata: JSON.stringify(['Start point']) },
-            { name: 'Bridge_B', nodeType: 'concept', metadata: JSON.stringify(['End point']) }
-        ]);
+            { name: 'Bridge_A', nodeType: 'concept', metadata: { desc: 'Start point' } },
+            { name: 'Bridge_B', nodeType: 'concept', metadata: { desc: 'End point' } }
+        ]).onConflictDoUpdate({
+            target: schema.nodes.name,
+            set: {
+                nodeType: 'concept',
+                metadata: { desc: 'Start point (Reset)' },
+                updatedAt: new Date()
+            }
+        });
 
         await db.insert(schema.edges).values({
             fromNode: 'Bridge_A',
             toNode: 'Bridge_B',
             edgeType: 'leads_to'
-        });
+        }).onConflictDoNothing().run();
 
         // 2. Mock Vector Search Function
         // We simulate finding 'Bridge_A' via vector search

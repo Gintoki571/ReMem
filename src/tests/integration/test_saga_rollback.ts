@@ -36,7 +36,7 @@ async function testManualRollback() {
         db.insert(schema.nodes).values({
             name: TEST_NODE_NAME,
             nodeType: 'saga_test',
-            metadata: JSON.stringify(['test']),
+            metadata: { role: 'initial' },
         }).run();
         console.log(`  Inserted node: ${TEST_NODE_NAME}`);
 
@@ -86,7 +86,7 @@ async function testCommitSuccess() {
         db.insert(schema.nodes).values({
             name: commitTestNode,
             nodeType: 'commit_test',
-            metadata: JSON.stringify(['success']),
+            metadata: { result: 'success' },
         }).run();
 
         // Successful operation - commit

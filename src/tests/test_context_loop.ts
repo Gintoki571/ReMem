@@ -1,5 +1,6 @@
 
 import { initDatabase, getDatabase, getSqliteInstance, closeDatabase, schema } from '../infrastructure/database/index.js';
+import { eq } from 'drizzle-orm';
 import { ContextManager } from '../core/context/ContextManager.js';
 import { analyzer } from '../application/services/Analyzer.js';
 
@@ -17,7 +18,7 @@ async function testContextLoop() {
 
         // 1. Setup: Clear relevant tables
         getSqliteInstance().exec("DELETE FROM messages");
-        getSqliteInstance().exec("DELETE FROM nodes WHERE name = 'user_loop_test_summary'");
+        db.delete(schema.nodes).where(eq(schema.nodes.name, 'user_loop_test_summary')).run();
 
         // 2. Insert dummy messages
         console.log('[Test] Seeding messages...');

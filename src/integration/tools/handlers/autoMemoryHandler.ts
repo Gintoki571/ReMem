@@ -288,7 +288,7 @@ export async function handleAutoAddMemory(
                             vector: embedding,
                             nodeName: node.name,
                             nodeType: node.nodeType,
-                            metadata: JSON.stringify(node.metadata),
+                            metadata: (node.metadata as Record<string, unknown>) || {}
                         };
                         await addVector(vectorRecord);
                     } catch (embedError) {

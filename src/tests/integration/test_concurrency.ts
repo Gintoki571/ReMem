@@ -22,7 +22,7 @@ async function setup() {
     db.insert(schema.nodes).values({
         name: 'TestConcurrentNode',
         nodeType: 'test',
-        metadata: JSON.stringify(['initial']),
+        metadata: { status: 'initial' },
     }).run();
 
     console.log('[Test] Created test node with version 1');
@@ -42,7 +42,7 @@ async function testVersionIncrement() {
     // Simulate update with version check
     const result = db.update(schema.nodes)
         .set({
-            metadata: JSON.stringify(['updated']),
+            metadata: { status: 'updated' },
             version: initial.version + 1,
             updatedAt: new Date()
         })
@@ -77,7 +77,7 @@ async function testOptimisticLockingConflict() {
     // First update succeeds (using current version)
     const firstUpdate = db.update(schema.nodes)
         .set({
-            metadata: JSON.stringify(['first_update']),
+            metadata: { status: 'first_update' },
             version: staleVersion + 1,
             updatedAt: new Date()
         })
@@ -91,7 +91,7 @@ async function testOptimisticLockingConflict() {
     const { and } = await import('drizzle-orm');
     const secondUpdate = db.update(schema.nodes)
         .set({
-            metadata: JSON.stringify(['second_update']),
+            metadata: { status: 'second_update' },
             version: staleVersion + 1, // Would be correct if first update hadn't happened
             updatedAt: new Date()
         })

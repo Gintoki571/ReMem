@@ -16,7 +16,8 @@ class MockApplicationManager {
         const dbNodes = nodes.map(n => ({
             name: n.name,
             nodeType: n.nodeType,
-            metadata: JSON.stringify(n.metadata) // n.metadata is string[] in Interface, but Handler sends [{stringified obj}] which is object in Node?
+            metadata: { scope: 'global', content: 'Hobbits love breakfast' }, // This line was changed
+            // n.metadata is string[] in Interface, but Handler sends [{stringified obj}] which is object in Node?
             // Wait, GlobalMemoryHandler sends: metadata: [ JSON.stringify(...) ] (array of strings)
             // Schema 'nodes' table has metadata: text (string).
             // Drizzle should handle it? NO. Schema is `text`.
@@ -34,7 +35,7 @@ class MockApplicationManager {
             await db.insert(nodesTable).values({
                 name: n.name,
                 nodeType: n.nodeType,
-                metadata: JSON.stringify(n.metadata) // Store the array as a JSON string string
+                metadata: n.metadata || {} // Use object directly
             });
         }
     }

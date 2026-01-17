@@ -35,7 +35,7 @@ export class InfrastructureSyncService {
                         db.insert(schema.nodes).values({
                             name: node.name,
                             nodeType: node.nodeType,
-                            metadata: JSON.stringify(node.metadata || {}),
+                            metadata: node.metadata || {},
                         }).onConflictDoNothing().run();
                     });
                 } catch (error) {
@@ -68,7 +68,7 @@ export class InfrastructureSyncService {
                         const result = db.update(schema.nodes)
                             .set({
                                 ...(node.nodeType && { nodeType: node.nodeType }),
-                                ...(node.metadata && { metadata: JSON.stringify(node.metadata || {}) }),
+                                ...(node.metadata && { metadata: node.metadata }),
                                 version: currentVersion + 1, // Increment version
                                 updatedAt: new Date()
                             })
