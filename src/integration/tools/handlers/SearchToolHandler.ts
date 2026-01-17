@@ -2,6 +2,7 @@ import { BaseToolHandler } from './BaseToolHandler.js';
 import { formatToolResponse, formatToolError, formatGraphAsNarrative } from '@shared/index.js';
 import type { ToolResponse } from '@shared/index.js';
 import { z } from 'zod';
+import { CONFIG } from '@config/config.js';
 
 // Input Schemas
 const ReadGraphSchema = z.object({
@@ -10,13 +11,13 @@ const ReadGraphSchema = z.object({
 });
 
 const SearchNodesSchema = z.object({
-    query: z.string().min(1),
-    depth: z.number().optional().default(1),
+    query: z.string().min(1).max(CONFIG.VALIDATION.MAX_TEXT_LENGTH),
+    depth: z.number().min(1).max(CONFIG.SEARCH.MAX_DEPTH).optional().default(1),
 });
 
 const OpenNodesSchema = z.object({
-    names: z.array(z.string()),
-    depth: z.number().optional().default(1),
+    names: z.array(z.string().max(CONFIG.VALIDATION.MAX_NODE_NAME_LENGTH)).max(50), // Max 50 nodes
+    depth: z.number().min(1).max(CONFIG.SEARCH.MAX_DEPTH).optional().default(1),
 });
 
 export class SearchToolHandler extends BaseToolHandler {

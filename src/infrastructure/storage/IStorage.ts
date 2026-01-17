@@ -1,6 +1,6 @@
 // src/types/storage.ts
 
-import type { Edge, Graph } from '@core/index.js';
+import type { Edge, Graph, Node } from '@core/index.js';
 
 /**
  * Edge indexing structure
@@ -20,4 +20,15 @@ export interface IStorage {
     saveGraph(graph: Graph): Promise<void>;
 
     loadEdgesByIds(edgeIds: string[]): Promise<Edge[]>;
+
+    /**
+     * Loads specific nodes by their names.
+     */
+    loadNodes(names: string[]): Promise<Node[]>;
+
+    /**
+     * Updates specific nodes with optimistic locking support.
+     * @throws ConcurrencyError if version mismatch.
+     */
+    updateNodes(nodes: Node[]): Promise<void>;
 }

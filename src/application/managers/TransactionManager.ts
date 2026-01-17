@@ -7,12 +7,14 @@ import { Graph } from '@core/index.js';
 
 /**
  * TransactionManager
- * Manages atomic operations and Sagas.
+ * Manages atomic operations and Sagas with proper nested transaction support.
  * Implements ITransactionManager to support ApplicationManager requirements.
  */
 export class TransactionManager extends ITransactionManager {
     private inTransactionState: boolean = false;
+    private transactionDepth: number = 0;
     private rollbackActions: Array<{ action: () => Promise<void>, description: string }> = [];
+    private savepointNames: string[] = [];
 
     /**
      * Specialized emit wrapper that handles errors in listeners
@@ -39,14 +41,31 @@ export class TransactionManager extends ITransactionManager {
 
     /**
      * Executes a function within a SQLite transaction (Closure-based).
-     * This wraps the stateful calls to ensure safety.
+     * This wraps stateful calls to ensure safety with proper nested transaction support.
      */
     async executeTransaction<T>(operation: (tx: any) => Promise<T>): Promise<T> {
-        if (this.inTransactionState) {
-            // Already in transaction, just run operation
-            return await operation(getDatabase());
+        if (this.transactionDepth > 0) {
+            // Nested transaction: use savepoint
+            const savepointName = `sp_${this.transactionDepth}_${Date.now()}`;
+            this.transactionDepth++;
+            this.savepointNames.push(savepointName);
+            
+            try {
+                await this.createSavepoint(savepointName);
+                const result = await operation(getDatabase());
+                await this.releaseSavepoint(savepointName);
+                this.transactionDepth--;
+                this.savepointNames.pop();
+                return result;
+            } catch (error) {
+                await this.rollbackToSavepoint(savepointName);
+                this.transactionDepth--;
+                this.savepointNames.pop();
+                throw error;
+            }
         }
 
+        // Outer transaction
         await this.beginTransaction();
         try {
             const result = await operation(getDatabase());
@@ -65,7 +84,32 @@ export class TransactionManager extends ITransactionManager {
         const sqlite = getSqliteInstance();
         sqlite.prepare('BEGIN').run();
         this.inTransactionState = true;
+        this.transactionDepth = 1;
         this.rollbackActions = [];
+        this.savepointNames = [];
+    }
+
+    private async createSavepoint(name: string): Promise<void> {
+        const sqlite = getSqliteInstance();
+        sqlite.prepare(`SAVEPOINT ${name}`).run();
+        Logger.debug('TransactionManager', `Created savepoint: ${name}`);
+    }
+
+    private async releaseSavepoint(name: string): Promise<void> {
+        const sqlite = getSqliteInstance();
+        sqlite.prepare(`RELEASE SAVEPOINT ${name}`).run();
+        Logger.debug('TransactionManager', `Released savepoint: ${name}`);
+    }
+
+    private async rollbackToSavepoint(name: string): Promise<void> {
+        const sqlite = getSqliteInstance();
+        try {
+            sqlite.prepare(`ROLLBACK TO SAVEPOINT ${name}`).run();
+            Logger.debug('TransactionManager', `Rolled back to savepoint: ${name}`);
+        } catch (error) {
+            Logger.error('TransactionManager', `Failed to rollback to savepoint: ${name}`, error);
+            throw error;
+        }
     }
 
     async commit(): Promise<void> {
@@ -75,7 +119,9 @@ export class TransactionManager extends ITransactionManager {
         const sqlite = getSqliteInstance();
         sqlite.prepare('COMMIT').run();
         this.inTransactionState = false;
+        this.transactionDepth = 0;
         this.rollbackActions = [];
+        this.savepointNames = [];
     }
 
     async rollback(): Promise<void> {
@@ -87,6 +133,7 @@ export class TransactionManager extends ITransactionManager {
                 Logger.error('TransactionManager', 'SQL Rollback failed', e);
             }
             this.inTransactionState = false;
+            this.transactionDepth = 0;
         }
 
         // Execute compensating actions in reverse order
@@ -101,6 +148,7 @@ export class TransactionManager extends ITransactionManager {
             }
         }
         this.rollbackActions = [];
+        this.savepointNames = [];
     }
 
     async addRollbackAction(action: () => Promise<void>, description: string): Promise<void> {
@@ -119,7 +167,7 @@ export class TransactionManager extends ITransactionManager {
     }
 
     getCurrentGraph(): Graph {
-        // Return emtpy graph structure since Graph is an interface.
+        // Return empty graph structure since Graph is an interface.
         return { nodes: [], edges: [] };
     }
 
@@ -137,7 +185,7 @@ export class TransactionManager extends ITransactionManager {
             }
             return result;
         } catch (error) {
-            console.error('[TransactionManager] Saga Failed. Rolling back...', error);
+            Logger.error('TransactionManager', 'Saga Failed. Rolling back...', error);
             // Internal Saga Rollback
             for (let i = completedSteps.length - 1; i >= 0; i--) {
                 const step = completedSteps[i];
@@ -146,7 +194,7 @@ export class TransactionManager extends ITransactionManager {
                         await step.compensate(result);
                     }
                 } catch (rollbackError) {
-                    console.error('[TransactionManager] CRITICAL: Saga rollback failed for', step.name, rollbackError);
+                    Logger.error('TransactionManager', `CRITICAL: Saga rollback failed for ${step.name}`, rollbackError);
                 }
             }
             throw error;
@@ -159,23 +207,3 @@ export interface SagaStep<T> {
     execute: (input: any) => Promise<T>;
     compensate?: (result: T) => Promise<void>;
 }
-
-
-// We don't export a singleton instance anymore because ManagerFactory manages instances.
-// However, legacy code might expect 'transactionManager' to be exported?
-// ApplicationManager uses 'new TransactionManager(storage)'.
-// autoMemoryHandler used 'transactionManager.executeTransaction'.
-// If autoMemoryHandler imports the object, we should export a default instance OR update autoMemoryHandler to use ApplicationManager.
-// autoMemoryHandler receives 'manager: ApplicationManager' in args!
-// So it should use 'manager.transactionManager' or 'manager.withTransaction'.
-// But 'manager.transactionManager' is private.
-// 'manager.withTransaction' is public!
-
-// So I should UPDATE autoMemoryHandler to use 'manager.withTransaction'
-// instead of importing a singleton 'transactionManager'.
-
-// But to keep build passing while I fix autoMemoryHandler, I might export a temporary singleton or mock.
-// Actually autoMemoryHandler imports 'transactionManager' from '@application/managers/index'.
-// I should remove that export from index or validly create it.
-// I can export a singleton that lazily uses global storage? No.
-// I should refactor autoMemoryHandler to use the passed 'manager'.

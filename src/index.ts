@@ -8,8 +8,10 @@ import {
 import { ApplicationManager } from '@application/managers/ApplicationManager.js';
 import { toolsRegistry } from '@integration/tools/registry/toolsRegistry.js';
 import { CONFIG } from './config/config.js';
+import { RateLimiter } from '@shared/utils/rateLimiter.js';
 
 const knowledgeGraphManager = new ApplicationManager();
+const rateLimiter = new RateLimiter(); // Singleton rate limiter
 
 const server = new Server({
     name: CONFIG.SERVER.NAME,
@@ -61,10 +63,24 @@ async function main(): Promise<void> {
 
         server.setRequestHandler(CallToolRequestSchema, async (request) => {
             const { name, arguments: args } = request.params;
-            const result = await toolsRegistry.handleToolCall(name, args ?? {});
-            return {
-                toolResult: result.toolResult
-            };
+
+            // [SECURITY] Rate Limiting
+            // For local stdio, we use a single 'local-user' key.
+            const limitCheck = rateLimiter.isAllowed('local-user');
+            if (!limitCheck.allowed) {
+                console.error(`[RateLimit] Blocked request for tool "${name}": ${limitCheck.error}`);
+                throw new Error(limitCheck.error);
+            }
+
+            try {
+                const result = await toolsRegistry.handleToolCall(name, args ?? {});
+                return {
+                    toolResult: result.toolResult
+                };
+            } catch (error) {
+                console.error(`[Tool Error] ${name}:`, error);
+                throw error; // Let MCP SDK handle it, or return structured error
+            }
         });
 
         server.onerror = (error: Error) => {
@@ -74,6 +90,7 @@ async function main(): Promise<void> {
         process.on('SIGINT', async () => {
             console.error('[Server] Shutting down gracefully...');
             knowledgeGraphManager.cleanup();
+            rateLimiter.dispose();
             await server.close();
             process.exit(0);
         });
@@ -81,6 +98,7 @@ async function main(): Promise<void> {
         process.on('SIGTERM', async () => {
             console.error('[Server] Shutting down gracefully...');
             knowledgeGraphManager.cleanup();
+            rateLimiter.dispose();
             await server.close();
             process.exit(0);
         });
@@ -89,7 +107,6 @@ async function main(): Promise<void> {
         await server.connect(transport);
         console.error("Knowledge Graph MCP Server running on stdio");
     } catch (error) {
-        console.error("Fatal error during server startup:", error);
         process.exit(1);
     }
 }

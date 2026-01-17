@@ -1,13 +1,38 @@
-import { getDatabase, schema } from '@infrastructure/database/index.js';
 import { deleteVectorsByNode } from '@infrastructure/vector/VectorManager.js';
 import type { GraphOperations } from '@application/operations/GraphOperations.js';
-import type { Node, Edge } from '@core/index.js';
-import { eq, and } from 'drizzle-orm';
+import type { Node } from '@core/index.js';
 import { retryWithBackoff } from '@utils/retryWithBackoff.js';
+import { getDatabase, schema } from '@infrastructure/database/index.js'; // Keep for reading existence checks if needed, but wait...
+// Actually, we don't need to read existence for VECTOR sync if we just trust the event?
+// But for 'afterUpdateNodes', we checked if nodeType changed.
+// We DO need to read from SQLite to see if nodeType changed? 
+// Or does the event contain old vs new? The event 'nodes' is Partial<Node>.
+// If Partial<Node> has nodeType, we might need to re-vectorize? 
+// The vector store contains 'nodeType' in metadata.
+
+// SIMPLIFICATION:
+// 1. afterAddNodes: No action needed for Vectors (vectors are added via Analyzer explicitly or manually?)
+//    Wait, who adds vectors? 'autoMemoryHandler' calls 'analyzer.generateEmbedding' then 'vectorManager.addVector'.
+//    So 'VectorSync' is NOT responsible for initial vector creation in 'autoMemoryHandler'.
+//    Is it responsible for anything?
+//    If I update a node via `update_node` tool, proper behavior is to update the vector too?
+//    Currently, 'update_node' tool -> GraphManager -> GraphOperations -> emits event.
+//    If 'update_node' does NOT update vector, then vector is stale.
+//    So 'afterUpdateNodes' MUST sync to Vector.
+//    BUT 'autoMemoryHandler' handles vectors manually.
+//    We need to be careful not to double-vectorize if autoMemoryHandler does it.
+//    However, manual tool usage 'update_node' won't call 'analyzer', so SyncService is the ONLY place to catch manual updates.
+
+// DECISION:
+// - Keep Vector Sync for 'update' (if nodeType changes or checking consistency) and 'delete'.
+// - Remove 'add' sync entirely (vectors are added explicitly by intelligence layer).
+// - Remove 'edge' sync entirely (vectors don't track edges).
+
+import { eq } from 'drizzle-orm';
 
 /**
- * Service that synchronizes graph operations with secondary storage (SQLite, Vector Store)
- * Uses retries to ensure eventual consistency.
+ * Service that synchronizes graph operations with Vector Storage.
+ * (Formerly InfrastructureSyncService, now stripped of redundant SQLite dual-writes)
  */
 export class InfrastructureSyncService {
     private cleanupFunctions: Array<() => void> = [];
@@ -27,140 +52,48 @@ export class InfrastructureSyncService {
     private initializeListeners(): void {
         const db = getDatabase();
 
-        // Node synchronization
-        const afterAddNodesHandler = async ({ nodes }: { nodes: Node[] }) => {
-            for (const node of nodes) {
-                try {
-                    await retryWithBackoff(async () => {
-                        db.insert(schema.nodes).values({
-                            name: node.name,
-                            nodeType: node.nodeType,
-                            metadata: node.metadata || {},
-                        }).onConflictDoNothing().run();
-                    });
-                } catch (error) {
-                    console.error(`[Sync] CRITICAL: Failed to sync added node "${node.name}" after retries:`, error);
-                }
-            }
-        };
-        this.graphOperations.on('afterAddNodes', afterAddNodesHandler);
-        this.cleanupFunctions.push(() => this.graphOperations.off('afterAddNodes', afterAddNodesHandler));
-
+        // Node Update Synchronization (Vector Validity Check)
         const afterUpdateNodesHandler = async ({ nodes }: { nodes: Partial<Node>[] }) => {
             for (const node of nodes) {
                 if (!node.name) continue;
                 try {
-                    await retryWithBackoff(async () => {
-                        // Fetch the current version before updating
-                        const existingNode = db.select({ version: schema.nodes.version })
-                            .from(schema.nodes)
-                            .where(eq(schema.nodes.name, node.name!))
+                    // Check if nodeType changed, which might affect vector relevance
+                    if (node.nodeType) {
+                        const nodeEmbedding = db.select()
+                            .from(schema.embeddings)
+                            .where(eq(schema.embeddings.nodeName, node.name))
                             .get();
 
-                        if (!existingNode) {
-                            console.warn(`[Sync] Node "${node.name}" not found in SQLite, skipping update sync.`);
-                            return;
+                        if (nodeEmbedding) {
+                            // In a full implementation, we might re-generate embedding here.
+                            // For now, we warn that metadata might be stale.
+                            console.warn(`[Sync] Node type updated for "${node.name}". Vector metadata should be refreshed.`);
                         }
-
-                        const currentVersion = existingNode.version;
-
-                        // 1. Sync with SQLite using Conditional Update (Optimistic Locking)
-                        const result = db.update(schema.nodes)
-                            .set({
-                                ...(node.nodeType && { nodeType: node.nodeType }),
-                                ...(node.metadata && { metadata: node.metadata }),
-                                version: currentVersion + 1, // Increment version
-                                updatedAt: new Date()
-                            })
-                            .where(and(eq(schema.nodes.name, node.name!), eq(schema.nodes.version, currentVersion)))
-                            .run();
-
-                        if (result.changes === 0) {
-                            // Version mismatch - throw ConcurrencyError to trigger retry
-                            const { ConcurrencyError } = await import('@core/errors/index.js');
-                            throw new ConcurrencyError(node.name!, currentVersion);
-                        }
-
-                        // 2. Sync with Vector Store (if nodeType changed)
-                        if (node.nodeType) {
-                            const nodeEmbedding = db.select()
-                                .from(schema.embeddings)
-                                .where(eq(schema.embeddings.nodeName, node.name!))
-                                .get();
-
-                            if (nodeEmbedding) {
-                                console.warn(`[Sync] Node type updated for "${node.name}". Vector metadata should be refreshed.`);
-                            }
-                        }
-                    });
+                    }
                 } catch (error) {
-                    console.error(`[Sync] CRITICAL: Failed to sync updated node "${node.name}" after retries:`, error);
+                    console.error(`[Sync] Failed to check vector status for updated node "${node.name}":`, error);
                 }
             }
         };
         this.graphOperations.on('afterUpdateNodes', afterUpdateNodesHandler);
         this.cleanupFunctions.push(() => this.graphOperations.off('afterUpdateNodes', afterUpdateNodesHandler));
 
+        // Node Delete Synchronization (Vector Cleanup)
         const afterDeleteNodesHandler = async ({ nodeNames }: { nodeNames: string[] }) => {
             for (const name of nodeNames) {
                 try {
                     await retryWithBackoff(async () => {
-                        // Sync with SQLite
-                        db.delete(schema.nodes).where(eq(schema.nodes.name, name)).run();
-                        db.delete(schema.edges).where(eq(schema.edges.fromNode, name)).run();
-                        db.delete(schema.edges).where(eq(schema.edges.toNode, name)).run();
-
-                        // Sync with Vector Store
+                        // Sync with Vector Store (Cleanup)
                         await deleteVectorsByNode(name);
                     });
                 } catch (error) {
-                    console.error(`[Sync] CRITICAL: Failed to sync deleted node "${name}" after retries:`, error);
+                    console.error(`[Sync] CRITICAL: Failed to cleanup vectors for deleted node "${name}":`, error);
                 }
             }
         };
         this.graphOperations.on('afterDeleteNodes', afterDeleteNodesHandler);
         this.cleanupFunctions.push(() => this.graphOperations.off('afterDeleteNodes', afterDeleteNodesHandler));
 
-        // Edge synchronization
-        const afterAddEdgesHandler = async ({ edges }: { edges: Edge[] }) => {
-            for (const edge of edges) {
-                try {
-                    await retryWithBackoff(async () => {
-                        db.insert(schema.edges).values({
-                            fromNode: edge.from,
-                            toNode: edge.to,
-                            edgeType: edge.edgeType,
-                            weight: edge.weight ?? 1.0,
-                        }).onConflictDoNothing().run();
-                    });
-                } catch (error) {
-                    console.error(`[Sync] CRITICAL: Failed to sync added edge after retries:`, error);
-                }
-            }
-        };
-        this.graphOperations.on('afterAddEdges', afterAddEdgesHandler);
-        this.cleanupFunctions.push(() => this.graphOperations.off('afterAddEdges', afterAddEdgesHandler));
-
-        const afterDeleteEdgesHandler = async ({ edges }: { edges: Edge[] }) => {
-            for (const edge of edges) {
-                try {
-                    await retryWithBackoff(async () => {
-                        db.delete(schema.edges)
-                            .where(
-                                and(
-                                    eq(schema.edges.fromNode, edge.from),
-                                    eq(schema.edges.toNode, edge.to),
-                                    eq(schema.edges.edgeType, edge.edgeType)
-                                )
-                            )
-                            .run();
-                    });
-                } catch (error) {
-                    console.error(`[Sync] CRITICAL: Failed to sync deleted edge after retries:`, error);
-                }
-            }
-        };
-        this.graphOperations.on('afterDeleteEdges', afterDeleteEdgesHandler);
-        this.cleanupFunctions.push(() => this.graphOperations.off('afterDeleteEdges', afterDeleteEdgesHandler));
+        // Edge operations do not affect Vector Store currently, so we ignore them.
     }
 }

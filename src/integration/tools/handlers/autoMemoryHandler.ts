@@ -1,5 +1,5 @@
 import { analyzer } from '@application/services/Analyzer.js';
-import { addVector, searchVectors, VectorRecord } from '@infrastructure/vector/VectorManager.js';
+import { addVector, searchVectors, deleteVectorsByNode, VectorRecord } from '@infrastructure/vector/VectorManager.js';
 import { getDatabase, schema, getSqliteInstance } from '@infrastructure/database/index.js';
 import type { Tool, ToolResponse } from '@shared/index.js';
 import { formatGraphAsNarrative } from '@shared/index.js';
@@ -23,7 +23,7 @@ export const autoAddMemoryTool: Tool = {
         properties: {
             text: {
                 type: 'string',
-                description: 'The text to analyze and extract memory from',
+                description: `The text to analyze and extract memory from (max ${CONFIG.VALIDATION.MAX_TEXT_LENGTH} characters)`,
             },
             generateEmbeddings: {
                 type: 'boolean',
@@ -85,27 +85,54 @@ export const hybridSearchTool: Tool = {
 /**
  * Handle auto_add_memory tool call
  */
-/**
- * Handle auto_add_memory tool call
- */
 export async function handleAutoAddMemory(
     args: { text: string; generateEmbeddings?: boolean },
     manager: ApplicationManager
 ): Promise<ToolResponse> {
     try {
-        const db = getDatabase();
+        // Input validation
+        if (!args.text || typeof args.text !== 'string') {
+            return {
+                toolResult: {
+                    isError: true,
+                    content: [{ type: 'text', text: 'Error: text parameter is required and must be a string.' }],
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
 
-        // --- Step 0: Fetch Global Context (Who is the user?) ---
-        // We do this OUTSIDE the transaction because it's a read-only helper
+        if (args.text.length > CONFIG.VALIDATION.MAX_TEXT_LENGTH) {
+            return {
+                toolResult: {
+                    isError: true,
+                    content: [{
+                        type: 'text',
+                        text: `Error: text exceeds maximum length of ${CONFIG.VALIDATION.MAX_TEXT_LENGTH} characters.`
+                    }],
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
+
+        if (args.text.trim().length === 0) {
+            return {
+                toolResult: {
+                    isError: true,
+                    content: [{ type: 'text', text: 'Error: text cannot be empty.' }],
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
+
+        // --- Step 0: Fetch Global Context ---
         let globalContext = '';
         try {
-            const globalNodes = await manager.searchNodes('global_fact', 10); // heuristic fetch
+            const globalNodes = await manager.searchNodes('global_fact', 10);
             const relevantGlobals = globalNodes.nodes.filter(n => n.nodeType === 'global_fact');
             if (relevantGlobals.length > 0) {
                 globalContext = relevantGlobals.map(n => {
                     try {
                         const meta = n.metadata || {};
-                        // Start simplistic: join all values
                         return Object.values(meta).join('. ');
                     } catch { return ''; }
                 }).join('. ');
@@ -114,10 +141,8 @@ export async function handleAutoAddMemory(
             Logger.warn('AutoAdd', 'Failed to fetch global context', e);
         }
 
-        // --- Step 1: Extract entities using LLM (Think Phase) ---
-        // console.error('[AutoAdd] Starting extraction for text:', args.text.substring(0, 50) + '...');
+        // --- Step 1: Extract entities using LLM (Read-Only) ---
         const extraction = await analyzer.extractFromText(args.text, [], globalContext);
-        // console.error('[AutoAdd] Extraction complete. Found entities:', extraction.entities.length);
 
         if (!extraction.entities.length && !extraction.relationships.length) {
             return {
@@ -131,126 +156,74 @@ export async function handleAutoAddMemory(
             };
         }
 
-        // --- Step 2: Critical Section (Write Phase) ---
-        // We use a manual Saga pattern here:
-        // 1. Write SQL (Nodes/Edges) in strict transaction
-        // 2. Generate & Write Embeddings
-        // 3. If Embeddings fail -> COMPENSATE by deleting SQL Nodes (Rollback)
+        // --- Step 2: Pre-Generate Embeddings (Fail-Fast Phase) ---
+        const embeddingMap = new Map<string, number[]>();
+        const canEmbed = process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL;
 
+        if (args.generateEmbeddings !== false && canEmbed) {
+            for (const entity of extraction.entities) {
+                try {
+                    const textForEmbedding = analyzer.summarizeForEmbedding(
+                        entity.name,
+                        entity.nodeType,
+                        entity.metadata
+                    );
+                    const embedding = await analyzer.generateEmbedding(textForEmbedding);
+                    embeddingMap.set(entity.name, embedding);
+                } catch (embedError) {
+                    Logger.error('AutoAdd', `Embedding generation failed for ${entity.name}`, embedError);
+                    throw new Error(`Embedding generation failed: ${embedError instanceof Error ? embedError.message : String(embedError)}`);
+                }
+            }
+        }
+
+        // --- Step 3: Atomic Write (SQL + Vector) ---
         const addedNodes: string[] = [];
         const addedEdges: string[] = [];
+        const vectorsTrackedForRollback: string[] = [];
         const errors: string[] = [];
-        let nodesToRollback: string[] = [];
 
         try {
-            // PART A: SQL Transaction
             await manager.withTransaction(async () => {
                 const extractionNames = extraction.entities.map(e => e.name);
-
-                // Fetch existing nodes to check for conflicts AND VERSIONS
                 const existingResult = await manager.openNodes(extractionNames);
-                const existingNodesMap = new Map(
-                    existingResult.nodes
-                        .filter(n => extractionNames.includes(n.name))
-                        .map(n => [n.name, n])
-                );
+                const existingNodesMap = new Map(existingResult.nodes.map(n => [n.name, n]));
 
                 const nodesToCreate: Node[] = [];
                 const nodesToUpdate: Partial<Node>[] = [];
 
+                // 3a. Prepare Node Records
                 for (const entity of extraction.entities) {
                     const existingNode = existingNodesMap.get(entity.name);
 
                     if (existingNode) {
-                        // [OPTIMISTIC LOCKING CHECK]
-                        // Ideally we pass 'expectedVersion' if we were an API, but here we are the agent.
-                        // We READ just now, so we are safe assuming 'existingNode.version' is current 
-                        // UNLESS high concurrency.
-                        // For now, we will increment version.
-
-                        // [SMART MERGE]
-                        // existingNode.metadata is Record<string, unknown>
                         const currentFacts = existingNode.metadata ? existingNode.metadata : {};
-                        let newMetadata: Record<string, unknown> = { ...currentFacts };
-
-                        // If entity.metadata is present (Record<string, unknown>), we treat its values as 'new facts'
-                        if (entity.metadata && Object.keys(entity.metadata).length > 0) {
-                            try {
-                                const newFactsArray = Object.values(entity.metadata).map(String);
-                                const existingFactsArray = Object.entries(currentFacts).map(([key, val]) => ({
-                                    id: key,
-                                    text: String(val)
-                                }));
-
-                                const updates = await analyzer.determineMemoryUpdates(
-                                    newFactsArray,
-                                    existingFactsArray
-                                );
-
-                                // Apply updates to a temp map
-                                const tempMap = new Map<string, unknown>(Object.entries(currentFacts));
-
-                                updates.forEach(op => {
-                                    if (op.action === 'ADD') {
-                                        // Generate a simple ID for new fact
-                                        tempMap.set(`fact-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, op.text);
-                                    } else if (op.action === 'UPDATE' && op.id && tempMap.has(op.id)) {
-                                        tempMap.set(op.id, op.text);
-                                    } else if (op.action === 'DELETE' && op.id && tempMap.has(op.id)) {
-                                        tempMap.delete(op.id);
-                                    }
-                                });
-
-                                newMetadata = Object.fromEntries(tempMap);
-                            } catch (e) {
-                                Logger.error('AutoAdd', 'Smart merge failed, falling back to merge', e);
-                                // Fallback: just merge new keys in? Or append?
-                                // Since we don't have IDs for new entitymeta, we just spread
-                                newMetadata = { ...currentFacts, ...entity.metadata };
-                            }
-                        }
-
+                        let newMetadata: Record<string, unknown> = { ...currentFacts, ...(entity.metadata || {}) };
                         nodesToUpdate.push({
                             name: entity.name,
                             metadata: newMetadata,
-                            // Drizzle/SQLite helper would need to handle "set version = version + 1"
-                            // For now we just pass the new object, the NodeManager needs to handle version increment
                         });
                     } else {
-                        // [NEW NODE]
                         nodesToCreate.push({
                             type: 'node',
                             name: entity.name,
                             nodeType: entity.nodeType,
                             metadata: entity.metadata,
-                            // version defaults to 1
                         });
                     }
                 }
 
-                // Execute SQL Updates
-                // NOTE: We assume manager methods participate in the transaction context 
-                // (This is a simplification; in a real app, we'd pass 'tx' to manager methods)
-
+                // 3b. Execute SQL Writes
                 if (nodesToCreate.length > 0) {
                     const res = await manager.addNodes(nodesToCreate);
-                    res.forEach(n => {
-                        addedNodes.push(n.name);
-                        nodesToRollback.push(n.name); // Track for potential rollback
-                    });
+                    res.forEach(n => addedNodes.push(n.name));
                 }
 
                 if (nodesToUpdate.length > 0) {
-                    // Use retry logic for concurrency safety
-                    const res = await retryWithBackoff(
-                        () => manager.updateNodes(nodesToUpdate),
-                        3, // Max 3 retries
-                        100 // 100ms base delay
-                    );
+                    const res = await manager.updateNodes(nodesToUpdate);
                     res.forEach(n => addedNodes.push(`${n.name} (Merged)`));
                 }
 
-                // Edges
                 const edgesToAdd: Edge[] = extraction.relationships.map(rel => ({
                     type: 'edge' as const,
                     from: rel.from,
@@ -262,68 +235,42 @@ export async function handleAutoAddMemory(
                     const res = await manager.addEdges(edgesToAdd);
                     res.forEach(e => addedEdges.push(`${e.from} -[${e.edgeType}]-> ${e.to}`));
                 }
+
+                // 3c. Write Vectors (Inside SQL Transaction)
+                if (embeddingMap.size > 0) {
+                    for (const entity of extraction.entities) {
+                        const embedding = embeddingMap.get(entity.name);
+                        if (embedding) {
+                            const vectorRecord: VectorRecord = {
+                                id: `${entity.name}-${Date.now()}`,
+                                text: analyzer.summarizeForEmbedding(entity.name, entity.nodeType, entity.metadata),
+                                vector: embedding,
+                                nodeName: entity.name,
+                                nodeType: entity.nodeType,
+                                metadata: (entity.metadata as Record<string, unknown>) || {}
+                            };
+                            await addVector(vectorRecord);
+                            vectorsTrackedForRollback.push(entity.name);
+                        }
+                    }
+                }
             });
 
-            // PART B: Vector Embeddings (Outside SQL Transaction, but part of SAGA)
-            const canEmbed = process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL;
-            if (args.generateEmbeddings !== false && canEmbed) {
-                // We re-fetch to get cleaner state or just use what we have. 
-                // For simplicity, we iterate what we just touched.
-                const allNames = extraction.entities.map(e => e.name);
+        } catch (transactionError) {
+            Logger.error('AutoAdd', 'Transaction Failed. Rolling back internal state...', transactionError);
 
-                // We need to fetch the LATEST state to ensure embedding matches DB
-                const freshNodes = await manager.openNodes(allNames);
-
-                for (const node of freshNodes.nodes) {
+            // COMPENSATE: Cleanup orphaned vectors if SQL rollback happened after vector writes
+            if (vectorsTrackedForRollback.length > 0) {
+                Logger.warn('AutoAdd', `Cleaning up ${vectorsTrackedForRollback.length} orphaned vectors...`);
+                for (const nodeName of vectorsTrackedForRollback) {
                     try {
-                        const textForEmbedding = analyzer.summarizeForEmbedding(
-                            node.name,
-                            node.nodeType,
-                            node.metadata || {}
-                        );
-                        const embedding = await analyzer.generateEmbedding(textForEmbedding);
-                        const vectorRecord: VectorRecord = {
-                            id: `${node.name}-${Date.now()}`, // Simple versioning for vector
-                            text: textForEmbedding,
-                            vector: embedding,
-                            nodeName: node.name,
-                            nodeType: node.nodeType,
-                            metadata: (node.metadata as Record<string, unknown>) || {}
-                        };
-                        await addVector(vectorRecord);
-                    } catch (embedError) {
-                        Logger.error('AutoAdd', `Embedding failed for ${node.name}`, embedError);
-                        // CRITICAL: SAGA ROLLBACK TRIGGER
-                        throw new Error(`Embedding failed for ${node.name}: ${embedError}`);
+                        await deleteVectorsByNode(nodeName);
+                    } catch (cleanupError) {
+                        Logger.error('AutoAdd', `Failed to cleanup vector for ${nodeName}`, cleanupError);
                     }
                 }
             }
-
-        } catch (transactionError) {
-            Logger.error('AutoAdd', 'Transaction Failed. Initiating Rollback...', transactionError);
-
-            // ROLLBACK: Delete the nodes we created to avoid "Zombie Memories" (Nodes without Vectors)
-            if (nodesToRollback.length > 0) {
-                try {
-                    Logger.warn('AutoAdd', `Rolling back ${nodesToRollback.length} nodes...`);
-                    // We assume deleteNodes is available or we use a raw query
-                    // manager.deleteNodes(nodesToRollback) - assuming this exists or similar
-                    // For now logging it as a TODO since deleteNodes tool exists but maybe not manager method directly exposed?
-                    // Actually manager has 'deleteNodes' if we look at similar patterns, or we use db directly.
-
-                    // EMERGENCY CLEANUP
-                    const db = getSqliteInstance();
-                    const placeholders = nodesToRollback.map(() => '?').join(',');
-                    db.prepare(`DELETE FROM nodes WHERE name IN (${placeholders})`).run(...nodesToRollback);
-                    db.prepare(`DELETE FROM edges WHERE from_node IN (${placeholders}) OR to_node IN (${placeholders})`).run(...nodesToRollback, ...nodesToRollback);
-
-                    console.error('[AutoAdd] Rollback successful.');
-                } catch (rollbackError) {
-                    console.error('[AutoAdd] Rollback FAILED. Data corruption possible.', rollbackError);
-                }
-            }
-
-            throw transactionError; // Re-throw to inform user
+            throw transactionError;
         }
 
         return {
@@ -332,16 +279,16 @@ export async function handleAutoAddMemory(
                 data: {
                     nodesAdded: addedNodes,
                     edgesAdded: addedEdges,
-                    errors: errors.length > 0 ? errors : undefined,
                 },
-                actionTaken: `Extracted and added ${addedNodes.length} entities and ${addedEdges.length} relationships`,
+                actionTaken: `Added ${addedNodes.length} entities and ${addedEdges.length} relationships`,
                 timestamp: new Date().toISOString(),
                 content: [{
                     type: 'text',
-                    text: `Successfully processed: ${addedNodes.length} entities, ${addedEdges.length} relationships${errors.length > 0 ? `. Errors: ${errors.length}` : ''}`,
+                    text: `Successfully added ${addedNodes.length} entities and ${addedEdges.length} relationships.`
                 }],
-            },
+            }
         };
+
     } catch (error) {
         return {
             toolResult: {
@@ -366,6 +313,16 @@ export async function handleSemanticSearch(
     _manager: ApplicationManager
 ): Promise<ToolResponse> {
     try {
+        if (!args.query || typeof args.query !== 'string') {
+            return {
+                toolResult: {
+                    isError: true,
+                    content: [{ type: 'text', text: 'Error: query parameter is required and must be a string.' }],
+                    timestamp: new Date().toISOString()
+                }
+            };
+        }
+
         const canEmbed = process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL;
         if (!canEmbed) {
             return {
@@ -382,26 +339,8 @@ export async function handleSemanticSearch(
             };
         }
 
-        // Generate embedding for query
         const queryEmbedding = await analyzer.generateEmbedding(args.query);
-
-        // Search in vector store
         const results = await searchVectors(queryEmbedding, args.limit || 5);
-
-        if (results.length === 0) {
-            return {
-                toolResult: {
-                    isError: false,
-                    data: [],
-                    actionTaken: 'No matching memories found',
-                    timestamp: new Date().toISOString(),
-                    content: [{
-                        type: 'text',
-                        text: 'No memories found matching the query.',
-                    }],
-                },
-            };
-        }
 
         const formattedResults = results.map((r, i) => ({
             rank: i + 1,
@@ -477,7 +416,6 @@ export async function handleHybridSearch(
             scores.set(res.nodeName, (scores.get(res.nodeName) || 0) + score);
         });
 
-        // Fetch nodes found by semantic search but not by keyword search
         const missingNames = semanticResults
             .map(r => r.nodeName)
             .filter(name => !nodeData.has(name));
@@ -487,7 +425,6 @@ export async function handleHybridSearch(
             extraNodes.nodes.forEach(n => nodeData.set(n.name, n));
         }
 
-        // Final Sort
         const finalResults = Array.from(scores.entries())
             .sort((a, b) => b[1] - a[1])
             .slice(0, limit)
@@ -507,7 +444,7 @@ export async function handleHybridSearch(
                     type: 'text',
                     text: formatGraphAsNarrative({
                         nodes: finalResults.map(r => r.node!).filter(Boolean),
-                        edges: [] // We could potentially pull in edges here too if we wanted deeper narrative
+                        edges: []
                     })
                 }],
             },

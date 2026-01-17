@@ -3,33 +3,56 @@
 import { ISearchManager } from './interfaces/ISearchManager.js';
 import { IManager } from './interfaces/IManager.js';
 import type { Graph, Node, Edge } from '@core/index.js';
+import { GraphQueryEngine } from '@core/graph/GraphQueryEngine.js';
+import type { IStorage } from '@infrastructure/index.js';
 
 /**
  * Implements search-related operations for the knowledge graph.
  * Provides functionality for searching nodes and retrieving graph data.
  */
 export class SearchManager extends IManager implements ISearchManager {
+    private queryEngine: GraphQueryEngine;
+
+    constructor(storage: IStorage) {
+        super(storage);
+        this.queryEngine = new GraphQueryEngine();
+    }
+
+    /**
+     * Initializes the search manager and injects dependencies into Query Engine.
+     */
+    async initialize(): Promise<void> {
+        try {
+            await super.initialize();
+
+            // DEPENDENCY INJECTION (CRIT-6 Fix):
+            // Inject Vector Search and Analyzer into GraphQueryEngine to avoid circular imports in Core.
+            // We import them here (Application Layer) where it acts as the composition root for this subsystem.
+
+            // Dynamic import to ensure modules are loaded
+            const { searchVectors } = await import('@infrastructure/vector/VectorManager.js');
+            const { analyzer } = await import('@application/services/Analyzer.js');
+
+            this.queryEngine.setDependencies(
+                searchVectors,
+                (text: string) => analyzer.generateEmbedding(text)
+            );
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unknown error occurred';
+            throw new Error(`Failed to initialize SearchManager: ${message}`);
+        }
+    }
+
     /**
      * Searches for nodes in the knowledge graph based on a query.
-     * Includes both matching nodes and their immediate neighbors.
+     * Uses GraphQueryEngine's "Vector -> Entry Point -> Subgraph" strategy.
      */
     async searchNodes(query: string, depth: number = 1): Promise<Graph> {
         try {
             this.emit('beforeSearch', { query });
 
-            const graph = await this.storage.loadGraph();
-
-            // Find directly matching nodes
-            const startNodes = graph.nodes.filter(node =>
-                node.name.toLowerCase().includes(query.toLowerCase()) ||
-                node.nodeType.toLowerCase().includes(query.toLowerCase()) ||
-                (node.metadata && Object.entries(node.metadata).some(([k, v]) =>
-                    k.toLowerCase().includes(query.toLowerCase()) ||
-                    String(v).toLowerCase().includes(query.toLowerCase())
-                ))
-            );
-
-            const result = await this.bfsTraverse(startNodes.map(n => n.name), depth, graph);
+            // Delegate to GraphQueryEngine (SQL Recursive CTE + Vector Search)
+            const result = await this.queryEngine.findRelevantSubgraph(query, depth);
 
             this.emit('afterSearch', result);
             return result;
@@ -41,14 +64,33 @@ export class SearchManager extends IManager implements ISearchManager {
 
     /**
      * Retrieves specific nodes and their neighbors from the knowledge graph.
+     * Delegates to GraphQueryEngine.findRelated for each node.
      */
     async openNodes(names: string[], depth: number = 1): Promise<Graph> {
         try {
             this.emit('beforeOpenNodes', { names });
 
-            const graph = await this.storage.loadGraph();
+            const allNodes = new Map<string, Node>();
+            const allEdges: Edge[] = [];
 
-            const result = await this.bfsTraverse(names, depth, graph);
+            // GraphQueryEngine.findRelated is synchronous (better-sqlite3)
+            for (const name of names) {
+                const subgraph = this.queryEngine.findRelated(name, depth);
+                subgraph.nodes.forEach((n: Node) => allNodes.set(n.name, n));
+                subgraph.edges.forEach((e: Edge) => allEdges.push(e));
+            }
+
+            // Deduplicate edges
+            const uniqueEdges = allEdges.filter((e, index, self) =>
+                index === self.findIndex((t) => (
+                    t.from === e.from && t.to === e.to && t.edgeType === e.edgeType
+                ))
+            );
+
+            const result: Graph = {
+                nodes: Array.from(allNodes.values()),
+                edges: uniqueEdges
+            };
 
             this.emit('afterOpenNodes', result);
             return result;
@@ -59,72 +101,8 @@ export class SearchManager extends IManager implements ISearchManager {
     }
 
     /**
-     * Internal BFS traversal to find nodes and edges up to a certain depth.
-     */
-    private async bfsTraverse(startNodeNames: string[], maxDepth: number, graph: Graph): Promise<Graph> {
-        const resultNodes = new Map<string, Node>();
-        const edgeMap = new Map<string, Edge>(); // Use map for deduplication by key
-        const visited = new Set<string>();
-        let queue: string[] = startNodeNames.filter(name =>
-            graph.nodes.some(n => n.name === name)
-        );
-
-        // Track level to stop at maxDepth
-        for (let depth = 0; depth <= maxDepth; depth++) {
-            const nextLevel: string[] = [];
-
-            // Add current queue nodes to results and mark as visited
-            for (const name of queue) {
-                if (!visited.has(name)) {
-                    visited.add(name);
-                    const node = graph.nodes.find(n => n.name === name);
-                    if (node) resultNodes.set(name, node);
-                }
-            }
-
-            // If we are not at the final depth, find neighbors
-            if (depth < maxDepth) {
-                for (const name of queue) {
-                    const connections = graph.edges.filter(e => e.from === name || e.to === name);
-                    for (const edge of connections) {
-                        // Add edge to result
-                        const edgeKey = `${edge.from}-${edge.to}-${edge.edgeType}`;
-                        if (!edgeMap.has(edgeKey)) {
-                            edgeMap.set(edgeKey, edge);
-                        }
-
-                        // Add target to next level if not visited
-                        const neighbor = edge.from === name ? edge.to : edge.from;
-                        if (!visited.has(neighbor)) {
-                            nextLevel.push(neighbor);
-                        }
-                    }
-                }
-            } else {
-                // Final level: still add edges between nodes we already have
-                const currentNames = new Set(resultNodes.keys());
-                graph.edges.forEach(edge => {
-                    if (currentNames.has(edge.from) && currentNames.has(edge.to)) {
-                        const edgeKey = `${edge.from}-${edge.to}-${edge.edgeType}`;
-                        if (!edgeMap.has(edgeKey)) {
-                            edgeMap.set(edgeKey, edge);
-                        }
-                    }
-                });
-            }
-
-            queue = nextLevel;
-            if (queue.length === 0) break;
-        }
-
-        return {
-            nodes: Array.from(resultNodes.values()),
-            edges: Array.from(edgeMap.values())
-        };
-    }
-
-    /**
      * Reads and returns the entire knowledge graph.
+     * (Delegates to generic storage loadGraph as this is a dump, not a traversal)
      */
     async readGraph(limit?: number, offset?: number): Promise<Graph> {
         try {
@@ -135,19 +113,6 @@ export class SearchManager extends IManager implements ISearchManager {
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error occurred';
             throw new Error(`Failed to read graph: ${message}`);
-        }
-    }
-
-    /**
-     * Initializes the search manager.
-     */
-    async initialize(): Promise<void> {
-        try {
-            await super.initialize();
-            // Add any search-specific initialization here
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error occurred';
-            throw new Error(`Failed to initialize SearchManager: ${message}`);
         }
     }
 }

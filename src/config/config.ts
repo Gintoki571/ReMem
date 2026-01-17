@@ -21,7 +21,7 @@ interface PathsConfig {
     DATA_DIR: string;
     SCHEMAS_DIR: string;
     MODULES_DIR: string;
-    MEMORY_FILE: string;
+
 }
 
 interface SchemaConfig {
@@ -68,6 +68,12 @@ interface ValidationConfig {
     MAX_METADATA_ITEMS: number;
 }
 
+interface RateLimitConfig {
+    WINDOW_MS: number;
+    MAX_REQUESTS: number;
+    BLOCK_DURATION_MS: number;
+}
+
 interface Config {
     SERVER: ServerConfig;
     PATHS: PathsConfig;
@@ -78,6 +84,7 @@ interface Config {
     EMBEDDINGS: EmbeddingsConfig;
     LLM: LLMConfig;
     VALIDATION: ValidationConfig;
+    RATE_LIMIT: RateLimitConfig;
 }
 
 /**
@@ -94,7 +101,7 @@ export const CONFIG: Config = {
         DATA_DIR: path.join(PROJECT_ROOT, 'data'),
         SCHEMAS_DIR: path.join(PROJECT_ROOT, 'data', 'schemas'), // Core schemas
         MODULES_DIR: path.join(PROJECT_ROOT, 'src', 'modules'), // Modular schemas/tools
-        MEMORY_FILE: path.join(PROJECT_ROOT, 'data', 'memory.json'),
+
     },
 
     SCHEMA: {
@@ -142,5 +149,11 @@ export const CONFIG: Config = {
         MAX_NODE_NAME_LENGTH: 200,
         MAX_TEXT_LENGTH: 10000,
         MAX_METADATA_ITEMS: 100,
+    },
+
+    RATE_LIMIT: {
+        WINDOW_MS: 60 * 1000, // 1 minute
+        MAX_REQUESTS: 100,    // 100 requests per minute
+        BLOCK_DURATION_MS: 5 * 60 * 1000, // 5 minutes block
     },
 };

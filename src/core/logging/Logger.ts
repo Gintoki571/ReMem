@@ -62,19 +62,19 @@ export class Logger {
 
     public static debug(module: string, message: any, context?: any): void {
         if (this.currentLevel <= LogLevel.DEBUG) {
-            console.debug(this.formatMessage('DEBUG', module, message, context));
+            console.error(this.formatMessage('DEBUG', module, message, context));
         }
     }
 
     public static info(module: string, message: any, context?: any): void {
         if (this.currentLevel <= LogLevel.INFO) {
-            console.info(this.formatMessage('INFO', module, message, context));
+            console.error(this.formatMessage('INFO', module, message, context));
         }
     }
 
     public static warn(module: string, message: any, context?: any): void {
         if (this.currentLevel <= LogLevel.WARN) {
-            console.warn(this.formatMessage('WARN', module, message, context));
+            console.error(this.formatMessage('WARN', module, message, context));
         }
     }
 

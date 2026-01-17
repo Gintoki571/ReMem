@@ -18,8 +18,8 @@ export class GraphQueryEngine {
         // 1. Recursive CTE to find related nodes and edges
         const query = `
             WITH RECURSIVE traverse(node_name, depth, path) AS (
-                -- Base case: Start with the given node
-                SELECT name, 0, name
+                -- Base case: Start with the given node. Uses |delimiter| for robust matching.
+                SELECT name, 0, '|' || name || '|'
                 FROM nodes 
                 WHERE name = ?
                 
@@ -32,13 +32,18 @@ export class GraphQueryEngine {
                         ELSE e.from_node 
                     END,
                     t.depth + 1,
-                    t.path || '->' || CASE 
+                    t.path || CASE 
                         WHEN e.from_node = t.node_name THEN e.to_node 
                         ELSE e.from_node 
-                    END
+                    END || '|'
                 FROM traverse t
                 JOIN edges e ON (e.from_node = t.node_name OR e.to_node = t.node_name)
                 WHERE t.depth < ?
+                -- Prevent cycles: Ensure target node is not already in path
+                AND instr(t.path, '|' || CASE 
+                    WHEN e.from_node = t.node_name THEN e.to_node 
+                    ELSE e.from_node 
+                END || '|') = 0
             )
             SELECT DISTINCT node_name FROM traverse;
         `;
@@ -77,7 +82,7 @@ export class GraphQueryEngine {
         // Recursive CTE to search for a path
         const query = `
             WITH RECURSIVE traverse(current_node, depth, path_string) AS (
-                SELECT name, 0, name
+                SELECT name, 0, '|' || name || '|'
                 FROM nodes 
                 WHERE name = ?
                 
@@ -89,17 +94,18 @@ export class GraphQueryEngine {
                         ELSE e.from_node 
                     END,
                     t.depth + 1,
-                    t.path_string || ',' || CASE 
+                    t.path_string || CASE 
                         WHEN e.from_node = t.current_node THEN e.to_node 
                         ELSE e.from_node 
-                    END
+                    END || '|'
                 FROM traverse t
                 JOIN edges e ON (e.from_node = t.current_node OR e.to_node = t.current_node)
                 WHERE t.depth < ? 
-                AND instr(t.path_string, CASE 
+                -- Critical Cycle Prevention
+                AND instr(t.path_string, '|' || CASE 
                         WHEN e.from_node = t.current_node THEN e.to_node 
                         ELSE e.from_node 
-                    END) = 0 -- Prevent cycles
+                    END || '|') = 0 
             )
             SELECT path_string FROM traverse WHERE current_node = ? LIMIT 1;
         `;
@@ -108,7 +114,7 @@ export class GraphQueryEngine {
 
         if (!result) return null;
 
-        const nodeNames = result.path_string.split(',');
+        const nodeNames = result.path_string.split('|').filter(Boolean);
 
         // Fetch full objects for the path
         const nodesq = `SELECT * FROM nodes WHERE name IN (${nodeNames.map(() => '?').join(',')})`;
@@ -142,6 +148,20 @@ export class GraphQueryEngine {
         };
     }
 
+    private vectorSearchFn?: (q: number[], limit: number) => Promise<any[]>;
+    private embeddingFn?: (text: string) => Promise<number[]>;
+
+    /**
+     * Set dependencies for bridged queries
+     */
+    public setDependencies(
+        vectorSearchFn: (q: number[], limit: number) => Promise<any[]>,
+        embeddingFn: (text: string) => Promise<number[]>
+    ) {
+        this.vectorSearchFn = vectorSearchFn;
+        this.embeddingFn = embeddingFn;
+    }
+
     /**
      * Bridges Vector Search and Graph Traversal.
      * 1. Uses Vector Search to find "Entry Nodes" similar to the query.
@@ -150,30 +170,24 @@ export class GraphQueryEngine {
      * 
      * @param query The search text
      * @param maxDepth Graph traversal depth
-     * @param searchFn Optional override for vector search (for testing)
      */
     public async findRelevantSubgraph(
         query: string,
-        maxDepth: number = 2,
-        searchFn?: (q: number[], limit: number) => Promise<any[]>
+        maxDepth: number = 2
     ): Promise<{ nodes: Node[], edges: Edge[] }> {
-        // Dynamic import to avoid circular dependency if VectorManager imports Analysis/Graph
-        const { searchVectors } = await import('@infrastructure/vector/VectorManager.js');
-        const { analyzer } = await import('@application/services/Analyzer.js');
-
-        // Use injected function or default
-        const performSearch = searchFn || searchVectors;
+        if (!this.vectorSearchFn || !this.embeddingFn) {
+            console.warn('[GraphQueryEngine] Dependencies not set. Creating logical empty result.');
+            return { nodes: [], edges: [] };
+        }
 
         // 1. Get Entry Points via Vector Search
         // We need an embedding for the query.
         let vectorResults: any[] = [];
         try {
-            const queryEmbedding = await analyzer.generateEmbedding(query);
-            vectorResults = await performSearch(queryEmbedding, 3); // Get top 3 entry points
+            const queryEmbedding = await this.embeddingFn(query);
+            vectorResults = await this.vectorSearchFn(queryEmbedding, 3); // Get top 3 entry points
         } catch (e) {
             console.error('[GraphQueryEngine] Vector search failed (resilience fallback):', e);
-            // Fallback: We could do keyword search here if we had access to full DB text search, 
-            // but for now we return empty to avoid crash.
             return { nodes: [], edges: [] };
         }
 

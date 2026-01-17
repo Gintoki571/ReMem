@@ -8,6 +8,7 @@ import { PROMPTS } from '@config/prompts.js';
 import { LLMError } from '@shared/errors/index.js';
 import { retryLLM } from '@utils/retryLLM.js';
 import { Logger } from '@core/logging/Logger.js';
+import { withCircuitBreaker } from '@shared/utils/circuitBreaker.js';
 
 // Schema for extracted entities
 const EntitySchema = z.object({
@@ -45,6 +46,12 @@ const modelName = ENV.LLM_MODEL;
  */
 export class Analyzer {
     private model = openai(modelName);
+    
+    // Circuit breaker protected API calls
+    private protectedGenerateEmbedding = withCircuitBreaker('llm-embeddings', {
+        failureThreshold: 5,
+        resetTimeout: 60000, // 1 minute
+    })((text: string) => this.rawGenerateEmbedding(text));
 
     /**
      * Extract entities and relationships from text
@@ -113,10 +120,9 @@ Text to analyze:
     }
 
     /**
-     * Generate embeddings for text (to be stored in vector DB)
-     * Note: LM Studio may not support embeddings - check ENABLE_EMBEDDINGS env var
+     * Raw embedding generation without circuit breaker protection
      */
-    async generateEmbedding(text: string): Promise<number[]> {
+    private async rawGenerateEmbedding(text: string): Promise<number[]> {
         // Check if embeddings are disabled
         if (process.env.ENABLE_EMBEDDINGS === 'false') {
             console.error('[Analyzer] Embeddings disabled, using placeholder');
@@ -157,6 +163,24 @@ Text to analyze:
                 throw error;
             }
             console.error('[Analyzer] Embedding generation failed, using fallback:', error);
+            return this.simpleHashEmbedding(text);
+        }
+    }
+
+    /**
+     * Public embedding generation with circuit breaker protection
+     */
+    async generateEmbedding(text: string): Promise<number[]> {
+        // Check if embeddings are disabled
+        if (process.env.ENABLE_EMBEDDINGS === 'false') {
+            console.error('[Analyzer] Embeddings disabled, using placeholder');
+            return this.simpleHashEmbedding(text);
+        }
+
+        try {
+            return await this.protectedGenerateEmbedding(text) as Promise<number[]>;
+        } catch (error) {
+            console.error('[Analyzer] Circuit breaker blocked embedding generation, using fallback:', error);
             return this.simpleHashEmbedding(text);
         }
     }

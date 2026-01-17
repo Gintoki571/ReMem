@@ -20,4 +20,6 @@ export abstract class ITransactionManager extends IManager {
     abstract getCurrentGraph(): Graph;
 
     abstract isInTransaction(): boolean;
+
+    abstract withTransaction<T>(operation: () => Promise<T>): Promise<T>;
 }
