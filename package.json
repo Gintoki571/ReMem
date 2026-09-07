@@ -14,6 +14,7 @@
     "lint": "biome check ."
   },
   "dependencies": {
+    "@hajewski/latticedb": "^0.15.0",
     "@huggingface/transformers": "^4.2.0",
     "onnxruntime-node": "^1.29.0",
     "zod": "^3.25.76"
@@ -30,6 +31,7 @@
     "esbuild@0.28.2": true,
     "onnxruntime-node@1.29.0": true,
     "@huggingface/transformers@4.2.0": true,
-    "onnxruntime-node@1.24.3": true
+    "onnxruntime-node@1.24.3": true,
+    "@hajewski/latticedb@0.15.0": true
   }
 }
