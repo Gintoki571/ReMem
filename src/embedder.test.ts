@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Embedder } from "./embedder.js";
+import { MODEL_AVAILABLE } from "./model-availability.js";
 
 let embedder: Embedder;
 
@@ -11,7 +12,7 @@ afterEach(() => {
   // transformers.js models close with the process; no explicit dispose API in v4
 });
 
-describe("Embedder", () => {
+describe.skipIf(!MODEL_AVAILABLE)("Embedder", () => {
   it("returns 768-dim normalized vectors", async () => {
     const vec = await embedder.embed("hello world");
     expect(vec).toHaveLength(768);

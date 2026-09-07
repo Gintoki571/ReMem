@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { MODEL_AVAILABLE } from "../model-availability.js";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const tsx = "npx";
@@ -15,7 +16,7 @@ function runCli(args: string[]): string {
   });
 }
 
-describe("CLI", () => {
+describe.skipIf(!MODEL_AVAILABLE)("CLI", () => {
   beforeAll(() => {
     dataDir = mkdtempSync(join(tmpdir(), "remem-cli-"));
   });

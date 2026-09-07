@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Remem } from "./remem.js";
+import { MODEL_AVAILABLE } from "./model-availability.js";
 
-describe("Remem (system)", () => {
+describe.skipIf(!MODEL_AVAILABLE)("Remem (system)", () => {
   let dir: string;
   let remem: Remem;
 

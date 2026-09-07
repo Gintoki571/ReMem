@@ -27,7 +27,8 @@
       "src/index.ts",
       "src/cli/**",
       "scripts/**",
-      "test/**"
+      "test/**",
+      "src/model-availability.ts"
     ]
   }
 }

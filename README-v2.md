@@ -12,10 +12,10 @@ Local-first long-term memory engine for AI agents. TypeScript, Node 22+.
 
 - [x] Project scaffold, domain types
 - [x] SQLite + FTS5 store (TDD)
-- [ ] Embedding service (GPU + CPU fallback)
-- [ ] Vector recall (KNN + score fusion with FTS)
-- [ ] LatticeDB graph/event layer
-- [ ] MCP server + prime-agent skill
+- [x] Embedding service (ONNX, webgpu + cpu fallback)
+- [x] Vector recall (RRF fusion of vector + FTS, recency + importance)
+- [x] LatticeDB graph/event layer
+- [x] CLI; [ ] MCP server + prime-agent skill
 - [ ] Dogfood from live agent sessions
 
 ## Development
