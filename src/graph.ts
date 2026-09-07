@@ -85,8 +85,8 @@ export class MemoryGraph {
       { id: memoryId },
     );
     return result.rows.map((row) => ({
-      targetId: String(row["targetId"]),
-      type: String(row["type"]),
+      targetId: String(row.targetId),
+      type: String(row.type),
     }));
   }
 
