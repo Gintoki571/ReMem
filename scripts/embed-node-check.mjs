@@ -1,9 +1,8 @@
-
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 // Node-side embedding check for the exported cadet-embed-base-v1 ONNX model.
 // Run: node scripts/embed-node-check.mjs  (models/ dir must exist locally, not committed)
-import { AutoTokenizer, AutoModel } from "@huggingface/transformers";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { AutoModel, AutoTokenizer } from "@huggingface/transformers";
 
 const modelsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "models");
 
@@ -26,11 +25,7 @@ function dot(a, b) {
   return s;
 }
 
-const texts = [
-  "my favorite editor is vim",
-  "i use vim as my editor",
-  "the capital of france is paris",
-];
+const texts = ["my favorite editor is vim", "i use vim as my editor", "the capital of france is paris"];
 const vecs = [];
 for (const t of texts) vecs.push(await embed(t));
 console.log("dim:", vecs[0].length);

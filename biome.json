@@ -12,6 +12,22 @@
     }
   },
   "files": {
-    "includes": ["src/**", "!src/config/**", "!src/integration/**", "!src/modules/**", "!src/tests/**", "!src/utils/**", "!dist/**", "!legacy/**", "!data/**"]
+    "includes": [
+      "src/types.ts",
+      "src/store.ts",
+      "src/store.test.ts",
+      "src/embedder.ts",
+      "src/embedder.test.ts",
+      "src/recall.ts",
+      "src/recall.test.ts",
+      "src/graph.ts",
+      "src/graph.test.ts",
+      "src/remem.ts",
+      "src/remem.test.ts",
+      "src/index.ts",
+      "src/cli/**",
+      "scripts/**",
+      "test/**"
+    ]
   }
 }
