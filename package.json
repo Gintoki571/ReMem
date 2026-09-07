@@ -33,5 +33,8 @@
     "@huggingface/transformers@4.2.0": true,
     "onnxruntime-node@1.24.3": true,
     "@hajewski/latticedb@0.15.0": true
+  },
+  "bin": {
+    "remem": "./dist/cli/cli.js"
   }
 }
