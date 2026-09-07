@@ -29,3 +29,11 @@ lancedb/
 # OS
 .DS_Store
 Thumbs.db
+
+# v2
+node_modules/
+dist/
+.remem-data/
+.agent-notes/
+models/*.onnx
+*.tsbuildinfo
