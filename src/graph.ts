@@ -28,7 +28,7 @@ export class MemoryGraph {
 
   private async findMemoryNodeId(txn: Transaction, memoryId: string): Promise<bigint | null> {
     const result = await txn.query("MATCH (a:Memory {id: $id}) RETURN a", { id: memoryId });
-    const v = result.rows[0]?.["a"];
+    const v = result.rows[0]?.a;
     return typeof v === "bigint" ? v : null;
   }
 
@@ -97,13 +97,17 @@ export class MemoryGraph {
       const row = await this.db.query("MATCH (m:Memory) WHERE id(m) = $nid RETURN m.id AS mid", {
         nid: r.nodeId,
       });
-      const mid = row.rows[0]?.["mid"];
+      const mid = row.rows[0]?.mid;
       if (typeof mid === "string") mapped.push({ id: mid, distance: r.distance });
     }
     return mapped;
   }
 
-  async appendEvent(stream: string, payload: Record<string, string | number | boolean>, kind: string): Promise<void> {
+  async appendEvent(
+    stream: string,
+    payload: Record<string, string | number | boolean>,
+    kind: string,
+  ): Promise<void> {
     await this.db.write(async (txn) => {
       txn.publishStream(stream, payload, kind);
     });
@@ -129,7 +133,7 @@ export class MemoryGraph {
     edgeType: string,
   ): Promise<void> {
     const hubResult = await txn.query("MATCH (h:Hub {id: $id}) RETURN h", { id: hubNodeId });
-    const hubVal = hubResult.rows[0]?.["h"];
+    const hubVal = hubResult.rows[0]?.h;
     let hubId: bigint;
     if (typeof hubVal === "bigint") {
       hubId = hubVal;
