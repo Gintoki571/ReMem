@@ -1631,6 +1631,7 @@ dependencies = [
  "remem-types",
  "rusqlite",
  "serde_json",
+ "sha2",
  "sqlite-vec",
  "zerocopy 0.7.35",
 ]

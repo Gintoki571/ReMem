@@ -9,8 +9,11 @@ CREATE TABLE IF NOT EXISTS memories (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   occurred_at INTEGER,
-  deleted INTEGER NOT NULL DEFAULT 0
+  deleted INTEGER NOT NULL DEFAULT 0,
+  content_hash TEXT
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(content, content='memories', content_rowid='rowid', tokenize='porter unicode61');
 

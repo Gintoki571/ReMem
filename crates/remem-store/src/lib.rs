@@ -44,10 +44,28 @@ impl Store {
         Self::open(path.to_str().unwrap_or_default())
     }
 
+    /// Existing id for this content hash, if any (includes soft-deleted rows).
+    pub fn find_by_hash(&self, hash: &str) -> Option<String> {
+        self.conn
+            .query_row(
+                "SELECT id FROM memories WHERE content_hash = ?1",
+                params![hash],
+                |r| r.get(0),
+            )
+            .optional()
+            .ok()
+            .flatten()
+    }
+
+    /// Insert, or return the existing id when kind+normalized content matches.
     pub fn insert(&self, item: &MemoryItem) -> rusqlite::Result<String> {
+        let hash = content_hash(&item.kind, &item.content);
+        if let Some(existing) = self.find_by_hash(&hash) {
+            return Ok(existing);
+        }
         self.conn.execute(
-            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, deleted)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0)",
+            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, deleted, content_hash)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11)",
             params![
                 item.id,
                 item.kind.as_str(),
@@ -59,6 +77,7 @@ impl Store {
                 item.created_at,
                 item.updated_at,
                 item.occurred_at,
+                hash,
             ],
         )?;
         Ok(item.id.clone())
@@ -82,7 +101,7 @@ impl Store {
     /// Update content/metadata. Keeps id and created_at.
     pub fn update(&self, item: &MemoryItem) -> rusqlite::Result<()> {
         self.conn.execute(
-            "UPDATE memories SET kind = ?2, content = ?3, tags = ?4, agent_id = ?5, session_id = ?6, importance = ?7, updated_at = ?8, occurred_at = ?9
+            "UPDATE memories SET kind = ?2, content = ?3, tags = ?4, agent_id = ?5, session_id = ?6, importance = ?7, updated_at = ?8, occurred_at = ?9, content_hash = ?10
              WHERE id = ?1",
             params![
                 item.id,
@@ -94,6 +113,7 @@ impl Store {
                 item.importance as f64,
                 item.updated_at,
                 item.occurred_at,
+                content_hash(&item.kind, &item.content),
             ],
         )?;
         Ok(())
@@ -196,13 +216,40 @@ impl Store {
 /// Add columns introduced after a database file was first created.
 /// `occurred_at` is nullable, so backfilling is a no-op: old rows read as None.
 fn migrate(conn: &Connection) -> rusqlite::Result<()> {
-    let mut stmt =
-        conn.prepare("SELECT 1 FROM pragma_table_info('memories') WHERE name = 'occurred_at'")?;
-    let present: Option<i64> = stmt.query_row([], |r| r.get(0)).optional()?;
-    if present.is_none() {
+    let has_col = |name: &str| -> rusqlite::Result<bool> {
+        let mut stmt = conn.prepare(
+            "SELECT 1 FROM pragma_table_info('memories') WHERE name = ?1",
+        )?;
+        let present: Option<i64> =
+            stmt.query_row(params![name], |r| r.get(0)).optional()?;
+        Ok(present.is_some())
+    };
+    if !has_col("occurred_at")? {
         conn.execute_batch("ALTER TABLE memories ADD COLUMN occurred_at INTEGER")?;
     }
+    if !has_col("content_hash")? {
+        conn.execute_batch("ALTER TABLE memories ADD COLUMN content_hash TEXT")?;
+    }
+    conn.execute_batch(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash)",
+    )?;
     Ok(())
+}
+
+/// sha256(kind + normalized content). Normalization: trim, collapse
+/// whitespace runs to one space, lowercase.
+pub fn content_hash(kind: &MemoryKind, content: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let normalized: String = content
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+    let mut hasher = Sha256::new();
+    hasher.update(kind.as_str().as_bytes());
+    hasher.update(b"\n");
+    hasher.update(normalized.as_bytes());
+    format!("{:x}", hasher.finalize())
 }
 
 fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryItem> {

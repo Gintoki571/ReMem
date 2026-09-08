@@ -146,6 +146,40 @@ fn list_respects_deleted_flag() {
     assert_eq!(store.list(true).unwrap().len(), 2);
 }
 
+#[test]
+fn duplicate_insert_returns_same_id_and_no_new_row() {
+    let store = Store::open(":memory:").unwrap();
+    let id1 = store.insert(&item("the same lesson twice")).unwrap();
+    let id2 = store.insert(&item("the same lesson twice")).unwrap();
+    assert_eq!(id1, id2);
+    assert_eq!(store.list(false).unwrap().len(), 1);
+}
+
+#[test]
+fn near_duplicate_case_and_whitespace_dedups() {
+    let store = Store::open(":memory:").unwrap();
+    let id1 = store.insert(&item("  Spaced   OUT Lesson ")).unwrap();
+    let id2 = store.insert(&item("spaced out lesson")).unwrap();
+    assert_eq!(id1, id2);
+    assert_eq!(store.list(false).unwrap().len(), 1);
+    assert!(store.find_by_hash("nope").is_none());
+    let hash = remem_store::content_hash(&MemoryKind::Note, "SPACED   out LESSON");
+    assert_eq!(store.find_by_hash(&hash).unwrap(), id1);
+}
+
+#[test]
+fn same_text_different_kind_does_not_dedup() {
+    let store = Store::open(":memory:").unwrap();
+    let mut fact = item("shared text here");
+    fact.kind = MemoryKind::Fact;
+    let mut note = item("shared text here");
+    note.kind = MemoryKind::Note;
+    let id1 = store.insert(&fact).unwrap();
+    let id2 = store.insert(&note).unwrap();
+    assert_ne!(id1, id2);
+    assert_eq!(store.list(false).unwrap().len(), 2);
+}
+
 fn one_hot(i: usize) -> Vec<f32> {
     let mut v = vec![0.0f32; 768];
     v[i] = 1.0;
