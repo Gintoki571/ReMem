@@ -52,3 +52,25 @@ Notes: `--db` overrides the DB path (env `REMEM_DB`, default `~/.remem/remem.db`
 - importance: 0.5 default, 0.9+ for "cost me an hour" lessons.
 - Set --agent to the agent name (prime, or the subagent name) so memories are attributable.
 - Set --session when memories belong to one task thread, and filter recall with --session.
+
+## MCP server
+
+Persistent agents: use MCP tools, not the CLI. Shell scripts and one-off
+terminal work: use the CLI above.
+
+Registration: see `docs/prime-agent-integration.md` (stdio entry in
+`~/.prime/agent/settings.json`, DB path via `REMEM_DB` env only).
+
+Tools (verified against `crates/remem-mcp/src/main.rs` `tools_list()`):
+
+- `remember(kind, content, tags?, agent?, session?, importance?)` - store a memory.
+- `recall(query, k?, agent?, session?, maxChars?, minScore?)` - ranked recall.
+- `list(limit?)` - newest memories first.
+- `link(from, to, rel?)` - link two memories in the graph.
+- `forget(id)` - delete a memory by id.
+- `purge(id)` - hard-delete row, FTS and vector entries.
+- `stats()` - database and graph counts.
+- `validate()` - store/graph consistency issues (empty means healthy).
+- `related(id, rel?)` - graph neighbors as [{id, rel}].
+- `central(limit?)` - top PageRank memories as [{id, score}].
+- `path(from, to)` - shortest memory-to-memory path (empty if unreachable).
