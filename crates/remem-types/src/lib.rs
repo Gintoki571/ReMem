@@ -77,6 +77,26 @@ impl MemoryItem {
         }
     }
 
+    /// Clamp an importance value to 0.0..=1.0. NaN (and NULL on read) -> 0.5.
+    pub fn clamp_importance(v: f32) -> f32 {
+        if v.is_nan() {
+            0.5
+        } else {
+            v.clamp(0.0, 1.0)
+        }
+    }
+
+    /// Builder: set importance, clamped to 0.0..=1.0 (NaN -> 0.5).
+    pub fn with_importance(mut self, v: f32) -> Self {
+        self.importance = Self::clamp_importance(v);
+        self
+    }
+
+    /// Setter: assign importance, clamped to 0.0..=1.0 (NaN -> 0.5).
+    pub fn set_importance(&mut self, v: f32) {
+        self.importance = Self::clamp_importance(v);
+    }
+
     /// The event clock: when it happened if known, else when it was stored.
     pub fn event_time(&self) -> i64 {
         self.occurred_at.unwrap_or(self.created_at)
@@ -105,4 +125,21 @@ pub struct RecallHit {
     pub item: MemoryItem,
     pub score: f64,
     pub reasons: Vec<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn importance_clamped_to_unit_range() {
+        let mk = |v: f32| {
+            MemoryItem::new(MemoryKind::Fact, "x".into()).with_importance(v).importance
+        };
+        assert_eq!(mk(999.0), 1.0);
+        assert_eq!(mk(-5.0), 0.0);
+        assert_eq!(mk(f32::NAN), 0.5);
+        assert_eq!(mk(0.7), 0.7);
+        assert_eq!(MemoryItem::clamp_importance(f32::INFINITY), 1.0);
+    }
 }

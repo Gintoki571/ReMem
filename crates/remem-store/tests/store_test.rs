@@ -26,6 +26,23 @@ fn insert_get_roundtrip() {
 }
 
 #[test]
+fn insert_with_out_of_range_importance_reads_back_clamped() {
+    let store = Store::open(":memory:").unwrap();
+    for (content, v, want) in [
+        ("clamp high", 999.0f32, 1.0f32),
+        ("clamp low", -5.0, 0.0),
+        ("clamp nan", f32::NAN, 0.5),
+        ("clamp normal", 0.7, 0.7),
+    ] {
+        let mut m = item(content);
+        m.importance = v;
+        let id = store.insert(&m).unwrap();
+        let got = store.get(&id).unwrap().unwrap().importance;
+        assert_eq!(got, want, "content={content} v={v}");
+    }
+}
+
+#[test]
 fn fts_finds_keywords_and_ranks() {
     let store = Store::open(":memory:").unwrap();
     let a = item("the parser walks the token stream");

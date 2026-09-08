@@ -96,7 +96,7 @@ impl Store {
                 serde_json::to_string(&item.tags).expect("tags serialize"),
                 item.agent_id,
                 item.session_id,
-                item.importance as f64,
+                MemoryItem::clamp_importance(item.importance) as f64,
                 item.created_at,
                 item.updated_at,
                 item.occurred_at,
@@ -131,7 +131,7 @@ impl Store {
                 serde_json::to_string(&item.tags).expect("tags serialize"),
                 item.agent_id,
                 item.session_id,
-                item.importance as f64,
+                MemoryItem::clamp_importance(item.importance) as f64,
                 item.updated_at,
                 item.occurred_at,
                 content_hash(&item.kind, &item.content),
@@ -322,7 +322,9 @@ fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryItem> {
         tags,
         agent_id: row.get(4)?,
         session_id: row.get(5)?,
-        importance: row.get::<_, f64>(6)? as f32,
+        // SQLite stores NaN REALs as NULL, so a hostile/legacy row can be
+        // NULL or out of range here; clamp back to 0.0..=1.0 (NULL/NaN -> 0.5).
+        importance: MemoryItem::clamp_importance(row.get::<_, Option<f64>>(6)?.unwrap_or(0.5) as f32),
         created_at: row.get(7)?,
         updated_at: row.get(8)?,
         occurred_at: row.get(9)?,
