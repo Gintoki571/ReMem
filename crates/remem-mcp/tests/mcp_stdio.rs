@@ -215,3 +215,39 @@ fn remember_recall_link_stats_roundtrip() {
     let resp = c.request("tools/call", json!({"name": "nope", "arguments": {}}));
     assert_eq!(resp["result"]["isError"], json!(true));
 }
+
+#[test]
+fn related_returns_linked_neighbor_and_unknown_empty() {
+    let mut c = Client::spawn(&temp_db("related"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+
+    let a: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "mcp related alpha token"}),
+    );
+    let b: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "mcp related beta token"}),
+    );
+    let ida = a["id"].as_str().unwrap().to_string();
+    let idb = b["id"].as_str().unwrap().to_string();
+
+    let _: Value = c.call("link", json!({"from": ida, "to": idb, "rel": "refutes"}));
+
+    let rel: Value = c.call("related", json!({"id": ida}));
+    let arr = rel.as_array().unwrap();
+    assert!(
+        arr.iter().any(|n| n["id"] == idb && n["rel"] == "refutes"),
+        "expected linked neighbor: {rel:?}"
+    );
+
+    let filtered: Value = c.call("related", json!({"id": ida, "rel": "supports"}));
+    assert_eq!(filtered, json!([]), "rel filter mismatch: {filtered:?}");
+
+    let unknown: Value = c.call("related", json!({"id": "does-not-exist"}));
+    assert_eq!(unknown, json!([]), "unknown id: {unknown:?}");
+}

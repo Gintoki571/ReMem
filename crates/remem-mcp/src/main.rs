@@ -107,6 +107,11 @@ fn tools_list() -> Value {
         {"name": "validate", "description": "Validate store/graph consistency; returns a list of issues (empty means healthy).",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object", "properties": {}}},
+        {"name": "related", "description": "Graph neighbors of a memory id as [{id, rel}]. Optional rel filters by edge type.",
+         "annotations": {"readOnlyHint": true, "destructiveHint": false},
+         "inputSchema": {"type": "object",
+            "properties": {"id": {"type": "string"}, "rel": {"type": "string"}},
+            "required": ["id"]}},
     ])
 }
 
@@ -210,6 +215,22 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                 }
             }
             Ok(serde_json::to_string(&json!({"purged": purged}))?)
+        }
+        "related" => {
+            let id = str_arg(args, "id").ok_or_else(|| anyhow!("related: missing 'id'"))?;
+            let g = eng
+                .graph()
+                .ok_or_else(|| anyhow!("engine has no graph open"))?;
+            let rel_filter = str_arg(args, "rel").unwrap_or_default();
+            let mut out: Vec<Value> = g
+                .neighbors(&id)
+                .map_err(|e| anyhow!("graph neighbors: {e}"))?
+                .into_iter()
+                .filter(|(_, rel)| rel_filter.is_empty() || rel == &rel_filter)
+                .map(|(nid, rel)| json!({"id": nid, "rel": rel}))
+                .collect();
+            out.sort_by(|a, b| a["id"].as_str().cmp(&b["id"].as_str()));
+            Ok(serde_json::to_string(&out)?)
         }
         "stats" => Ok(serde_json::to_string(&eng.stats()?)?),
         "validate" => {
