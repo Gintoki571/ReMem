@@ -19,5 +19,5 @@ Same engine wiring as the `remem` CLI: real local embedder with
 ## Tools
 
 `remember(kind, content, tags?, agent?, session?, importance?)`,
-`recall(query, k?, agent?, session?, maxChars?)`, `list(limit?)`,
+`recall(query, k?, agent?, session?, maxChars?, minScore?)`, `list(limit?)`,
 `link(from, to, rel?)`, `related(id, rel?)`, `forget(id)`, `purge(id)`, `stats`, `validate`.

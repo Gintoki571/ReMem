@@ -159,7 +159,7 @@ fn tools_list() -> Value {
          "inputSchema": {"type": "object",
             "properties": {"query": {"type": "string"}, "k": {"type": "integer"},
                 "agent": {"type": "string"}, "session": {"type": "string"},
-                "maxChars": {"type": "integer"}},
+                "maxChars": {"type": "integer"}, "minScore": {"type": "number"}},
             "required": ["query"]}},
         {"name": "list", "description": "List stored memories (newest first).",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
@@ -261,6 +261,13 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                     None => return Err(anyhow!("recall: 'k' must be a non-negative integer")),
                 },
             };
+            let min_score = match args.get("minScore") {
+                None | Some(Value::Null) => None,
+                Some(v) => Some(
+                    v.as_f64()
+                        .ok_or_else(|| anyhow!("recall: 'minScore' must be a number"))?,
+                ),
+            };
             let q = RecallQuery {
                 text: query,
                 k,
@@ -272,7 +279,13 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                     .map(|v| v as usize),
                 ..Default::default()
             };
-            let hits = eng.recall(&q)?;
+            // Floor lives on the engine (same pattern as the CLI's
+            // `--min-score`): a fresh engine on the same DB applies it.
+            // Unfiltered calls reuse the shared engine, no reopen.
+            let hits = match min_score {
+                None => eng.recall(&q)?,
+                Some(ms) => engine()?.with_min_score(ms).recall(&q)?,
+            };
             let v: Vec<Value> = hits
                 .iter()
                 .map(|h| {

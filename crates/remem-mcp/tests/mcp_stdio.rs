@@ -472,3 +472,53 @@ fn recall_and_remember_coercions_error_loudly() {
     let unknown: Value = c.call("related", json!({"id": "does-not-exist"}));
     assert_eq!(unknown, json!([]), "unknown related stays []: {unknown:?}");
 }
+
+#[test]
+fn recall_min_score_filters_below_floor() {
+    let mut c = Client::spawn(&temp_db("minscore"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+
+    // tools/list exposes the optional minScore arg.
+    let resp = c.request("tools/list", json!({}));
+    let tools = resp["result"]["tools"].as_array().unwrap();
+    let recall = tools.iter().find(|t| t["name"] == "recall").unwrap();
+    assert!(
+        recall["inputSchema"]["properties"].get("minScore").is_some(),
+        "recall schema missing minScore: {recall:?}"
+    );
+
+    let _: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "minscore floor check delta token"}),
+    );
+
+    let hits: Value = c.call("recall", json!({"query": "minscore floor check delta", "k": 5}));
+    let hits = hits.as_array().unwrap();
+    assert!(!hits.is_empty(), "unfiltered recall must return hits");
+    assert!(
+        hits.iter().all(|h| h["score"].as_f64().unwrap() < 1.0),
+        "fixture scores must sit below the 1.0 floor: {hits:?}"
+    );
+
+    let floored: Value = c.call(
+        "recall",
+        json!({"query": "minscore floor check delta", "k": 5, "minScore": 1.0}),
+    );
+    assert_eq!(floored, json!([]), "minScore 1.0 must floor all hits: {floored:?}");
+
+    // Non-number minScore errors loudly, like k.
+    let resp = c.request(
+        "tools/call",
+        json!({"name": "recall",
+            "arguments": {"query": "minscore floor check delta", "minScore": "high"}}),
+    );
+    assert_eq!(
+        resp["result"]["isError"],
+        json!(true),
+        "minScore str: {resp:?}"
+    );
+}
