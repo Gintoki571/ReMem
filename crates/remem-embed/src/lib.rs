@@ -1,0 +1,223 @@
+//! Local embedding runtime: BERT mean-pool + L2 norm (matches v2 behavior).
+//! GPU first via `Device::cuda_if_available`, CPU fallback that always works.
+//! Enable the `cuda` feature for a CUDA-capable build; without it every
+//! load resolves to CPU.
+
+use std::path::{Path, PathBuf};
+
+use anyhow::{Context, Result};
+use candle_core::{DType, Device, Tensor};
+use candle_nn::VarBuilder;
+use candle_transformers::models::bert::{BertModel, Config};
+
+/// Model dir default; override with `REMEM_EMBED_MODEL_DIR`.
+pub const DEFAULT_MODEL_DIR: &str = "/home/bindesh/rag/cadet-embed-base-v1";
+/// Truncate inputs to BERT's position limit.
+pub const MAX_LEN: usize = 512;
+
+pub trait Embedder: Send + Sync {
+    fn embed(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>>;
+    fn dims(&self) -> usize;
+}
+
+pub struct LocalEmbedder {
+    model: BertModel,
+    tokenizer: tokenizers::Tokenizer,
+    device: Device,
+    dims: usize,
+}
+
+impl Embedder for LocalEmbedder {
+    fn embed(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>> {
+        if texts.is_empty() {
+            return Ok(vec![]);
+        }
+        let encs = self
+            .tokenizer
+            .encode_batch(texts.to_vec(), true)
+            .map_err(|e| anyhow::anyhow!("tokenize: {e}"))?;
+        let width = encs
+            .iter()
+            .map(|e| e.len())
+            .max()
+            .unwrap_or(0)
+            .clamp(1, MAX_LEN);
+        let n = texts.len();
+        let mut ids = Vec::with_capacity(n * width);
+        let mut mask = Vec::with_capacity(n * width);
+        for e in &encs {
+            let take = e.len().min(width);
+            ids.extend_from_slice(&e.get_ids()[..take]);
+            mask.extend_from_slice(&e.get_attention_mask()[..take]);
+            ids.extend(std::iter::repeat_n(0u32, width - take));
+            mask.extend(std::iter::repeat_n(0u32, width - take));
+        }
+        let input_ids = Tensor::new(ids, &self.device)?.reshape((n, width))?;
+        let attn = Tensor::new(mask, &self.device)?.reshape((n, width))?;
+        let type_ids = Tensor::zeros((n, width), DType::U32, &self.device)?;
+        let hidden = self.model.forward(&input_ids, &type_ids, Some(&attn))?;
+        // Mean-pool over real tokens in plain Rust (avoids broadcast-shape
+        // surprises), then L2-normalize.
+        let h3: Vec<Vec<Vec<f32>>> = hidden.to_vec3()?;
+        let m2: Vec<Vec<u32>> = attn.to_vec2()?;
+        let dim = h3[0][0].len();
+        let mut out = Vec::with_capacity(n);
+        for (h, m) in h3.iter().zip(m2.iter()) {
+            let mut acc = vec![0.0f32; dim];
+            let mut count = 0.0f32;
+            for (tok, &on) in h.iter().zip(m.iter()) {
+                if on == 0 {
+                    continue;
+                }
+                for (a, &x) in acc.iter_mut().zip(tok.iter()) {
+                    *a += x;
+                }
+                count += 1.0;
+            }
+            let count = count.max(1.0);
+            for a in acc.iter_mut() {
+                *a /= count;
+            }
+            let norm: f32 = acc.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-12);
+            for a in acc.iter_mut() {
+                *a /= norm;
+            }
+            out.push(acc);
+        }
+        Ok(out)
+    }
+
+    fn dims(&self) -> usize {
+        self.dims
+    }
+}
+
+impl LocalEmbedder {
+    pub fn device_name(&self) -> String {
+        format!("{:?}", self.device)
+    }
+}
+
+pub fn model_dir() -> PathBuf {
+    std::env::var("REMEM_EMBED_MODEL_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from(DEFAULT_MODEL_DIR))
+}
+
+/// GPU first, CPU fallback. Never fails on device selection itself.
+pub fn load() -> Result<LocalEmbedder> {
+    load_from(&model_dir())
+}
+
+pub fn load_from(dir: &Path) -> Result<LocalEmbedder> {
+    let device = Device::cuda_if_available(0).unwrap_or(Device::Cpu);
+    load_from_with_device(dir, device)
+}
+
+fn load_from_with_device(dir: &Path, device: Device) -> Result<LocalEmbedder> {
+    let config: Config = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("config.json")).context("read config.json")?,
+    )
+    .context("parse config.json")?;
+    let weights = dir.join("model.safetensors");
+    // Safe: file is trusted local weights, mapped read-only.
+    let vb = unsafe { VarBuilder::from_mmaped_safetensors(&[weights], DType::F32, &device)? };
+    let model = BertModel::load(vb, &config).context("load bert weights")?;
+    let tokenizer = tokenizers::Tokenizer::from_file(dir.join("tokenizer.json"))
+        .map_err(|e| anyhow::anyhow!("load tokenizer.json: {e}"))?;
+    Ok(LocalEmbedder {
+        model,
+        tokenizer,
+        device,
+        dims: config.hidden_size,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::OnceLock;
+
+    static MODEL: OnceLock<LocalEmbedder> = OnceLock::new();
+
+    fn model() -> &'static LocalEmbedder {
+        MODEL.get_or_init(|| load().expect("load local bert model"))
+    }
+
+    fn cos(a: &[f32], b: &[f32]) -> f32 {
+        let (mut d, mut na, mut nb) = (0.0, 0.0, 0.0);
+        for (x, y) in a.iter().zip(b.iter()) {
+            d += x * y;
+            na += x * x;
+            nb += y * y;
+        }
+        d / (na.sqrt() * nb.sqrt())
+    }
+
+    const RELATED_A: &str = "The cat sat on the mat.";
+    const RELATED_B: &str = "A cat rests on a rug.";
+    const UNRELATED: &str = "Quantum chromodynamics fixes the gluon gauge.";
+
+    fn have_model() -> bool {
+        let ok = model_dir().join("config.json").exists();
+        if !ok {
+            eprintln!("skip: no local model at {}", model_dir().display());
+        }
+        ok
+    }
+
+    #[test]
+    fn dims_are_768() {
+        if !have_model() {
+            return;
+        }
+        assert_eq!(model().dims(), 768);
+        let v = model().embed(&[RELATED_A]).unwrap();
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].len(), 768);
+    }
+
+    #[test]
+    fn vectors_are_l2_normalized() {
+        if !have_model() {
+            return;
+        }
+        let vs = model().embed(&[RELATED_A, UNRELATED]).unwrap();
+        for v in &vs {
+            let n: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
+            assert!((n - 1.0).abs() < 1e-4, "norm was {n}");
+        }
+    }
+
+    #[test]
+    fn related_scores_higher_than_unrelated() {
+        if !have_model() {
+            return;
+        }
+        let vs = model().embed(&[RELATED_A, RELATED_B, UNRELATED]).unwrap();
+        let related = cos(&vs[0], &vs[1]);
+        let unrelated = cos(&vs[0], &vs[2]);
+        assert!(
+            related > unrelated,
+            "related={related} unrelated={unrelated}"
+        );
+    }
+
+    #[test]
+    fn empty_batch_is_empty() {
+        if !have_model() {
+            return;
+        }
+        assert!(model().embed(&[]).unwrap().is_empty());
+    }
+
+    #[test]
+    #[ignore = "needs CUDA GPU; run with -- --ignored (and --features cuda for device GPU)"]
+    fn gpu_embed_smoke() {
+        let device = Device::new_cuda(0).expect("CUDA device");
+        assert!(device.is_cuda());
+        let m = load_from_with_device(&model_dir(), device).expect("load on cuda");
+        let v = m.embed(&[RELATED_A]).unwrap();
+        assert_eq!(v[0].len(), 768);
+    }
+}

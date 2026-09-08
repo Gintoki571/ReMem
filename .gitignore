@@ -42,3 +42,6 @@ models/special_tokens_map.json
 models/vocab.txt
 models/config.json
 *.tsbuildinfo
+
+# Rust v3
+target/

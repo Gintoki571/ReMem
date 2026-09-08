@@ -1,0 +1,9 @@
+[workspace]
+members = [
+  "crates/remem-types",
+  "crates/remem-store",
+  "crates/remem-graph",
+  "crates/remem-embed",
+  "crates/remem-recall",
+]
+resolver = "2"

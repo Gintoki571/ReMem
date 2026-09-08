@@ -1,0 +1,13 @@
+[package]
+name = "remem-graph"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+remem-types = { path = "../remem-types" }
+rusqlite = { version = "0.32", features = ["bundled"] }
+graphqlite = "0.8"
+serde_json = "1"
+
+[dev-dependencies]
+sqlite-vec = "0.1.9"

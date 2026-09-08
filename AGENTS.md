@@ -46,3 +46,31 @@ npx tsx src/cli/cli.ts recall "<query>" --k 5
 ```
 
 Save: non-obvious bug fixes (mistake), design rationale (decision), environment facts (fact). Recall before touching unfamiliar code. See skills/remem/SKILL.md.
+
+## v3 (Rust, this branch family)
+
+Branches: `main` = legacy v1 (do not modify). `v2` = TypeScript engine. `v3` = Rust engine (active).
+
+```bash
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --check
+```
+
+All three green before commit. CI enforces fmt + clippy + test on every push.
+
+### Layout
+
+- `crates/remem-types` - shared domain types (MemoryKind/Item, RecallQuery/Hit). Additive changes only.
+- `crates/remem-store` - rusqlite bundled + sqlite-vec **=0.1.9** (0.1.10-alpha.4 does not compile: missing sqlite-vec-diskann.c). Schema in `schema.sql`.
+- `crates/remem-graph` - graphqlite 0.8 over the same file. Hub ids `agent:`/`session:` namespaced; `neighbors()` returns Memory mids only.
+- `crates/remem-embed` - candle BERT (cadet-embed-base-v1), GPU via `--features cuda`, CPU fallback default. Tests skip when model dir absent (CI).
+- `crates/remem-recall` - RRF fusion + `remem` binary. Real embedder wired in `main.rs` with stub fallback.
+
+### Agent memory protocol (dogfood v3)
+
+```bash
+export REMEM_DB="$HOME/.remem/remem.db"
+./target/debug/remem remember <kind> "<content>" --tags t1,t2 --agent <name> --importance 0.8
+./target/debug/remem recall "<query>" --k 5 [--agent x] [--session y]
+```

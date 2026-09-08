@@ -1,0 +1,230 @@
+//! SQLite-backed memory store: relational table + FTS5 index + vec0 ANN index.
+use std::path::Path;
+use std::sync::Once;
+
+use remem_types::{MemoryItem, MemoryKind};
+use rusqlite::ffi::sqlite3_auto_extension;
+use rusqlite::{params, Connection, OptionalExtension};
+
+const SCHEMA: &str = include_str!("../schema.sql");
+
+static REGISTER_VEC: Once = Once::new();
+
+/// Load the sqlite-vec extension into every future connection.
+/// Idempotent; rusqlite bundles SQLite with extension support compiled in.
+pub fn register_vec_extension() {
+    REGISTER_VEC.call_once(|| unsafe {
+        type VecInit = unsafe extern "C" fn(
+            *mut rusqlite::ffi::sqlite3,
+            *mut *mut i8,
+            *const rusqlite::ffi::sqlite3_api_routines,
+        ) -> i32;
+        sqlite3_auto_extension(Some(std::mem::transmute::<*const (), VecInit>(
+            sqlite_vec::sqlite3_vec_init as *const (),
+        )));
+    });
+}
+
+pub struct Store {
+    conn: Connection,
+}
+
+impl Store {
+    pub fn open(path: &str) -> rusqlite::Result<Self> {
+        register_vec_extension();
+        let conn = Connection::open(path)?;
+        conn.pragma_update(None, "journal_mode", "WAL")?;
+        conn.execute_batch(SCHEMA)?;
+        Ok(Self { conn })
+    }
+
+    /// Open with an explicit path (not ":memory:").
+    pub fn open_path(path: &Path) -> rusqlite::Result<Self> {
+        Self::open(path.to_str().unwrap_or_default())
+    }
+
+    pub fn insert(&self, item: &MemoryItem) -> rusqlite::Result<String> {
+        self.conn.execute(
+            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, deleted)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0)",
+            params![
+                item.id,
+                item.kind.as_str(),
+                item.content,
+                serde_json::to_string(&item.tags).expect("tags serialize"),
+                item.agent_id,
+                item.session_id,
+                item.importance as f64,
+                item.created_at,
+                item.updated_at,
+            ],
+        )?;
+        Ok(item.id.clone())
+    }
+
+    /// Returns None for unknown or soft-deleted ids.
+    /// PK lookup on a healthy database cannot fail; an error surfaces as None.
+    pub fn get(&self, id: &str) -> Option<MemoryItem> {
+        self.conn
+            .query_row(
+                "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at
+                 FROM memories WHERE id = ?1 AND deleted = 0",
+                params![id],
+                row_to_item,
+            )
+            .optional()
+            .ok()
+            .flatten()
+    }
+
+    /// Update content/metadata. Keeps id and created_at.
+    pub fn update(&self, item: &MemoryItem) -> rusqlite::Result<()> {
+        self.conn.execute(
+            "UPDATE memories SET kind = ?2, content = ?3, tags = ?4, agent_id = ?5, session_id = ?6, importance = ?7, updated_at = ?8
+             WHERE id = ?1",
+            params![
+                item.id,
+                item.kind.as_str(),
+                item.content,
+                serde_json::to_string(&item.tags).expect("tags serialize"),
+                item.agent_id,
+                item.session_id,
+                item.importance as f64,
+                item.updated_at,
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// Soft-delete: sets deleted = 1. get/fts_search/knn then skip the row.
+    pub fn delete(&self, id: &str) -> rusqlite::Result<()> {
+        self.conn.execute(
+            "UPDATE memories SET deleted = 1, updated_at = ?2 WHERE id = ?1 AND deleted = 0",
+            params![id, MemoryItem::now()],
+        )?;
+        Ok(())
+    }
+
+    pub fn list(&self, include_deleted: bool) -> rusqlite::Result<Vec<MemoryItem>> {
+        let sql = format!(
+            "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at
+             FROM memories {} ORDER BY created_at DESC, rowid DESC",
+            if include_deleted { "" } else { "WHERE deleted = 0" }
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows = stmt.query_map([], row_to_item)?;
+        rows.collect()
+    }
+
+    /// FTS5 match with bm25 rank. More negative = better match.
+    pub fn fts_search(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> rusqlite::Result<Vec<(MemoryItem, f32)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, rank
+             FROM memories_fts f
+             JOIN memories m ON m.rowid = f.rowid
+             WHERE memories_fts MATCH ?2 AND m.deleted = 0
+             ORDER BY rank
+             LIMIT ?3",
+        )?;
+        let rows = stmt.query_map(
+            params![limit as i64, fts_quote(query), limit as i64],
+            |row| {
+                let item = row_to_item(row)?;
+                let rank: f64 = row.get(9)?;
+                Ok((item, rank as f32))
+            },
+        )?;
+        rows.collect()
+    }
+
+    /// Store (or overwrite) the embedding for a memory. 768 dims required.
+    pub fn set_embedding(&self, id: &str, vec: &[f32]) -> rusqlite::Result<()> {
+        check_dims(vec.len())?;
+        let rowid: i64 = self
+            .conn
+            .query_row(
+                "SELECT rowid FROM memories WHERE id = ?1",
+                params![id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .ok_or_else(|| {
+                rusqlite::Error::InvalidParameterName(format!("unknown memory id: {id}"))
+            })?;
+        // vec0 has no UPSERT; delete-then-insert.
+        self.conn
+            .execute("DELETE FROM mem_vec WHERE rowid = ?1", params![rowid])?;
+        self.conn.execute(
+            "INSERT INTO mem_vec(rowid, embedding) VALUES (?1, ?2)",
+            params![rowid, serialize_f32(vec)],
+        )?;
+        Ok(())
+    }
+
+    /// k nearest by L2 distance. Skips memories with no embedding or soft-deleted.
+    /// k > stored vectors returns all of them.
+    pub fn knn(&self, query: &[f32], k: usize) -> rusqlite::Result<Vec<(String, f32)>> {
+        check_dims(query.len())?;
+        let mut stmt = self.conn.prepare(
+            "SELECT m.id, v.distance
+             FROM mem_vec v
+             JOIN memories m ON m.rowid = v.rowid
+             WHERE m.deleted = 0 AND v.embedding MATCH ?1 AND v.k = ?2
+             ORDER BY v.distance",
+        )?;
+        let rows = stmt.query_map(params![serialize_f32(query), k as i64], |row| {
+            let id: String = row.get(0)?;
+            let dist: f64 = row.get(1)?;
+            Ok((id, dist as f32))
+        })?;
+        rows.collect()
+    }
+
+    /// Escape hatch for graph/cypher coexistence checks; not part of the store API.
+    pub fn connection(&self) -> &Connection {
+        &self.conn
+    }
+}
+
+fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryItem> {
+    let tags_json: String = row.get(3)?;
+    Ok(MemoryItem {
+        id: row.get(0)?,
+        kind: MemoryKind::parse(&row.get::<_, String>(1)?).unwrap_or(MemoryKind::Note),
+        content: row.get(2)?,
+        tags: serde_json::from_str(&tags_json).unwrap_or_default(),
+        agent_id: row.get(4)?,
+        session_id: row.get(5)?,
+        importance: row.get::<_, f64>(6)? as f32,
+        created_at: row.get(7)?,
+        updated_at: row.get(8)?,
+    })
+}
+
+/// Escape a user query into a safe FTS5 one: each whitespace token becomes a
+/// double-quoted term (implicit AND). Prevents FTS5 syntax errors and column
+/// filters from raw input like "foo-bar" or embedded quotes.
+fn fts_quote(query: &str) -> String {
+    query
+        .split_whitespace()
+        .map(|term| format!("\"{}\"", term.replace('"', "\"\"\"")))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn check_dims(n: usize) -> rusqlite::Result<()> {
+    if n != 768 {
+        return Err(rusqlite::Error::InvalidParameterName(format!(
+            "embedding must be 768 dims, got {n}"
+        )));
+    }
+    Ok(())
+}
+
+fn serialize_f32(v: &[f32]) -> Vec<u8> {
+    v.iter().flat_map(|f| f.to_le_bytes()).collect()
+}
