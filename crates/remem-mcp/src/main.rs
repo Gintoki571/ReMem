@@ -67,7 +67,8 @@ fn engine() -> Result<RecallEngine> {
 
 fn tools_list() -> Value {
     json!([
-        {"name": "remember", "description": "Store a memory. kind is one of fact|decision|mistake|preference|event|note.",
+        {"name": "remember", "description": "Store a memory. kind is one of fact|decision|mistake|preference|event|note. Be selective: store durable facts, decisions, mistakes, and preferences that would be useful to recall in 6 months. Do NOT store transient chatter, verbatim logs, greetings/filler, or anything already remembered.",
+         "annotations": {"readOnlyHint": false, "destructiveHint": false},
          "inputSchema": {"type": "object",
             "properties": {"kind": {"type": "string"}, "content": {"type": "string"},
                 "tags": {"type": "array", "items": {"type": "string"}},
@@ -75,19 +76,23 @@ fn tools_list() -> Value {
                 "importance": {"type": "number"}},
             "required": ["kind", "content"]}},
         {"name": "recall", "description": "Ranked recall over stored memories.",
+         "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object",
             "properties": {"query": {"type": "string"}, "k": {"type": "integer"},
                 "agent": {"type": "string"}, "session": {"type": "string"}},
             "required": ["query"]}},
         {"name": "list", "description": "List stored memories (newest first).",
+         "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object",
             "properties": {"limit": {"type": "integer"}}}},
         {"name": "link", "description": "Link two memories in the graph.",
+         "annotations": {"readOnlyHint": false, "destructiveHint": false},
          "inputSchema": {"type": "object",
             "properties": {"from": {"type": "string"}, "to": {"type": "string"},
                 "rel": {"type": "string"}},
             "required": ["from", "to"]}},
         {"name": "stats", "description": "Database and graph counts.",
+         "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object", "properties": {}}},
     ])
 }

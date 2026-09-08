@@ -104,6 +104,14 @@ fn initialize_and_list_tools() {
     for want in ["remember", "recall", "list", "link", "stats"] {
         assert!(names.contains(&want), "missing tool {want}: {names:?}");
     }
+    let remember = tools.iter().find(|t| t["name"] == "remember").unwrap();
+    assert!(
+        remember["description"].as_str().unwrap().contains("6 months"),
+        "remember description missing selectivity rule: {}",
+        remember["description"]
+    );
+    let recall = tools.iter().find(|t| t["name"] == "recall").unwrap();
+    assert_eq!(recall["annotations"]["readOnlyHint"], serde_json::json!(true));
 }
 
 #[test]
