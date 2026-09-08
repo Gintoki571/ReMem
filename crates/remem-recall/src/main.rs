@@ -7,7 +7,7 @@ use clap::{Parser, Subcommand};
 use remem_embed::Embedder as _;
 use remem_recall::stub::StubEmbedder;
 use remem_recall::RecallEngine;
-use remem_store::Store;
+use remem_store::{Store, MAX_LIMIT};
 use remem_types::{MemoryItem, MemoryKind, RecallQuery};
 
 /// ReMem v3 memory engine.
@@ -76,6 +76,11 @@ enum Cmd {
     List {
         #[arg(long)]
         json: bool,
+        /// Max memories to show (newest first, unbounded by default).
+        /// Matches recall `k`: 0 shows none, values over 1000 clamp to 1000,
+        /// negatives rejected by clap.
+        #[arg(long)]
+        limit: Option<usize>,
     },
     /// Soft-delete a memory (row kept, graph node and edges dropped)
     Forget { id: String },
@@ -284,8 +289,11 @@ fn main() -> Result<()> {
                 }
             }
         }
-        Cmd::List { json } => {
-            let items = engine(&cli.db)?.list()?;
+        Cmd::List { json, limit } => {
+            let mut items = engine(&cli.db)?.list()?;
+            if let Some(n) = limit {
+                items.truncate(n.min(MAX_LIMIT as usize));
+            }
             if json {
                 println!("{}", serde_json::to_string_pretty(&items)?);
             } else {

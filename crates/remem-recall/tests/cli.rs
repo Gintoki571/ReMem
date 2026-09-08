@@ -533,3 +533,27 @@ fn cli_recall_k_zero_returns_empty() {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
 }
+
+/// `list --limit N` shows the N newest memories; bare `list` is unbounded.
+#[test]
+fn cli_list_limit_truncates_newest_first() {
+    let db = std::env::temp_dir().join(format!("remem-cli-listlimit-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+
+    for word in ["limit alpha one", "limit beta two", "limit gamma three"] {
+        remem(&db, &["remember", "fact", word]);
+    }
+
+    let limited = remem(&db, &["list", "--limit", "2"]);
+    assert_eq!(limited.lines().count(), 2, "limited: {limited}");
+    assert!(limited.contains("limit gamma three"), "newest missing: {limited}");
+    assert!(limited.contains("limit beta two"), "second newest missing: {limited}");
+    assert!(!limited.contains("limit alpha one"), "oldest leaked: {limited}");
+
+    let full = remem(&db, &["list"]);
+    assert_eq!(full.lines().count(), 3, "default list must stay unbounded: {full}");
+
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
