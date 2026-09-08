@@ -19,6 +19,13 @@ use remem_store::Store;
 use remem_types::{MemoryItem, MemoryKind, RecallQuery};
 use serde_json::{json, Value};
 
+/// Max bytes accepted in one `Content-Length` frame. Larger frames are
+/// rejected with a JSON-RPC error before any body allocation.
+const MAX_BODY_BYTES: usize = 16 * 1024 * 1024;
+/// Max `recall.k` / `list.limit` accepted from a client; larger values are
+/// clamped in `dispatch` before reaching the engine.
+const MAX_TOP_K: usize = 1000;
+
 const PROTOCOL_VERSION: &str = "2024-11-05";
 const SERVER_NAME: &str = "remem-mcp";
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -168,7 +175,7 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
         }
         "recall" => {
             let query = str_arg(args, "query").unwrap_or_default();
-            let k = args.get("k").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
+            let k = (args.get("k").and_then(|v| v.as_u64()).unwrap_or(5) as usize).min(MAX_TOP_K);
             let q = RecallQuery {
                 text: query,
                 k,
@@ -192,7 +199,7 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
         "list" => {
             let mut items = eng.list()?;
             if let Some(limit) = args.get("limit").and_then(|v| v.as_u64()) {
-                items.truncate(limit as usize);
+                items.truncate((limit as usize).min(MAX_TOP_K));
             }
             Ok(serde_json::to_string(&items)?)
         }
@@ -245,9 +252,19 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
     }
 }
 
+/// One framed read: either a parsed message or a per-message failure the
+/// caller must answer with `-32700` and then keep reading.
+enum Frame {
+    Msg(Value),
+    ParseError(String),
+}
+
 /// Read one JSON-RPC message: plain newline-delimited JSON, or
 /// `Content-Length: N` framed (some MCP clients send headers).
-fn read_message(reader: &mut BufReader<std::io::StdinLock<'_>>) -> Result<Option<Value>> {
+/// Per-message failures (bad `Content-Length`, oversize frame, short read,
+/// invalid JSON) come back as `Frame::ParseError`, never `Err`: only clean
+/// EOF (`Ok(None)`) or a fatal stdin failure (`Err`) ends the loop.
+fn read_message(reader: &mut BufReader<std::io::StdinLock<'_>>) -> Result<Option<Frame>> {
     let mut line = String::new();
     loop {
         line.clear();
@@ -259,7 +276,19 @@ fn read_message(reader: &mut BufReader<std::io::StdinLock<'_>>) -> Result<Option
             continue;
         }
         if let Some(rest) = trimmed.strip_prefix("Content-Length:") {
-            let n: usize = rest.trim().parse().context("bad Content-Length")?;
+            let n: usize = match rest.trim().parse() {
+                Ok(n) => n,
+                Err(_) => {
+                    return Ok(Some(Frame::ParseError("bad Content-Length".to_string())));
+                }
+            };
+            // Reject before allocating or consuming the body, so a lying
+            // header leaves the next message framed and readable.
+            if n > MAX_BODY_BYTES {
+                return Ok(Some(Frame::ParseError(format!(
+                    "Content-Length {n} exceeds {MAX_BODY_BYTES} byte cap"
+                ))));
+            }
             // consume remaining header lines until blank
             loop {
                 let mut h = String::new();
@@ -269,10 +298,18 @@ fn read_message(reader: &mut BufReader<std::io::StdinLock<'_>>) -> Result<Option
                 }
             }
             let mut buf = vec![0u8; n];
-            reader.read_exact(&mut buf)?;
-            return Ok(Some(serde_json::from_slice(&buf)?));
+            if let Err(e) = reader.read_exact(&mut buf) {
+                return Ok(Some(Frame::ParseError(format!("short read: {e}"))));
+            }
+            match serde_json::from_slice(&buf) {
+                Ok(v) => return Ok(Some(Frame::Msg(v))),
+                Err(e) => return Ok(Some(Frame::ParseError(format!("invalid JSON: {e}")))),
+            }
         }
-        return Ok(Some(serde_json::from_str(trimmed)?));
+        match serde_json::from_str(trimmed) {
+            Ok(v) => return Ok(Some(Frame::Msg(v))),
+            Err(e) => return Ok(Some(Frame::ParseError(format!("invalid JSON: {e}")))),
+        }
     }
 }
 
@@ -312,10 +349,21 @@ fn main() -> Result<()> {
     let mut reader = BufReader::new(stdin.lock());
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
-    while let Some(msg) = read_message(&mut reader)? {
-        if let Some(resp) = handle(&eng, &msg) {
-            writeln!(out, "{}", serde_json::to_string(&resp)?)?;
-            out.flush()?;
+    loop {
+        match read_message(&mut reader)? {
+            None => break,
+            Some(Frame::Msg(msg)) => {
+                if let Some(resp) = handle(&eng, &msg) {
+                    writeln!(out, "{}", serde_json::to_string(&resp)?)?;
+                    out.flush()?;
+                }
+            }
+            Some(Frame::ParseError(message)) => {
+                let resp = json!({"jsonrpc": "2.0", "id": null,
+                    "error": {"code": -32700, "message": message}});
+                writeln!(out, "{}", serde_json::to_string(&resp)?)?;
+                out.flush()?;
+            }
         }
     }
     Ok(())

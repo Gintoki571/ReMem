@@ -53,6 +53,18 @@ impl Client {
         }
     }
 
+    fn send_raw(&mut self, line: &str) {
+        writeln!(self.stdin, "{line}").unwrap();
+        self.stdin.flush().unwrap();
+    }
+
+    fn read_resp(&mut self) -> Value {
+        let mut line = String::new();
+        self.reader.read_line(&mut line).unwrap();
+        assert!(!line.trim().is_empty(), "empty response from server");
+        serde_json::from_str(line.trim()).unwrap()
+    }
+
     fn request(&mut self, method: &str, params: Value) -> Value {
         let id = self.next_id;
         self.next_id += 1;
@@ -321,4 +333,69 @@ fn recall_max_chars_truncates_and_unknown_empty_unchanged() {
     assert_eq!(unknown, json!([]), "unknown related: {unknown:?}");
     let f: Value = c.call("forget", json!({"id": "does-not-exist"}));
     assert_eq!(f["forgotten"], json!(false), "forget unknown: {f:?}");
+}
+
+#[test]
+fn parse_error_replies_and_continues_loop() {
+    let mut c = Client::spawn(&temp_db("parse-err"));
+    c.send_raw("this is not json{{{");
+    let err = c.read_resp();
+    assert_eq!(err["error"]["code"], json!(-32700), "garbage: {err:?}");
+    assert_eq!(err["id"], json!(null), "garbage: {err:?}");
+
+    c.send_raw("Content-Length: not-a-number");
+    let err2 = c.read_resp();
+    assert_eq!(err2["error"]["code"], json!(-32700), "bad header: {err2:?}");
+
+    let resp = c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    assert_eq!(resp["result"]["serverInfo"]["name"], json!("remem-mcp"));
+}
+
+#[test]
+fn content_length_cap_rejects_huge_frame() {
+    let mut c = Client::spawn(&temp_db("cap"));
+    c.send_raw("Content-Length: 1073741824");
+    c.send_raw("");
+    c.send_raw(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#);
+    let err = c.read_resp();
+    assert!(err.get("error").is_some(), "expected JSON-RPC error: {err:?}");
+    let ok = c.read_resp();
+    assert_eq!(ok["result"]["serverInfo"]["name"], json!("remem-mcp"));
+    assert_eq!(ok["id"], json!(1));
+}
+
+#[test]
+fn recall_k_and_list_limit_clamped_to_1000() {
+    let mut c = Client::spawn(&temp_db("clamp"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    for i in 0..3 {
+        let _: Value = c.call(
+            "remember",
+            json!({"kind": "fact", "content": format!("clamp token entry {i}")}),
+        );
+    }
+    let huge: Value = c.call("recall", json!({"query": "clamp token entry", "k": 99999999}));
+    let capped: Value = c.call("recall", json!({"query": "clamp token entry", "k": 1000}));
+    assert_eq!(
+        huge.as_array().unwrap().len(),
+        capped.as_array().unwrap().len(),
+        "k=99999999 must behave like k=1000: {huge:?}"
+    );
+    assert!(huge.as_array().unwrap().len() <= 1000);
+    let l_huge: Value = c.call("list", json!({"limit": 99999999}));
+    let l_cap: Value = c.call("list", json!({"limit": 1000}));
+    assert_eq!(
+        l_huge.as_array().unwrap().len(),
+        l_cap.as_array().unwrap().len(),
+        "limit huge must behave like 1000"
+    );
+    assert!(l_huge.as_array().unwrap().len() <= 1000);
 }
