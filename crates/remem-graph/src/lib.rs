@@ -441,6 +441,31 @@ impl Graph {
         Ok(JsonValue::Array(out))
     }
 
+    /// Memory nodes ranked by importance, highest score first. Runs graphqlite's
+    /// PageRank over the whole graph (agent/session hubs included, so a hub that
+    /// anchors many memories also ranks), restricted to `Memory`-labelled nodes
+    /// and keyed by `mid`. An empty graph returns an empty vector.
+    pub fn central(&self) -> Result<Vec<(String, f64)>> {
+        Ok(self
+            .inner
+            .pagerank(0.85, 20)?
+            .into_iter()
+            .filter(|r| r.user_id.as_deref().is_some_and(hub_id_is_memory))
+            .map(|r| (r.user_id.unwrap(), r.score))
+            .collect())
+    }
+
+    /// Shortest memory-to-memory path `from -> to` as `[from, .., to]`, following
+    /// edge direction. Uses graphqlite's Dijkstra (uniform weights). Missing
+    /// endpoints or an unreachable target return an empty vector, not an error.
+    pub fn shortest_path(&self, from: &str, to: &str) -> Result<Vec<String>> {
+        let sp = self.inner.shortest_path(from, to, None)?;
+        Ok(match sp.found {
+            true => sp.path,
+            false => Vec::new(),
+        })
+    }
+
     /// Node/edge counts, for `remem stats`.
     pub fn stats(&self) -> Result<JsonValue> {
         let s = self.inner.stats()?;
@@ -449,6 +474,12 @@ impl Graph {
             "edges": s.edge_count,
         }))
     }
+}
+
+/// True when a graph node id names a Memory node: hubs are namespaced
+/// (`agent:`/`session:`), memories are not.
+fn hub_id_is_memory(id: &str) -> bool {
+    id != "" && !id.starts_with(AGENT_PREFIX) && !id.starts_with(SESSION_PREFIX)
 }
 
 /// Decode a graphqlite value into JSON. graphqlite's `Value` is an untagged
@@ -472,3 +503,4 @@ fn json_of(value: graphqlite::Value) -> JsonValue {
         }
     }
 }
+

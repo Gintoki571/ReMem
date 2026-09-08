@@ -368,3 +368,64 @@ fn node_id(conn: &rusqlite::Connection, key: &str, value: &str) -> i64 {
     )
     .unwrap()
 }
+
+/// Star graph: d -> a, b -> a, c -> a. All PageRank flows into `a`.
+#[test]
+fn central_ranks_star_center_first() {
+    let g = graph();
+    for id in ["a", "b", "c", "d"] {
+        g.upsert_memory(id, MemoryKind::Fact).unwrap();
+    }
+    for leaf in ["b", "c", "d"] {
+        g.link(leaf, "a", "RELATES_TO").unwrap();
+    }
+    let ranked = g.central().unwrap();
+    assert_eq!(ranked[0].0, "a", "star center first, got {ranked:?}");
+    assert_eq!(ranked.len(), 4);
+    // Scores sum to ~1.0 (plus dangling-node handling); monotone with in-degree.
+    let score = |mid: &str| ranked.iter().find(|(id, _)| id == mid).unwrap().1;
+    assert!(score("b") >= score("d"), "{ranked:?}");
+}
+
+/// central() covers only Memory nodes; hub ids never leak in.
+#[test]
+fn central_excludes_hubs() {
+    let g = graph();
+    for id in ["a", "b"] {
+        g.upsert_memory(id, MemoryKind::Fact).unwrap();
+    }
+    g.upsert_agent("x").unwrap();
+    g.link("a", "b", "RELATES_TO").unwrap();
+    g.link("a", "agent:x", BELONGS_TO_AGENT).unwrap();
+    let ranked = g.central().unwrap();
+    assert_eq!(ranked.len(), 2);
+    assert!(ranked.iter().all(|(id, _)| id != "agent:x"));
+}
+
+/// A -> B -> C: Dijkstra returns the full ordered path.
+#[test]
+fn shortest_path_returns_full_route() {
+    let g = graph();
+    for id in ["A", "B", "C"] {
+        g.upsert_memory(id, MemoryKind::Fact).unwrap();
+    }
+    g.link("A", "B", "RELATES_TO").unwrap();
+    g.link("B", "C", "RELATES_TO").unwrap();
+    assert_eq!(g.shortest_path("A", "C").unwrap(), vec!["A", "B", "C"]);
+    // Directional: the reverse edge does not exist.
+    assert!(g.shortest_path("C", "A").unwrap().is_empty());
+}
+
+/// Unknown endpoints or unreachable targets: empty vector, no error.
+#[test]
+fn shortest_path_unknown_ids_are_empty_not_errors() {
+    let g = graph();
+    g.upsert_memory("A", MemoryKind::Fact).unwrap();
+    g.upsert_memory("B", MemoryKind::Fact).unwrap();
+    assert!(g.shortest_path("nope", "A").unwrap().is_empty());
+    assert!(g.shortest_path("A", "nope").unwrap().is_empty());
+    // Both missing at once.
+    assert!(g.shortest_path("x", "y").unwrap().is_empty());
+    // Existing but disconnected.
+    assert!(g.shortest_path("A", "B").unwrap().is_empty());
+}
