@@ -247,6 +247,156 @@
       ],
       "agent": "ops-agent",
       "importance": 0.4
+    },
+    {
+      "kind": "event",
+      "content": "The March outage was traced to a misconfigured pgbouncer pool that dropped idle connections",
+      "tags": [
+        "incident",
+        "db"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.9
+    },
+    {
+      "kind": "decision",
+      "content": "The Q1 decision was to freeze new infra purchases until the cost review closes",
+      "tags": [
+        "decision",
+        "process"
+      ],
+      "agent": "main",
+      "importance": 0.6
+    },
+    {
+      "kind": "event",
+      "content": "Quarterly security audit wrapped on February 20 with no critical findings",
+      "tags": [
+        "security",
+        "process"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "event",
+      "content": "The billing service had a payment webhook backlog incident on April 15 that delayed invoices by a day",
+      "tags": [
+        "incident",
+        "billing"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "decision",
+      "content": "Q2 decision: migrate the analytics warehouse from Redshift to BigQuery",
+      "tags": [
+        "decision",
+        "analytics"
+      ],
+      "agent": "db-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "event",
+      "content": "The July maintenance window on August 3 took the ingest pipeline offline for two hours",
+      "tags": [
+        "incident",
+        "pipeline"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "event",
+      "content": "Deprecation notice: the v1 public API is scheduled for shutdown on December 31",
+      "tags": [
+        "api",
+        "release"
+      ],
+      "agent": "web-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "mistake",
+      "content": "Missing a migration revision bump made the worker read an outdated schema",
+      "tags": [
+        "bug",
+        "migration"
+      ],
+      "agent": "db-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "preference",
+      "content": "When pushing to main, the complete test suite must pass first",
+      "tags": [
+        "testing",
+        "workflow"
+      ],
+      "agent": "ci-agent",
+      "importance": 0.5
+    },
+    {
+      "kind": "mistake",
+      "content": "Keeping the staging DB credential inside a checked-in config file forced an emergency rotation",
+      "tags": [
+        "security",
+        "bug"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "preference",
+      "content": "Reviews should weigh correctness before any style nitpicks",
+      "tags": [
+        "style",
+        "process"
+      ],
+      "agent": "main",
+      "importance": 0.4
+    },
+    {
+      "kind": "event",
+      "content": "Completed the SOC 2 evidence collection sprint on May 30",
+      "tags": [
+        "process",
+        "security"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.5
+    },
+    {
+      "kind": "fact",
+      "content": "The internal artifact registry mirrors are hosted at mirror.internal.example.com",
+      "tags": [
+        "infra",
+        "ops"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.4
+    },
+    {
+      "kind": "note",
+      "content": "Postmortems go into the wiki under Incident Reports within one week of an incident",
+      "tags": [
+        "docs",
+        "process"
+      ],
+      "agent": "main",
+      "importance": 0.5
+    },
+    {
+      "kind": "decision",
+      "content": "Agreed to standardize on OpenTelemetry for all new services starting next quarter",
+      "tags": [
+        "monitoring",
+        "decision"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.6
     }
   ],
   "queries": [
@@ -349,6 +499,66 @@
     {
       "query": "what do I need before connecting to the office vpn",
       "expect": "YubiKey"
+    },
+    {
+      "query": "hey so remember when things went down earlier in the year, like that whole march thing",
+      "expect": "March outage"
+    },
+    {
+      "query": "wait what did we decide at the start of the year about spending",
+      "expect": "Q1 decision"
+    },
+    {
+      "query": "did the auditors ever get back to us about that winter check",
+      "expect": "February 20"
+    },
+    {
+      "query": "there was something with invoices being late a while back, when was that",
+      "expect": "April 15"
+    },
+    {
+      "query": "what was the plan again for moving analytics somewhere else",
+      "expect": "BigQuery"
+    },
+    {
+      "query": "how long was the pipeline down during that summer maintenance thing",
+      "expect": "two hours"
+    },
+    {
+      "query": "when does the old public api go away exactly",
+      "expect": "December 31"
+    },
+    {
+      "query": "why did the worker end up with an outdated schema",
+      "expect": "Missing a migration revision bump"
+    },
+    {
+      "query": "didn't we have a credential sitting in a config file once",
+      "expect": "Keeping the staging DB credential"
+    },
+    {
+      "query": "so um i was wondering like where exactly do those mirrors live or whatever",
+      "expect": "mirror.internal.example.com"
+    },
+    {
+      "query": "ok so basically where do the writeups about incidents go and stuff",
+      "expect": "Incident Reports"
+    },
+    {
+      "query": "hmm what was that whole thing about tracing and standards for new services",
+      "expect": "OpenTelemetry"
+    },
+    {
+      "query": "what is the thing about stuff",
+      "expect": ""
+    },
+    {
+      "query": "how does this work with that",
+      "expect": ""
+    },
+    {
+      "query": "tell me about the thing thing",
+      "expect": ""
     }
   ]
 }
