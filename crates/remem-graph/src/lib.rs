@@ -282,6 +282,134 @@ impl Graph {
         Ok(out)
     }
 
+    /// Structural health check: human-readable lines describing edges that point
+    /// at nodes which no longer exist, and `Memory` nodes with no memory-to-memory
+    /// edge (agent/session hub edges alone do not count). Empty means healthy.
+    ///
+    /// graphqlite declares `ON DELETE CASCADE` and opens its connection with
+    /// `PRAGMA foreign_keys = ON`, so this crate's own API cannot create a dangling
+    /// edge. The check exists for what that layer cannot cover: another writer on
+    /// the same file (the pragma is per connection) or schema drift. Ordering is
+    /// deterministic: dangling edges by rowid, then orphans by memory id.
+    ///
+    /// SQL failures become lines rather than `Err`: callers print the result, and a
+    /// broken query must not read back as a healthy graph.
+    pub fn validate(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        match self.dangling_edges() {
+            Ok(rows) => out.extend(rows),
+            Err(e) => return vec![format!("validation query failed: {e}")],
+        }
+        match self.orphan_memories() {
+            Ok(rows) => out.extend(rows),
+            Err(e) => out.push(format!("validation query failed: {e}")),
+        }
+        out
+    }
+
+    /// Lines for edges with a missing end, e.g.
+    /// `dangling edge: m1 -[:RELATES_TO]-> #3 (missing target node)`. A missing
+    /// end is labelled by rowid (its properties are gone); a surviving end keeps
+    /// its `mid` or namespaced hub id.
+    fn dangling_edges(&self) -> Result<Vec<String>> {
+        let mut stmt = self.sqlite().prepare(
+            "SELECT e.source_id, e.target_id, e.type, (sn.id IS NULL), (tn.id IS NULL) \
+             FROM edges e \
+             LEFT JOIN nodes sn ON sn.id = e.source_id \
+             LEFT JOIN nodes tn ON tn.id = e.target_id \
+             WHERE sn.id IS NULL OR tn.id IS NULL \
+             ORDER BY e.id",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, i64>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, bool>(3)?,
+                r.get::<_, bool>(4)?,
+            ))
+        })?;
+        let edges: Vec<(i64, i64, String, bool, bool)> =
+            rows.collect::<std::result::Result<_, _>>()?;
+        if edges.is_empty() {
+            return Ok(Vec::new());
+        }
+        let names = self.node_names()?;
+        let label = |id: i64, gone: bool| match gone {
+            true => format!("#{id}"),
+            false => names.get(&id).cloned().unwrap_or_else(|| format!("#{id}")),
+        };
+        Ok(edges
+            .into_iter()
+            .map(|(src, dst, rel, src_gone, dst_gone)| {
+                let what = match (src_gone, dst_gone) {
+                    (true, true) => "missing source and target nodes",
+                    (true, false) => "missing source node",
+                    (false, true) => "missing target node",
+                    (false, false) => "missing node",
+                };
+                format!(
+                    "dangling edge: {} -[:{rel}]-> {} ({what})",
+                    label(src, src_gone),
+                    label(dst, dst_gone)
+                )
+            })
+            .collect())
+    }
+
+    /// Rowid -> display id for every node: a `mid`, or a namespaced hub id.
+    fn node_names(&self) -> Result<std::collections::HashMap<i64, String>> {
+        let mut stmt = self.sqlite().prepare(&format!(
+            "SELECT n.id, COALESCE( \
+                    (SELECT p.value FROM node_props_text p JOIN property_keys k ON k.id = p.key_id \
+                     WHERE p.node_id = n.id AND k.key = 'mid'), \
+                    (SELECT '{AGENT_PREFIX}' || p.value FROM node_props_text p \
+                     JOIN property_keys k ON k.id = p.key_id \
+                     WHERE p.node_id = n.id AND k.key = 'aid'), \
+                    (SELECT '{SESSION_PREFIX}' || p.value FROM node_props_text p \
+                     JOIN property_keys k ON k.id = p.key_id \
+                     WHERE p.node_id = n.id AND k.key = 'sid')) \
+                 FROM nodes n"
+        ))?;
+        let rows = stmt.query_map([], |r| {
+            Ok((r.get::<_, i64>(0)?, r.get::<_, Option<String>>(1)?))
+        })?;
+        let mut map = std::collections::HashMap::new();
+        for row in rows {
+            if let (id, Some(name)) = row? {
+                map.insert(id, name);
+            }
+        }
+        Ok(map)
+    }
+
+    /// Lines for `Memory` nodes whose only edges (if any) touch hub nodes.
+    fn orphan_memories(&self) -> Result<Vec<String>> {
+        let mut stmt = self.sqlite().prepare(&format!(
+            "SELECT p.value AS mid FROM node_props_text p \
+                 JOIN property_keys k ON k.id = p.key_id \
+                 WHERE k.key = 'mid' \
+                 AND NOT EXISTS ( \
+                    SELECT 1 FROM edges e WHERE e.source_id = p.node_id \
+                    AND e.target_id NOT IN (SELECT node_id FROM node_labels \
+                        WHERE label IN ('{AGENT_LABEL}', '{SESSION_LABEL}'))) \
+                 AND NOT EXISTS ( \
+                    SELECT 1 FROM edges e WHERE e.target_id = p.node_id \
+                    AND e.source_id NOT IN (SELECT node_id FROM node_labels \
+                        WHERE label IN ('{AGENT_LABEL}', '{SESSION_LABEL}'))) \
+                 ORDER BY mid"
+        ))?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(format!(
+                "orphan memory: {} (no edges outside agent/session hubs)",
+                row?
+            ));
+        }
+        Ok(out)
+    }
+
     /// Run a Cypher query. `params` is a JSON object of `$name` bindings, or
     /// `Value::Null` for none. Returns rows as a JSON array of objects.
     pub fn cypher(&self, query: &str, params: &JsonValue) -> Result<JsonValue> {

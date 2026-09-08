@@ -1598,6 +1598,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "remem-mcp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "remem-embed",
+ "remem-graph",
+ "remem-recall",
+ "remem-store",
+ "remem-types",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "remem-recall"
 version = "0.1.0"
 dependencies = [

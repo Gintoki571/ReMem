@@ -1,4 +1,4 @@
-use remem_graph::{Graph, MEMORY_LABEL};
+use remem_graph::{Graph, BELONGS_TO_AGENT, BELONGS_TO_SESSION, MEMORY_LABEL};
 use remem_types::MemoryKind;
 use serde_json::json;
 
@@ -279,4 +279,92 @@ fn survives_reopen_of_same_file() {
         vec![("m2".to_string(), "RELATES_TO".to_string())]
     );
     let _ = std::fs::remove_file(&path);
+}
+
+/// Hand-built graph exercising both problems `validate` looks for: an edge whose
+/// target row is gone, and Memories with no memory-to-memory edge.
+///
+/// graphqlite opens its connection with `PRAGMA foreign_keys = ON` and declares
+/// `ON DELETE CASCADE` on `edges`, so no [`Graph`] API can produce the dangling
+/// row. It is written here with raw SQL after switching enforcement off, which is
+/// what a foreign writer on the same file or schema drift would leave behind.
+#[test]
+fn validate_reports_dangling_edges_and_orphan_memories() {
+    let g = Graph::open_in_memory().unwrap();
+    let conn = g.sqlite();
+
+    g.upsert_agent("a1").unwrap();
+    for mid in ["m1", "m2"] {
+        g.upsert_memory(mid, MemoryKind::Fact).unwrap();
+        g.link(mid, "agent:a1", BELONGS_TO_AGENT).unwrap();
+    }
+    g.link("m1", "m2", "RELATES_TO").unwrap();
+    g.link("m2", "m1", "SUPERSEDES").unwrap();
+    assert_eq!(g.validate(), Vec::<String>::new(), "healthy graph");
+
+    // Orphans: a Memory with no edges at all, and one with hub edges only.
+    g.upsert_memory("m3", MemoryKind::Fact).unwrap();
+    g.upsert_memory("m4", MemoryKind::Fact).unwrap();
+    g.upsert_session("s1").unwrap();
+    g.link("m4", "session:s1", BELONGS_TO_SESSION).unwrap();
+    assert_eq!(
+        g.validate(),
+        vec![
+            "orphan memory: m3 (no edges outside agent/session hubs)".to_string(),
+            "orphan memory: m4 (no edges outside agent/session hubs)".to_string(),
+        ]
+    );
+
+    conn.execute_batch("PRAGMA foreign_keys = OFF;").unwrap();
+    let m1: i64 = node_id(conn, "mid", "m1");
+    conn.execute(
+        "INSERT INTO edges (source_id, target_id, type) VALUES (?1, 9999, 'RELATES_TO')",
+        [m1],
+    )
+    .unwrap();
+    assert_eq!(
+        g.validate(),
+        vec![
+            "dangling edge: m1 -[:RELATES_TO]-> #9999 (missing target node)".to_string(),
+            "orphan memory: m3 (no edges outside agent/session hubs)".to_string(),
+            "orphan memory: m4 (no edges outside agent/session hubs)".to_string(),
+        ]
+    );
+}
+
+/// An edge with both ends gone is labelled by rowid; a surviving end keeps its
+/// namespaced hub id rather than a bare row number.
+#[test]
+fn validate_names_the_ends_it_can() {
+    let g = Graph::open_in_memory().unwrap();
+    let conn = g.sqlite();
+    g.upsert_agent("a1").unwrap();
+    let agent: i64 = node_id(conn, "aid", "a1");
+    conn.execute_batch("PRAGMA foreign_keys = OFF;").unwrap();
+    conn.execute(
+        "INSERT INTO edges (source_id, target_id, type) \
+         VALUES (4242, 4243, 'RELATES_TO'), (4242, ?1, 'BELONGS_TO_AGENT')",
+        [agent],
+    )
+    .unwrap();
+    assert_eq!(
+        g.validate(),
+        vec![
+            "dangling edge: #4242 -[:RELATES_TO]-> #4243 (missing source and target nodes)"
+                .to_string(),
+            "dangling edge: #4242 -[:BELONGS_TO_AGENT]-> agent:a1 (missing source node)"
+                .to_string(),
+        ]
+    );
+}
+
+/// graphqlite rowid of the node carrying `key = value`.
+fn node_id(conn: &rusqlite::Connection, key: &str, value: &str) -> i64 {
+    conn.query_row(
+        "SELECT p.node_id FROM node_props_text p JOIN property_keys k ON k.id = p.key_id \
+         WHERE k.key = ?1 AND p.value = ?2",
+        [key, value],
+        |r| r.get(0),
+    )
+    .unwrap()
 }

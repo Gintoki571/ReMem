@@ -71,6 +71,8 @@ enum Cmd {
     },
     /// Database and graph counts
     Stats,
+    /// Report dangling graph edges and orphan memories (exit 1 if any)
+    Validate,
 }
 
 fn expand(path: &str) -> PathBuf {
@@ -195,6 +197,18 @@ fn main() -> Result<()> {
                 "{}",
                 serde_json::to_string_pretty(&engine(&cli.db)?.stats()?)?
             );
+        }
+        Cmd::Validate => {
+            let problems = engine(&cli.db)?
+                .graph()
+                .context("engine has no graph open")?
+                .validate();
+            for line in &problems {
+                println!("{line}");
+            }
+            if !problems.is_empty() {
+                std::process::exit(1);
+            }
         }
     }
     Ok(())
