@@ -56,3 +56,9 @@ Six crates under `crates/`, one Cargo workspace. One SQLite file holds relationa
 - Validation: `Graph::validate` (dangling edges + orphan memories, SQL failures become report lines, not errors); surfaced by CLI `remem validate` (exit 1 on issues) and MCP `validate`. Own-API writes cannot dangle (graphqlite FK + cascade); the check targets foreign writers and schema drift.
 - Security hardening: file permissions (0700 dirs / 0600 db) in remem-mcp, FTS query escaping and limit clamping in remem-store, frame size cap in remem-mcp, model-dir trust-boundary docs in remem-embed.
 - Concurrency: two connections (store + graph) on one file, both WAL with 5s busy timeout; vec0/sqlite-vec pinned =0.1.9 and registered once per process.
+
+## Diagrams
+
+- [component](diagrams/component.puml) ([png](diagrams/component.png)): CLI/MCP binaries -> RecallEngine -> store/graph/embed crates -> one SQLite file.
+- [remember sequence](diagrams/sequence-remember.puml) ([png](diagrams/sequence-remember.png)): agent -> CLI/MCP -> embed -> store -> graph, with similar[]/dedup decisions.
+- [recall sequence](diagrams/sequence-recall.puml) ([png](diagrams/sequence-recall.png)): agent -> engine -> FTS + vector + graph-hop -> RRF fuse -> pack -> floor -> hits.

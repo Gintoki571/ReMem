@@ -1,0 +1,29 @@
+@startuml
+skinparam handwritten false
+title remember flow
+actor Agent
+participant "CLI/MCP" as edge
+participant "RecallEngine" as engine
+participant "embed" as embed
+participant "store" as store
+participant "graph" as graph
+Agent -> edge: remember(kind, content)
+edge -> engine: remember(item)
+engine -> embed: embed_one(content)
+embed --> engine: vec[768]
+engine -> store: find_by_hash(hash)
+alt exact duplicate
+  store --> engine: existing id
+  engine --> edge: return (id, similar=[])
+else not duplicate
+  engine -> store: knn(vec, 3)
+  store --> engine: neighbours
+  engine -> engine: filter dist <= 0.48\n(similar[])
+  engine -> store: insert(item)
+  store --> engine: id
+  engine -> store: set_embedding(id, vec)
+  engine -> graph: attach(item)
+  engine --> edge: return (id, similar[])
+end
+edge --> Agent: id + similar[]
+@enduml
