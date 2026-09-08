@@ -90,3 +90,24 @@ A secondary, smaller proposal: rescale the importance multiplier from `(0.5 + im
 `(0.5 + 0.5 * importance)` so importance spans 0.5..1.0 instead of 0.5..1.5. Simulated on the
 same run (rescaling each hit's score), this fixes the redis-vs-CDN inversion and moves
 recall@1 from 4/25 to 5/25 with recall@5 unchanged.
+
+## 40-fixture run (2026-09-08)
+
+Full 40-memory / 40-query run of `scripts/eval.sh` on `/tmp/remem-eval.db` (debug build,
+commit 6b4acb2 with siblings' worktree changes present; rebuild of `remem-recall` succeeded
+first try). Scoring split per the fixture design: 37 answerable queries (non-empty `expect`)
+plus 3 adversarial queries with `expect: ""` (pure-stopword queries with no good answer).
+
+- Answerable (37): recall@1 20/37 (54%), recall@5 36/37 (97%). Sole miss: Q27 ("wait what
+  did we decide at the start of the year about spending") ranks its target "Q1 decision"
+  memory at #9; only lexical anchor is the tag `decision`, which neither channel matches.
+- Adversarial (3): no empty result. All three returned 5 hits with near-zero fusion scores
+  (top score 0.012-0.014 vs ~0.029 for a good query). Junk, not empty; there is no empty
+  result threshold below which recall bails.
+- Combined numbers if adversarials are naively counted: 23/40 recall@1, 39/40 recall@5
+  (eval.sh counts empty-expect as instant rank 1, so its printed totals are not meaningful).
+
+Comparison to the 25-fixture baseline (4/25 = 16% recall@1, 16/25 = 64% recall@5): the FTS
+stopword-OR fix held. At 40 fixtures recall@1 is 20/37 and recall@5 is 36/37; the larger
+mixed fixture set raised both metrics. Verdict: fix held at 40; remaining weakness is
+tag-only lexical anchors (Q27) and the absence of a no-results floor for adversarial junk.
