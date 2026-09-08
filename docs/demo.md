@@ -1,9 +1,11 @@
 # remem v3 demo (onboarding)
 
-Runs the core loop against a scratch db (`REMEM_DB=/tmp/remem-demo.db`):
-`scripts/demo.sh`. It builds the debug `remem` binary, stores one fact, one
-decision and one mistake (each with tags and an agent id), then exercises
-recall, link, validate, stats and purge. Any step failing exits nonzero.
+Runs the core loop against a scratch db (default `REMEM_DB=/tmp/remem-demo.db`,
+override with `REMEM_DB=/tmp/custom.db scripts/demo.sh`):
+`scripts/demo.sh`. It builds the debug `remem` + `remem-mcp` binaries, stores
+one fact, one decision and one mistake (each with tags and an agent id), then
+exercises recall, link, validate, stats, purge and an MCP-vs-CLI parity check
+(`tools/list` over stdio must report 11 tools). Any step failing exits nonzero.
 
 Note: the `remem` CLI exposes `purge` (hard delete: row, FTS entry,
 embedding, plus graph forget) and surfaces related memories through recall
@@ -17,21 +19,24 @@ embedding, plus graph forget) and surfaces related memories through recall
 #
 # remem v3 onboarding demo.
 #
-# Builds the debug `remem` binary and walks a scratch db through the core
-# loop: remember -> recall -> link -> validate -> stats -> purge.
-# Exits nonzero on any failure. Touches only /tmp/remem-demo.db*.
+# Builds the debug `remem` + `remem-mcp` binaries and walks a scratch db
+# through the core loop: remember -> recall -> link -> validate -> stats
+# -> purge -> MCP-vs-CLI parity.
+# Exits nonzero on any failure. Touches only ${REMEM_DB:-/tmp/remem-demo.db}*.
 #
 # Usage: scripts/demo.sh
+# Override the scratch db with: REMEM_DB=/tmp/custom.db scripts/demo.sh
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-echo "=== 1. build debug remem ==="
-cargo build -p remem-recall
+echo "=== 1. build debug remem + remem-mcp ==="
+cargo build -p remem-recall -p remem-mcp
 BIN="./target/debug/remem"
+MCP_BIN="./target/debug/remem-mcp"
 
 echo "=== 2. fresh scratch db ==="
-export REMEM_DB=/tmp/remem-demo.db
+export REMEM_DB="${REMEM_DB:-/tmp/remem-demo.db}"
 rm -f "$REMEM_DB" "$REMEM_DB-wal" "$REMEM_DB-shm" "$REMEM_DB-journal"
 
 echo "=== 3. remember one fact, one decision, one mistake ==="
@@ -68,13 +73,18 @@ $BIN purge "$MISTAKE_ID"
 if $BIN list | grep -q "$MISTAKE_ID"; then echo "FAIL: purged id still listed" >&2; exit 1; fi
 $BIN validate
 
+echo "=== 9. MCP-vs-CLI parity (tools/list shows 11 tools) ==="
+MCP_COUNT="$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | "$MCP_BIN" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["result"]["tools"]))')"
+echo "mcp tools: $MCP_COUNT"
+if [ "$MCP_COUNT" != "11" ]; then echo "FAIL: MCP tools/list returned $MCP_COUNT tools, expected 11" >&2; exit 1; fi
+
 echo "=== demo OK ==="
 ```
 
 ## Sample output
 
 ```
-=== 1. build debug remem ===
+=== 1. build debug remem + remem-mcp ===
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
 === 2. fresh scratch db ===
 === 3. remember one fact, one decision, one mistake ===
@@ -111,6 +121,9 @@ embedder: Cpu (768d)
 purged 10f5b64c-ef32-462d-8378-018d0a2e510f
 embedder: Cpu (768d)
 embedder: Cpu (768d)
+=== 9. MCP-vs-CLI parity (tools/list shows 11 tools) ===
+embedder: Cpu (768d)
+mcp tools: 11
 === demo OK ===
 ```
 
@@ -121,3 +134,4 @@ embedder: Cpu (768d)
 - `link` connects memories, and linked neighbours resurface via `graph#` reasons.
 - `validate` confirms a clean graph and `stats` reports memory and graph counts.
 - `purge` hard-deletes a memory (row, index, graph node) and `list` proves it is gone.
+- MCP-vs-CLI parity: `tools/list` over stdio reports the documented 11 tools, and the script fails loudly otherwise.
