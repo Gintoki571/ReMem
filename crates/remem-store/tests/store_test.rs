@@ -87,7 +87,10 @@ fn fts_stays_in_sync_on_update_and_delete() {
     assert_eq!(store.fts_search("dragonflies", 5).unwrap()[0].0.id, id);
     store.delete(&id).unwrap();
     assert!(store.fts_search("dragonflies", 5).unwrap().is_empty());
-    assert!(store.get(&id).unwrap().is_none(), "soft-deleted rows read as gone");
+    assert!(
+        store.get(&id).unwrap().is_none(),
+        "soft-deleted rows read as gone"
+    );
 }
 
 #[test]
@@ -247,7 +250,11 @@ fn second_writer_blocks_then_succeeds_under_contention() {
         "second writer failed instead of waiting out the lock: {:?}",
         res.err()
     );
-    assert!(Store::open(&path).unwrap().get(&res.unwrap()).unwrap().is_some());
+    assert!(Store::open(&path)
+        .unwrap()
+        .get(&res.unwrap())
+        .unwrap()
+        .is_some());
     for suffix in ["", "-wal", "-shm"] {
         let _ = std::fs::remove_file(format!("{}{}", path, suffix));
     }
@@ -299,7 +306,10 @@ fn occurred_at_roundtrips_through_insert_get_list_and_fts() {
     let mut m = item("the march release shipped on the fifteenth");
     m.occurred_at = Some(1_700_000_000);
     let id = store.insert(&m).unwrap();
-    assert_eq!(store.get(&id).unwrap().unwrap().occurred_at, Some(1_700_000_000));
+    assert_eq!(
+        store.get(&id).unwrap().unwrap().occurred_at,
+        Some(1_700_000_000)
+    );
     assert_eq!(
         store.list(false).unwrap()[0].occurred_at,
         Some(1_700_000_000)

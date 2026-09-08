@@ -324,7 +324,9 @@ fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryItem> {
         session_id: row.get(5)?,
         // SQLite stores NaN REALs as NULL, so a hostile/legacy row can be
         // NULL or out of range here; clamp back to 0.0..=1.0 (NULL/NaN -> 0.5).
-        importance: MemoryItem::clamp_importance(row.get::<_, Option<f64>>(6)?.unwrap_or(0.5) as f32),
+        importance: MemoryItem::clamp_importance(
+            row.get::<_, Option<f64>>(6)?.unwrap_or(0.5) as f32
+        ),
         created_at: row.get(7)?,
         updated_at: row.get(8)?,
         occurred_at: row.get(9)?,

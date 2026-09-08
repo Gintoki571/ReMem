@@ -703,4 +703,3 @@ fn recall_since_until_bounds_event_time() {
         "bad since: {resp:?}"
     );
 }
-

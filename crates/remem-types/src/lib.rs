@@ -134,7 +134,9 @@ mod tests {
     #[test]
     fn importance_clamped_to_unit_range() {
         let mk = |v: f32| {
-            MemoryItem::new(MemoryKind::Fact, "x".into()).with_importance(v).importance
+            MemoryItem::new(MemoryKind::Fact, "x".into())
+                .with_importance(v)
+                .importance
         };
         assert_eq!(mk(999.0), 1.0);
         assert_eq!(mk(-5.0), 0.0);

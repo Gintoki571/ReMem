@@ -60,31 +60,43 @@ fn empty_tags_stay_valid() {
 #[test]
 fn corrupt_kind_surfaces_as_err_naming_row() {
     let store = Store::open(":memory:").unwrap();
-    let id = store.insert(&item(MemoryKind::Note, "bogus kind row")).unwrap();
+    let id = store
+        .insert(&item(MemoryKind::Note, "bogus kind row"))
+        .unwrap();
     corrupt(&store, &id, "kind = 'bogus'");
     let rowid = rowid_of(&store, &id);
     let err = format!("{:?}", store.get(&id).unwrap_err());
     assert!(err.contains(&rowid.to_string()), "get err names row: {err}");
     let err = format!("{:?}", store.list(false).unwrap_err());
-    assert!(err.contains(&rowid.to_string()), "list err names row: {err}");
+    assert!(
+        err.contains(&rowid.to_string()),
+        "list err names row: {err}"
+    );
 }
 
 #[test]
 fn corrupt_tags_surface_as_err_naming_row() {
     let store = Store::open(":memory:").unwrap();
-    let id = store.insert(&item(MemoryKind::Fact, "bogus tags row")).unwrap();
+    let id = store
+        .insert(&item(MemoryKind::Fact, "bogus tags row"))
+        .unwrap();
     corrupt(&store, &id, "tags = '{{{'");
     let rowid = rowid_of(&store, &id);
     let err = format!("{:?}", store.get(&id).unwrap_err());
     assert!(err.contains(&rowid.to_string()), "get err names row: {err}");
     let err = format!("{:?}", store.list(false).unwrap_err());
-    assert!(err.contains(&rowid.to_string()), "list err names row: {err}");
+    assert!(
+        err.contains(&rowid.to_string()),
+        "list err names row: {err}"
+    );
 }
 
 #[test]
 fn corrupt_row_fails_fts_search() {
     let store = Store::open(":memory:").unwrap();
-    let id = store.insert(&item(MemoryKind::Note, "uniqueword corrupt fts")).unwrap();
+    let id = store
+        .insert(&item(MemoryKind::Note, "uniqueword corrupt fts"))
+        .unwrap();
     corrupt(&store, &id, "kind = 'bogus'");
     let rowid = rowid_of(&store, &id);
     let err = format!("{:?}", store.fts_search("uniqueword", 10).unwrap_err());
