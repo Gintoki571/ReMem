@@ -30,14 +30,90 @@ const PROTOCOL_VERSION: &str = "2024-11-05";
 const SERVER_NAME: &str = "remem-mcp";
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn db_path() -> PathBuf {
-    let raw = std::env::var("REMEM_DB").unwrap_or_else(|_| "~/.remem/remem.db".to_string());
-    if let Some(rest) = raw.strip_prefix("~/") {
-        if let Ok(home) = std::env::var("HOME") {
-            return PathBuf::from(home).join(rest);
+fn db_path() -> Result<PathBuf> {
+    let raw: std::ffi::OsString =
+        std::env::var_os("REMEM_DB").unwrap_or_else(|| "~/.remem/remem.db".into());
+    let bytes = raw.as_encoded_bytes();
+    if let Some(rest) = bytes.strip_prefix(b"~/") {
+        let home = std::env::var_os("HOME").filter(|h| !h.is_empty()).ok_or_else(|| {
+            anyhow!("REMEM_DB uses ~/ but HOME is unset or empty; set HOME or REMEM_DB to an absolute path")
+        })?;
+        let mut p = PathBuf::from(home);
+        #[cfg(unix)]
+        {
+            use std::os::unix::ffi::OsStrExt;
+            p.push(std::ffi::OsStr::from_bytes(rest));
+        }
+        #[cfg(not(unix))]
+        {
+            p.push(String::from_utf8_lossy(rest).as_ref());
+        }
+        return Ok(p);
+    }
+    Ok(PathBuf::from(raw))
+}
+
+/// Create the DB parent dir (0700 for newly created levels on Unix) and
+/// propagate failures with context instead of ignoring them.
+fn ensure_db_parent(path: &std::path::Path) -> Result<()> {
+    let Some(parent) = path.parent() else {
+        return Ok(());
+    };
+    if parent.as_os_str().is_empty() {
+        return Ok(());
+    }
+    // Nearest pre-existing ancestor: never chmod above this (e.g. /tmp).
+    let mut existing = parent;
+    while !existing.exists() {
+        match existing.parent() {
+            Some(p) if !p.as_os_str().is_empty() => existing = p,
+            _ => break,
         }
     }
-    PathBuf::from(raw)
+    let existing = existing.to_path_buf();
+    std::fs::create_dir_all(parent)
+        .with_context(|| format!("create db parent dir {}", parent.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut chain = Vec::new();
+        let mut d = parent;
+        while d != existing && !d.as_os_str().is_empty() {
+            chain.push(d.to_path_buf());
+            match d.parent() {
+                Some(p) if !p.as_os_str().is_empty() => d = p,
+                _ => break,
+            }
+        }
+        for dir in chain {
+            let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700));
+        }
+    }
+    Ok(())
+}
+
+/// Best-effort 0600 on the DB file (plus WAL sidecars) after open. Unix only.
+fn harden_db_file(path: &std::path::Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut targets = vec![path.to_path_buf()];
+        // SQLite WAL sidecars inherit the umask, not the DB mode.
+        if let Some(s) = path.to_str() {
+            targets.push(PathBuf::from(format!("{s}-wal")));
+            targets.push(PathBuf::from(format!("{s}-shm")));
+        }
+        for t in targets {
+            if t.is_file() {
+                let _ =
+                    std::fs::set_permissions(&t, std::fs::Permissions::from_mode(0o600));
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+    }
 }
 
 /// Adapter: real local embedder behind recall's minimal Embed trait.
@@ -51,14 +127,11 @@ impl remem_recall::Embed for RealEmbedder {
 }
 
 fn engine() -> Result<RecallEngine> {
-    let path = db_path();
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent).ok();
-        }
-    }
+    let path = db_path()?;
+    ensure_db_parent(&path)?;
     let store = Store::open_path(&path).context("open store")?;
     let graph = remem_graph::Graph::open(&path).map_err(|e| anyhow!("open graph: {e}"))?;
+    harden_db_file(&path);
     let embed: Box<dyn remem_recall::Embed> = match remem_embed::load() {
         Ok(m) => {
             eprintln!("embedder: {} ({}d)", m.device_name(), m.dims());
@@ -367,4 +440,141 @@ fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static L: OnceLock<Mutex<()>> = OnceLock::new();
+        L.get_or_init(|| Mutex::new(()))
+    }
+
+    struct EnvGuard {
+        _g: std::sync::MutexGuard<'static, ()>,
+        old_db: Option<std::ffi::OsString>,
+        old_home: Option<std::ffi::OsString>,
+    }
+
+    impl EnvGuard {
+        fn lock() -> Self {
+            let g = env_lock().lock().unwrap();
+            Self {
+                _g: g,
+                old_db: std::env::var_os("REMEM_DB"),
+                old_home: std::env::var_os("HOME"),
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            match &self.old_db {
+                Some(v) => std::env::set_var("REMEM_DB", v),
+                None => std::env::remove_var("REMEM_DB"),
+            }
+            match &self.old_home {
+                Some(v) => std::env::set_var("HOME", v),
+                None => std::env::remove_var("HOME"),
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fresh_db_file_is_0600_and_parent_0700() {
+        use std::os::unix::fs::PermissionsExt;
+        let _env = EnvGuard::lock();
+        let dir = std::env::temp_dir().join(format!(
+            "remem-mcp-perm-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let db = dir.join("sub").join("remem.db");
+        std::env::set_var("REMEM_DB", &db);
+        let _ = std::fs::remove_dir_all(&dir);
+        engine().expect("engine opens fresh db");
+        let mode = std::fs::metadata(&db).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "db file mode was {mode:o}");
+        let pmode = std::fs::metadata(db.parent().unwrap())
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(pmode, 0o700, "db parent mode was {pmode:o}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn non_utf8_remem_db_is_preserved() {
+        use std::os::unix::ffi::OsStrExt;
+        let _env = EnvGuard::lock();
+        let raw = std::ffi::OsStr::from_bytes(b"/tmp/remem-nonutf8-\xff.db");
+        std::env::set_var("REMEM_DB", raw);
+        let p = db_path().expect("db_path keeps non-UTF8");
+        assert_eq!(p.as_os_str().as_bytes(), b"/tmp/remem-nonutf8-\xff.db");
+        assert!(!p.as_os_str().is_empty());
+    }
+
+    #[test]
+    fn home_unset_with_tilde_errors_clearly() {
+        let _env = EnvGuard::lock();
+        std::env::set_var("REMEM_DB", "~/.remem/remem.db");
+        std::env::remove_var("HOME");
+        let err = format!("{:?}", db_path().unwrap_err());
+        assert!(err.contains("HOME"), "error must name HOME: {err}");
+        let eng_err = format!("{:?}", engine().err().expect("engine must fail"));
+        assert!(eng_err.contains("HOME"), "engine must propagate: {eng_err}");
+    }
+
+    #[test]
+    fn create_dir_errors_propagate_with_context() {
+        let _env = EnvGuard::lock();
+        let dir = std::env::temp_dir().join(format!(
+            "remem-mcp-blocker-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let blocker = dir.join("blocker");
+        std::fs::write(&blocker, b"x").unwrap();
+        let db = blocker.join("remem.db");
+        std::env::set_var("REMEM_DB", &db);
+        let err = format!("{:#}", engine().err().expect("engine must fail"));
+        assert!(
+            err.contains("create db parent dir"),
+            "must carry context: {err}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn tilde_expands_under_home() {
+        let _env = EnvGuard::lock();
+        let home = std::env::temp_dir().join(format!(
+            "remem-mcp-home-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&home).unwrap();
+        std::env::set_var("HOME", &home);
+        std::env::set_var("REMEM_DB", "~/.remem/remem.db");
+        let p = db_path().expect("tilde expands");
+        assert_eq!(p, home.join(".remem/remem.db"));
+        assert!(!p.to_string_lossy().starts_with('~'));
+        let _ = std::fs::remove_dir_all(&home);
+    }
 }

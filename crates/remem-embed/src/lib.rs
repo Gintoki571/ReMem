@@ -109,11 +109,20 @@ pub fn load() -> Result<LocalEmbedder> {
     load_from(&model_dir())
 }
 
+/// Load weights from `dir` (`config.json`, `model.safetensors`, `tokenizer.json`).
+///
+/// Trust boundary: `dir` (default [`DEFAULT_MODEL_DIR`], override
+/// `REMEM_EMBED_MODEL_DIR`) is trusted local input. The weights file is
+/// memory-mapped with no checksum verification; point it only at model files
+/// you trust. Checksum/pinned-hash verification is future work (no code yet).
 pub fn load_from(dir: &Path) -> Result<LocalEmbedder> {
     let device = Device::cuda_if_available(0).unwrap_or(Device::Cpu);
     load_from_with_device(dir, device)
 }
 
+/// Same trust boundary as [`load_from`]: `dir` is trusted input whose
+/// `model.safetensors` is mmaped read-only without integrity checking
+/// (checksum verification is future work).
 fn load_from_with_device(dir: &Path, device: Device) -> Result<LocalEmbedder> {
     let config: Config = serde_json::from_str(
         &std::fs::read_to_string(dir.join("config.json")).context("read config.json")?,
