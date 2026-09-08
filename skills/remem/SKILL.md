@@ -25,12 +25,16 @@ cargo build   # binary at ./target/debug/remem
 # other commands
 ./target/debug/remem list [--json]
 ./target/debug/remem link <fromId> <toId> [--rel REL]
+./target/debug/remem forget <id>  # soft-delete: row kept, graph node and edges dropped
 ./target/debug/remem purge <id>  # hard-delete: row, FTS entry, embedding, graph node
+./target/debug/remem related <id> [--rel REL]
+./target/debug/remem central [--limit 10]
+./target/debug/remem path <fromId> <toId>
 ./target/debug/remem stats
 ./target/debug/remem validate  # store/graph consistency, exit 1 if issues
 ```
 
-Notes: `--db` overrides the DB path (env `REMEM_DB`, default `~/.remem/remem.db`). `--tags` is comma-separated. `--occurred-at`, `--since`, `--until` take unix seconds or YYYY-MM-DD. `list` takes no `--k`. MCP tools: remember, recall, list, link, forget (by id), stats, validate.
+Notes: `--db` overrides the DB path (env `REMEM_DB`, default `~/.remem/remem.db`). `--tags` is comma-separated. `--occurred-at`, `--since`, `--until` take unix seconds or YYYY-MM-DD. `list` takes no `--k`. MCP tools (11, full CLI parity): remember, recall, list, link, forget, purge, stats, validate, related, central, path.
 
 `remember` prints a second `similar: [id dist, ...]` line (MCP: `similar` array) when the new text is a near-duplicate of stored memories (L2 < 0.48). It means re-save, not new fact: `link` the ids if both are worth keeping, or `purge` the new id if redundant. Exact duplicates dedup silently (existing id, no `similar` line).
 

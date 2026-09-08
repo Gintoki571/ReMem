@@ -45,7 +45,7 @@ Binary: `./target/debug/remem`. Global flag `--db <path>` (env `REMEM_DB`, defau
 | `stats` | `remem stats` (JSON counts) |
 | `validate` | `remem validate` (dangling edges + orphans, exit 1 if any) |
 
-Kinds: `fact | decision | mistake | preference | event | note`. `list` takes no `--k`; `link` takes `--rel` (not `--type`). MCP tools: all of the above plus `central` (PageRank top-k) and `path` (shortest memory-to-memory path); `forget` is soft, `purge` hard. Unknown ids in `forget`/`related`/`path` give no output, not an error.
+Kinds: `fact | decision | mistake | preference | event | note`. `list` takes no `--k`; `link` takes `--rel` (not `--type`). MCP tools mirror the 11 CLI commands one-to-one (full CLI/MCP parity); `forget` is soft, `purge` hard. Unknown ids in `forget`/`related`/`path` give no output, not an error.
 
 ### Examples
 

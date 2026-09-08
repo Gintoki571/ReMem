@@ -28,7 +28,7 @@ Source changes: none (uncommitted local edits by sibling session left untouched;
 
 ## Notes
 
-- CLI has no `forget` subcommand (only `purge`); `forget` is MCP-tool-only. Tested there instead.
+- CLI has a `forget` subcommand now (soft delete; tracker #3 closed); `forget` was MCP-tool-only at check time, so it was tested there instead.
 - CLI arg order is `remember <KIND> <TEXT...>` and `recall <QUERY...> --json` (no --text/--query flags).
 - MCP `link` args are `from`/`to`; wrong-arg error path returned isError correctly.
 - Build tree contained pre-existing uncommitted edits to crates/remem-recall, crates/remem-store, crates/remem-types from a sibling session; built as-is, no source modified by this check.

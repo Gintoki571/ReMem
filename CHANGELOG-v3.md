@@ -2,8 +2,8 @@
 
 ## Unreleased / in flight (unmerged working-tree changes)
 
-- Graph algos in flight: `Graph::central` (PageRank over memory nodes) and `Graph::shortest_path` (directed, empty when unreachable).
-- Score floor in flight: `apply_floor` drops recall hits below a minimum score (0.0 means off).
+- Graph algos landed: `Graph::central` (PageRank over memory nodes) and `Graph::shortest_path` (directed, empty when unreachable), exposed as CLI + MCP `central`/`path`.
+- Score floor landed: `apply_floor` drops recall hits below a minimum score (default 0.0 = off, opt-in `--min-score 0.02`; floor decision tracker #1 closed).
 
 ## Engine (store/graph/embed/recall/CLI)
 
@@ -17,7 +17,7 @@
 
 ## MCP server
 
-- MCP server over stdio: remember/recall/list/link/events/forget/stats/validate.
+- MCP server over stdio: 11 tools (remember/recall/list/link/forget/purge/stats/validate/related/central/path).
 - Read-only annotations and selectivity hints so agents pick sharper tools.
 - `validate` and `forget` tools (empty validate result means healthy).
 - `purge` tool: hard-deletes a forgotten memory.
@@ -29,7 +29,7 @@
 - Recall eval harness: 16% @1 / 64% @5 on the probe set, with notes.
 - Release performance numbers published.
 - Eval fixtures grown from 25 to 40.
-- 40-fixture eval: 54% @1 / 97% @5.
+- 40-fixture eval: fused recall@1 31/37 (84%), recall@5 37/37 unfloored (35/37 floored at `--min-score 0.02`); single signals 33/37 FTS-alone, 34/37 vector-alone.
 - Release parity check: binary sizes, MCP tool count, and a remember/recall roundtrip.
 
 ## Docs

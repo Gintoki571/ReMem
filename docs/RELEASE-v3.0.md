@@ -10,8 +10,8 @@ Status: DRAFT. Branch `v3`, unreleased. Docs only, no API freeze claimed.
 - Token-budget packing (`--max-chars`, top hit never dropped).
 - Graph links with `graph#` recall reasons; `related`/`central`/`path` ops.
 - `validate` health check (empty output means healthy); `stats` JSON counts.
-- MCP server over stdio: 11 tools (remember/recall/list/link/events/forget/purge/stats/validate/related/central/path).
-- `remember`/`recall`/`list`/`link`/`purge`/`stats`/`validate` CLI on `remem` binary.
+- MCP server over stdio: 11 tools (remember/recall/list/link/forget/purge/stats/validate/related/central/path).
+- 11 CLI subcommands on `remem` binary: `remember`/`recall`/`list`/`link`/`forget`/`purge`/`stats`/`validate`/`related`/`central`/`path` (full CLI/MCP parity).
 - Onboarding demo (`scripts/demo.sh`) and eval harness (`scripts/eval.sh`).
 - CPU-by-default local embeddings (768d); CUDA opt-in via feature flag.
 
@@ -23,15 +23,10 @@ Status: DRAFT. Branch `v3`, unreleased. Docs only, no API freeze claimed.
 - Floored run detail: the floor costs exactly the two rank-5 tag-anchor targets Q27/Q28
   (scores below 0.02); adversarial junk (top score ~0.012-0.016) is fully suppressed at 0.02.
 - Baseline (25 fixtures): 4/25 @1 (16%), 16/25 @5 (64%).
-- `cargo test --workspace --tests --no-fail-fast` (read-only run, this machine, sibling
-  near-dup WIP in the worktree): 126 passed, 1 failed, 2 ignored. The failure
-  (`cli_recall_max_chars`) is worktree WIP fallout: `remember` now prints a `similar:` line
-  after the id and the CLI test compares full stdout. Deterministic across 3 runs.
-- Per crate passed: embed 4 (1 ignored); graph 24 (1 ignored); mcp 19; recall 52 (1 failed:
-  cli_recall_max_chars); store 26; types 1.
-- `cargo test --workspace` (plain) does not compile: untracked WIP example
-  `crates/remem-recall/examples/knn-probe.rs` has a type error (examples not excluded from the
-  default target set).
+- `cargo test --workspace --tests` (this machine): 141 passed, 0 failed, 2 ignored
+  (embed `#[ignore]`d CUDA smoke + bench). The old `cli_recall_max_chars` failure is fixed.
+- `cargo test --workspace` (plain) compiles: the broken `knn-probe.rs` example is gone;
+  examples dir holds only `near-dup-calibrate.rs`.
 
 ## Perf snapshot (`docs/perf.md`)
 
@@ -53,10 +48,10 @@ Status: DRAFT. Branch `v3`, unreleased. Docs only, no API freeze claimed.
   34/37; success criterion (fused >= 34/37) unmet (tracker: open; `docs/ranking-study.md`).
 - Score floor default off (`0.0` = off); adversarial junk (~0.012-0.016) needs
   `--min-score 0.02`, which also drops the two weakest rank-5 tag anchors (tracker #1).
-- Near-duplicate report on write: probe in flight, uncommitted worktree WIP (tracker #2).
-- CLI forget/related/central/path missing (MCP has them, tracker #3); MCP recall
-  `since`/`until` also CLI-only. MCP `remember occurredAt` landed (`6f9d0b3`, tracker #4
-  closable).
+- Near-duplicate report on write: `similar:` line (CLI) / `similar` array (MCP) landed
+  (`SIMILAR_MAX_DISTANCE` 0.48); tracker #2 stays open for follow-ups.
+- CLI forget/related/central/path landed (tracker #3 closed); MCP recall `since`/`until`
+  also landed. MCP `remember occurredAt` landed (tracker #4 closed).
 - Tag-anchor ranking beyond the 1.05x prefix boost (Q27/Q28, tracker #6); recall `k=0`
   quirk (returns 5 hits); MCP nits (case-sensitive `Content-Length`, `related` vs `link`
   unknown-id consistency).

@@ -52,10 +52,15 @@ not pure RRF. Recency is ~1.0 for all rows (fresh DB) and does not differentiate
 
 ## Counts (n=37 answerable)
 
+Post-merge verification (`docs/eval.md`): fused (CLI recall) recall@1 31/37 (84%),
+recall@5 37/37 unfloored (35/37 floored at `--min-score 0.02`). Single signals unchanged:
+FTS-alone recall@1 33/37, vector-alone recall@1 34/37. The per-query table below is the
+pre-merge snapshot (fused 22/37 @1); its rows are stale, the verified numbers above are current.
+
 - FTS-alone: recall@1 33/37 (89%), recall@5 35/37 (95%), no-match 2/37 (Q27, Q28 — tag-only anchors).
 - Vector-alone: recall@1 34/37 (92%), recall@5 37/37 (100%), no-match 0/37.
-- Fused (CLI recall): recall@1 22/37 (59%), recall@5 36/37 (97%), miss 0/37 (worst rank #9: Q27).
-- Both signals agree at #1 on 31/37 queries; fusion keeps #1 on only 20 of those 31.
+- Fused (CLI recall): recall@1 31/37 (84%) verified post-merge (table snapshot below shows the older 22/37 run).
+- Both signals agree at #1 on 31/37 queries (pre-merge snapshot: fusion kept #1 on only 20 of those 31).
 
 ## Verdict (5 lines)
 

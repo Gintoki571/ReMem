@@ -2,7 +2,7 @@
 
 Sources: `docs/eval.md` (40-fixture corrected eval + post-merge verification), `docs/ranking-study.md`, `docs/multiplier-proposal.md`, `docs/tagboost-review.md`, `docs/cuda-unblock.md`, `docs/cli-mcp-parity.md`, `docs/demo.md`, `docs/security-review.md`, `docs/fuzz-report.md`, `docs/mcp-fuzz-report.md`, `CHANGELOG-v3.md`.
 
-Verified against worktree/HEAD before marking done (HEAD `995c388` "thread sweep verdict, 31/37 confirmed"; tag boost 1.05x + narrowed bands landed `e844cd4`; uncommitted WIP in `remem-recall`/`remem-mcp` is the near-duplicate write probe only).
+Verified against worktree/HEAD before marking done (31/37 @1 confirmed at `995c388`; tag boost 1.05x + narrowed bands landed `e844cd4`; near-dup probe + CLI forget/related/central/path + MCP since/until all landed and committed; only trackers #2/#5/#6 open).
 
 ## Status table (gap | severity | status | owner)
 
@@ -29,10 +29,10 @@ Verified against worktree/HEAD before marking done (HEAD `995c388` "thread sweep
 | Embedder thread sweep: Rayon default (all cores) optimal, 1->10.9s .. 8->1.7s per op; no code change, constrain via `RAYON_NUM_THREADS` only (`bench_threads.rs`) | low | done (no change needed) | remem-embed |
 | Core open problem: post-RRF multipliers still outvote dual fts#1+vector#1; fused 31/37 @1 (verified independently at `995c388`) but still BELOW vector-alone 34/37 @1; criterion fused >= 34/37 unmet; all 6 fused non-@1 misses have the target at vec#1 | high | open | remem-recall |
 | CUDA build blocked upstream (candle-kernels `__hmax_nan` vs CUDA 13.x sm_75) | medium | open (PR huggingface/candle#3909 unmerged, tracker #5; CUDA 12.6 side-by-side + fork-patch workarounds in `docs/cuda.md`) | remem-embed |
-| Floor default-off decision (0.0 = off; adversarial junk 0.012-0.016 passes unfloored) | medium | open (tracker #1; corrected eval runs floored at `--min-score 0.02`) | remem-recall |
-| Near-duplicate report on write: probe landed in worktree, uncommitted (knn k=3, `SIMILAR_MAX_DISTANCE` 0.48 calibrated over 780 fixture pairs via `near-dup-calibrate.rs`; fires on 3/4 paraphrases, silent on all distinct pairs; CLI + MCP wired; tracker #2) | medium | in-flight | remem-recall |
-| CLI forget/related/central/path (MCP already has them) | low | open (tracker #3; `docs/cli-mcp-parity.md`) | remem-recall |
-| MCP recall `since`/`until` (CLI-only flags) | low | open (`docs/cli-mcp-parity.md`) | remem-mcp |
+| Floor default-off decision (0.0 = off; adversarial junk 0.012-0.016 passes unfloored) | medium | done (tracker #1 closed: floor stays opt-in, `--min-score 0.02` calibrated) | remem-recall |
+| Near-duplicate report on write: landed and committed (knn k=3, `SIMILAR_MAX_DISTANCE` 0.48 calibrated over 780 fixture pairs via `near-dup-calibrate.rs`; fires on 3/4 paraphrases, silent on all distinct pairs; CLI `similar:` line + MCP `similar` array) | medium | done in code (tracker #2 open for follow-ups) | remem-recall |
+| CLI forget/related/central/path | low | done (tracker #3 closed; full CLI/MCP parity, `docs/cli-mcp-parity.md`) | remem-recall |
+| MCP recall `since`/`until` | low | done (landed in `crates/remem-mcp/src/main.rs`) | remem-mcp |
 | Tag-anchor ranking beyond the 1.05x prefix boost (Q27/Q28 supervision) | low | open (tracker #6) | remem-recall |
 | Recall `k=0` quirk (returns 5 hits, should be `[]`) | low | open | remem-recall |
 | MCP nits: case-sensitive `Content-Length` header, `related` vs `link` unknown-id consistency | low | open | remem-mcp |
@@ -43,5 +43,5 @@ Verified against worktree/HEAD before marking done (HEAD `995c388` "thread sweep
 - Boost width: 1.05x vs 1.2x measure the same recall; the constant is not the lever, the bands are. Offline re-ranking of `--k 40` output mispredicts because list depth is 4k.
 - Importance validation: `clamp_importance` (0..1, NaN -> 0.5) enforced on insert/get/update; MCP `importance` strings error loudly.
 - MCP surface: 11 tools over stdio; release check 2 all green on release binaries (`docs/release-check-2.md`).
-- Issues #1-#6 filed on the tracker (all open; #4 is done in code and closable); the open rows above reference them.
+- Issues: #1/#3/#4 closed; only #2/#5/#6 open; the open rows above reference them.
 - Discarded per inspiration.md: cross-encoder rerank, LLM entity extraction, dual-level keyword modes.

@@ -11,23 +11,23 @@ MCP `REMEM_DB` env only, no flag.
 | recall | `recall <query...>` + `--k` (default 5), `--json`, `--agent`, `--session`, `--since`, `--until`, `--max-chars`, `--min-score` (default 0.0 = off) | `recall {query, k, agent, session, maxChars, minScore, since, until}` | Parity on filters. CLI `--json` is formatting only (MCP always JSON). MCP clamps `k` to 1000, CLI does not. MCP JSON hits include `agent`/`session`; CLI `--json` hits omit them. |
 | list | `list [--json]` (newest first) | `list {limit?}` (clamped to 1000) | Each lacks one flag: CLI has no `limit`, MCP has no `--json` (always JSON). |
 | link | `link <from> <to> [--rel]` (silent) | `link {from, to, rel?}` (returns `{"ok": true}`) | Parity; output differs only. |
-| forget | MISSING | `forget {id}` (soft delete, returns `{"forgotten": bool}`) | CLI has no soft delete. |
+| forget | `forget <id>` (soft delete, row kept, graph node and edges dropped) | `forget {id}` (soft delete, returns `{"forgotten": bool}`) | Parity; output differs only. |
 | purge | `purge <id>` (hard delete, errors on unknown id) | `purge {id}` (returns `{"purged": bool}`) | Parity; output contract differs (exit-error vs boolean). |
 | stats | `stats` (pretty JSON) | `stats {}` | Parity. |
 | validate | `validate` (prints lines, exit 1 if any) | `validate {}` (returns `{"issues": [...]}`) | Parity; output differs only. |
-| related | MISSING | `related {id, rel?}` (`[]` on unknown id) | CLI has no neighbor read. |
-| central | MISSING | `central {limit?}` (default 10, clamped to 1000) | CLI has no PageRank read. |
-| path | MISSING | `path {from, to}` (`[]` if unreachable) | CLI has no shortest-path read. |
+| related | `related <id> [--rel]` (neighbours as `id  rel`, Memory-only, sorted) | `related {id, rel?}` (`[]` on unknown id) | Parity; output differs only. |
+| central | `central [--limit]` (default 10, PageRank as `id  score`, desc) | `central {limit?}` (default 10, clamped to 1000) | Parity; output differs only. |
+| path | `path <from> <to>` (shortest path, empty if unreachable) | `path {from, to}` (`[]` if unreachable) | Parity; output differs only. |
 
 ## Gaps
 
-CLI-missing (MCP-only), 4: `forget`, `related`, `central`, `path`.
+CLI-missing (MCP-only), 0: `forget`, `related`, `central`, `path` all landed on the CLI (tracker #3 closed).
 MCP-missing (CLI-only), 2: `list --limit` vs `list limit` (functional),
 `--json` (formatting only, no functional gap).
 
 ## Fill order (smallest first)
 
 1. CLI `list --limit N` (truncate after fetch, mirrors MCP `limit`).
-2. CLI `forget <id>` (wrapper over engine `forget`, soft delete before `purge`).
+2. DONE: CLI `forget <id>` landed (tracker #3 closed).
 3. CLI `recall --json` should include `agent`/`session` (match MCP hit shape).
-4. CLI `related <id> [--rel]`, `central [--limit]`, `path <from> <to>` (read-only printers over engine `graph()` methods).
+4. DONE: CLI `related` / `central` / `path` landed (tracker #3 closed).
