@@ -179,3 +179,41 @@ ranks first. Kept 1.2x (it is what clears the tag-only anchors over the top-5 bo
 unfloored run). Conclusion recorded in the `TAG_MATCH_BOOST` doc comment: the constant is not
 the lever, the post-RRF importance/recency bands are, and offline re-ranking of `--k 40`
 output mispredicts because list depth is 4k.
+
+## Post-merge verification (2026-09-08, independent ablation)
+
+`cargo build -p remem-recall` green first try at `e844cd4` (tag boost 1.05x + narrowed
+multiplier bands 0.9+0.1). Worktree also carries uncommitted sibling WIP (near-duplicate
+probe on the `remember` write path, remem-recall lib/main + remem-mcp main) — recall/ranking
+code untouched by it, so the numbers below reflect `e844cd4` ranking. Fresh scratch db
+`/tmp/remem-eval-verify.db`, scripts/eval.sh (floored runner, `--min-score 0.02`):
+
+- Answerable (37): recall@1 31/37 (84%, was 23/37), recall@5 35/37. Confirms the prior
+  sibling's unverified last claim of 31/37 @1.
+- Adversarial (3): 3/3 pass with the 0.02 floor; all three return 5 junk hits (top score
+  ~0.015-0.016) unfloored, so the floor remains load-bearing for the adversarial channel.
+
+### Floor ablation: --min-score 0 vs 0.02 (answerable only)
+
+- min-score 0:   recall@1 31/37, recall@5 37/37.
+- min-score 0.02: recall@1 31/37, recall@5 35/37.
+- The floor still costs exactly the two rank-5 tag-anchor targets Q27/Q28 (fts no-match,
+  vector#1, fused rank 5 and 3-5 territory; scores below 0.02). Same trade as before the
+  merge: 37/37 unfloored vs 35/37 floored, adversarial junk fully suppressed at 0.02.
+- Note: narrowed bands did improve Q28 unfloored (rank 6 -> 3) vs the ranking-study run.
+
+### Single-signal check (ranking-study method, `--k 40` reasons, ms=0)
+
+n=37 answerable, k=40 returned all 40 memories every time, so `fts#N`/`vector#N` reasons are
+the exact full-list ranks again.
+
+- FTS-alone recall@1: 33/37 (no-match 2: Q27, Q28).
+- Vector-alone recall@1: 34/37 (no-match 0).
+- Fused recall@1: 31/37 (same at k=5 and re-measured at k=40).
+
+Verdict: fused is still BELOW the best single signal (31/37 vs vector-alone 34/37); the
+success criterion (fused >= 34/37) is NOT met. All 6 fused non-@1 queries have the target at
+vec#1 (four of them also fts#1): the narrowed 0.9+0.1 importance/recency bands plus tag
+boost still outvote a dual fts#1+vector#1 on Q7/Q12/Q36 and outrank vec#1 on Q22/Q27/Q28.
+Fusion itself is not the residual loser (its inputs are 33-34/37); the post-RRF multipliers
+still are, and Q27/Q28 remain the only recall@5 losses under the floor.
