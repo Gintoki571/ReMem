@@ -101,20 +101,34 @@ fn initialize_and_list_tools() {
     let resp = c.request("tools/list", json!({}));
     let tools = resp["result"]["tools"].as_array().unwrap();
     let names: Vec<_> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
-    for want in ["remember", "recall", "list", "link", "forget", "stats", "validate"] {
+    for want in [
+        "remember", "recall", "list", "link", "forget", "stats", "validate",
+    ] {
         assert!(names.contains(&want), "missing tool {want}: {names:?}");
     }
     let remember = tools.iter().find(|t| t["name"] == "remember").unwrap();
     assert!(
-        remember["description"].as_str().unwrap().contains("6 months"),
+        remember["description"]
+            .as_str()
+            .unwrap()
+            .contains("6 months"),
         "remember description missing selectivity rule: {}",
         remember["description"]
     );
     let recall = tools.iter().find(|t| t["name"] == "recall").unwrap();
-    assert_eq!(recall["annotations"]["readOnlyHint"], serde_json::json!(true));
+    assert_eq!(
+        recall["annotations"]["readOnlyHint"],
+        serde_json::json!(true)
+    );
     let forget = tools.iter().find(|t| t["name"] == "forget").unwrap();
-    assert_eq!(forget["annotations"]["readOnlyHint"], serde_json::json!(false));
-    assert_eq!(forget["annotations"]["destructiveHint"], serde_json::json!(true));
+    assert_eq!(
+        forget["annotations"]["readOnlyHint"],
+        serde_json::json!(false)
+    );
+    assert_eq!(
+        forget["annotations"]["destructiveHint"],
+        serde_json::json!(true)
+    );
 }
 
 #[test]

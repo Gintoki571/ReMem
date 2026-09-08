@@ -198,7 +198,9 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
         }
         "stats" => Ok(serde_json::to_string(&eng.stats()?)?),
         "validate" => {
-            let g = eng.graph().ok_or_else(|| anyhow!("engine has no graph open"))?;
+            let g = eng
+                .graph()
+                .ok_or_else(|| anyhow!("engine has no graph open"))?;
             Ok(serde_json::to_string(&json!({"issues": g.validate()}))?)
         }
         _ => Err(anyhow!("unknown tool '{name}'")),
