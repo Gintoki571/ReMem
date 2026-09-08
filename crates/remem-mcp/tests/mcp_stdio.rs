@@ -251,3 +251,74 @@ fn related_returns_linked_neighbor_and_unknown_empty() {
     let unknown: Value = c.call("related", json!({"id": "does-not-exist"}));
     assert_eq!(unknown, json!([]), "unknown id: {unknown:?}");
 }
+
+#[test]
+fn recall_max_chars_truncates_and_unknown_empty_unchanged() {
+    let mut c = Client::spawn(&temp_db("maxchars"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+
+    // tools/list exposes the optional maxChars arg.
+    let resp = c.request("tools/list", json!({}));
+    let tools = resp["result"]["tools"].as_array().unwrap();
+    let recall = tools.iter().find(|t| t["name"] == "recall").unwrap();
+    assert!(
+        recall["inputSchema"]["properties"].get("maxChars").is_some(),
+        "recall schema missing maxChars: {recall:?}"
+    );
+
+    let long_content = format!("mcpbudget entry long {}", "z".repeat(200));
+    let _: Value = c.call("remember", json!({"kind": "fact", "content": long_content}));
+    let _: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "mcpbudget entry short a"}),
+    );
+    let _: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "mcpbudget entry short b"}),
+    );
+
+    let full: Value = c.call("recall", json!({"query": "mcpbudget entry", "k": 5}));
+    let full_hits = full.as_array().unwrap();
+    assert!(full_hits.len() >= 2, "expected multiple hits: {full:?}");
+    let full_chars: usize = full_hits
+        .iter()
+        .map(|h| h["content"].as_str().unwrap_or("").len())
+        .sum();
+
+    let budgeted: Value = c.call(
+        "recall",
+        json!({"query": "mcpbudget entry", "k": 5, "maxChars": 80}),
+    );
+    let budgeted_hits = budgeted.as_array().unwrap();
+    assert!(!budgeted_hits.is_empty(), "budget must keep at least one hit");
+    let budgeted_chars: usize = budgeted_hits
+        .iter()
+        .map(|h| h["content"].as_str().unwrap_or("").len())
+        .sum();
+    assert!(
+        budgeted_chars < full_chars,
+        "budgeted ({budgeted_chars}) must be shorter than full ({full_chars})"
+    );
+    assert!(
+        budgeted_hits.len() <= full_hits.len(),
+        "budgeted hits must not exceed full hits: {budgeted:?} vs {full:?}"
+    );
+
+    // Unknown-id / empty behaviors unchanged (fresh DB recalls empty).
+    let mut e = Client::spawn(&temp_db("maxchars-empty"));
+    e.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    let empty: Value = e.call("recall", json!({"query": "mcpbudget entry", "k": 5}));
+    assert_eq!(empty, json!([]), "empty recall: {empty:?}");
+    let unknown: Value = c.call("related", json!({"id": "does-not-exist"}));
+    assert_eq!(unknown, json!([]), "unknown related: {unknown:?}");
+    let f: Value = c.call("forget", json!({"id": "does-not-exist"}));
+    assert_eq!(f["forgotten"], json!(false), "forget unknown: {f:?}");
+}

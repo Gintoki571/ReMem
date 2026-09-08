@@ -79,7 +79,8 @@ fn tools_list() -> Value {
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object",
             "properties": {"query": {"type": "string"}, "k": {"type": "integer"},
-                "agent": {"type": "string"}, "session": {"type": "string"}},
+                "agent": {"type": "string"}, "session": {"type": "string"},
+                "maxChars": {"type": "integer"}},
             "required": ["query"]}},
         {"name": "list", "description": "List stored memories (newest first).",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
@@ -173,6 +174,7 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                 k,
                 agent_id: str_arg(args, "agent"),
                 session_id: str_arg(args, "session"),
+                max_chars: args.get("maxChars").and_then(|v| v.as_u64()).map(|v| v as usize),
                 ..Default::default()
             };
             let hits = eng.recall(&q)?;
