@@ -32,6 +32,10 @@ cargo build   # binary at ./target/debug/remem
 
 Notes: `--db` overrides the DB path (env `REMEM_DB`, default `~/.remem/remem.db`). `--tags` is comma-separated. `--occurred-at`, `--since`, `--until` take unix seconds or YYYY-MM-DD. `list` takes no `--k`. MCP tools: remember, recall, list, link, forget (by id), stats, validate.
 
+`remember` prints a second `similar: [id dist, ...]` line (MCP: `similar` array) when the new text is a near-duplicate of stored memories (L2 < 0.48). It means re-save, not new fact: `link` the ids if both are worth keeping, or `purge` the new id if redundant. Exact duplicates dedup silently (existing id, no `similar` line).
+
+Recall floor is off by default. Opt in with `recall --min-score 0.02` (MCP: `minScore: 0.02`) to suppress near-zero-score junk. 0.02 is the calibrated value; see `docs/floor-decision.md`. The floor can drop weak real hits (Q27/Q28), so leave it off unless junk suppression matters.
+
 ## When to save
 
 - After fixing a non-obvious bug: kind=mistake, importance >= 0.8, tags include the component.

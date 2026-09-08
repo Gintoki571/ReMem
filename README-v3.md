@@ -66,9 +66,10 @@ export REMEM_DB="$HOME/.remem/remem.db"
 
 ## Quality
 
-40-fixture eval (`docs/eval.md`, runner `scripts/eval.sh`, 2026-09-08):
-answerable queries recall@1 20/37 (54%), recall@5 36/37 (97%).
-3 adversarial pure-stopword queries have no good answer and return near-zero-score junk.
+40-fixture eval (`docs/eval.md`, runner `scripts/eval.sh`, final 2026-09-08):
+answerable queries unfloored recall@1 31/37 (84%), recall@5 37/37 (100%).
+3 adversarial pure-stopword queries have no good answer and return near-zero-score junk unfloored.
+`--min-score 0.02` floor stays opt-in (default off): floored recall@1 31/37, recall@5 35/37, suppresses all 3 adversarial queries at the cost of the two weakest rank-5 hits (Q27/Q28); see `docs/floor-decision.md`.
 25-fixture baseline was recall@1 4/25 (16%), recall@5 16/25 (64%).
 
 ## GPU / CUDA note
