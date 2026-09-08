@@ -192,6 +192,15 @@ fn tools_list() -> Value {
          "inputSchema": {"type": "object",
             "properties": {"id": {"type": "string"}, "rel": {"type": "string"}},
             "required": ["id"]}},
+        {"name": "central", "description": "Top central memories by graph PageRank as [{id, score}]. Optional limit (default 10).",
+         "annotations": {"readOnlyHint": true, "destructiveHint": false},
+         "inputSchema": {"type": "object",
+            "properties": {"limit": {"type": "integer"}}}},
+        {"name": "path", "description": "Shortest memory-to-memory path from id to id as [from, .., to] (empty if unreachable).",
+         "annotations": {"readOnlyHint": true, "destructiveHint": false},
+         "inputSchema": {"type": "object",
+            "properties": {"from": {"type": "string"}, "to": {"type": "string"}},
+            "required": ["from", "to"]}},
     ])
 }
 
@@ -312,7 +321,7 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
         }
         "forget" => {
             let id = str_arg(args, "id").ok_or_else(|| anyhow!("forget: missing 'id'"))?;
-            let forgotten = eng.store().get(&id).is_some();
+            let forgotten = eng.store().get(&id).map_err(|e| anyhow!("forget: {e}"))?.is_some();
             eng.forget(&id)?;
             Ok(serde_json::to_string(&json!({"forgotten": forgotten}))?)
         }
@@ -343,6 +352,36 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                 .collect();
             out.sort_by(|a, b| a["id"].as_str().cmp(&b["id"].as_str()));
             Ok(serde_json::to_string(&out)?)
+        }
+        "central" => {
+            let limit = match args.get("limit") {
+                None | Some(Value::Null) => 10,
+                Some(v) => match v.as_u64() {
+                    Some(n) => (n as usize).min(MAX_TOP_K),
+                    None => return Err(anyhow!("central: 'limit' must be a non-negative integer")),
+                },
+            };
+            let g = eng
+                .graph()
+                .ok_or_else(|| anyhow!("engine has no graph open"))?;
+            let ranked = g.central().map_err(|e| anyhow!("graph central: {e}"))?;
+            let out: Vec<Value> = ranked
+                .into_iter()
+                .take(limit)
+                .map(|(id, score)| json!({"id": id, "score": score}))
+                .collect();
+            Ok(serde_json::to_string(&out)?)
+        }
+        "path" => {
+            let from = str_arg(args, "from").ok_or_else(|| anyhow!("path: missing 'from'"))?;
+            let to = str_arg(args, "to").ok_or_else(|| anyhow!("path: missing 'to'"))?;
+            let g = eng
+                .graph()
+                .ok_or_else(|| anyhow!("engine has no graph open"))?;
+            let path = g
+                .shortest_path(&from, &to)
+                .map_err(|e| anyhow!("graph path: {e}"))?;
+            Ok(serde_json::to_string(&path)?)
         }
         "stats" => Ok(serde_json::to_string(&eng.stats()?)?),
         "validate" => {

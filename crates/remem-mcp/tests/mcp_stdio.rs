@@ -522,3 +522,87 @@ fn recall_min_score_filters_below_floor() {
         "minScore str: {resp:?}"
     );
 }
+
+#[test]
+fn central_returns_scored_mids_on_linked_data() {
+    let mut c = Client::spawn(&temp_db("central"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+
+    let resp = c.request("tools/list", json!({}));
+    let tools = resp["result"]["tools"].as_array().unwrap();
+    let central = tools.iter().find(|t| t["name"] == "central").unwrap();
+    assert_eq!(central["annotations"]["readOnlyHint"], json!(true));
+    let path = tools.iter().find(|t| t["name"] == "path").unwrap();
+    assert_eq!(path["annotations"]["readOnlyHint"], json!(true));
+
+    let a: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "central alpha hub token"}),
+    );
+    let b: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "central beta spoke token"}),
+    );
+    let cc: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "central gamma spoke token"}),
+    );
+    let ida = a["id"].as_str().unwrap().to_string();
+    let idb = b["id"].as_str().unwrap().to_string();
+    let idc = cc["id"].as_str().unwrap().to_string();
+    let _: Value = c.call("link", json!({"from": idb, "to": ida}));
+    let _: Value = c.call("link", json!({"from": idc, "to": ida}));
+
+    let ranked: Value = c.call("central", json!({}));
+    let arr = ranked.as_array().unwrap();
+    assert!(!arr.is_empty(), "central must rank linked memories: {ranked:?}");
+    for entry in arr {
+        assert!(entry["id"].is_string(), "scored mid: {entry:?}");
+        assert!(entry["score"].is_number(), "scored mid: {entry:?}");
+    }
+    let ids: Vec<_> = arr.iter().filter_map(|e| e["id"].as_str()).collect();
+    assert!(ids.contains(&ida.as_str()), "hub missing: {ranked:?}");
+
+    let limited: Value = c.call("central", json!({"limit": 1}));
+    assert_eq!(limited.as_array().unwrap().len(), 1, "limit 1: {limited:?}");
+
+    let resp = c.request("tools/call", json!({"name": "central", "arguments": {"limit": "many"}}));
+    assert_eq!(resp["result"]["isError"], json!(true), "limit str: {resp:?}");
+}
+
+#[test]
+fn path_chain_and_unknown_empty() {
+    let mut c = Client::spawn(&temp_db("path"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+
+    let a: Value = c.call("remember", json!({"kind": "fact", "content": "path alpha token"}));
+    let b: Value = c.call("remember", json!({"kind": "fact", "content": "path beta token"}));
+    let cc: Value = c.call("remember", json!({"kind": "fact", "content": "path gamma token"}));
+    let ida = a["id"].as_str().unwrap().to_string();
+    let idb = b["id"].as_str().unwrap().to_string();
+    let idc = cc["id"].as_str().unwrap().to_string();
+    let _: Value = c.call("link", json!({"from": ida, "to": idb}));
+    let _: Value = c.call("link", json!({"from": idb, "to": idc}));
+
+    let p: Value = c.call("path", json!({"from": ida, "to": idc}));
+    assert_eq!(p, json!([ida, idb, idc]), "A->B->C: {p:?}");
+
+    let unreachable: Value = c.call("path", json!({"from": idc, "to": ida}));
+    assert_eq!(unreachable, json!([]), "reverse unreachable: {unreachable:?}");
+
+    let unknown: Value = c.call("path", json!({"from": "does-not-exist", "to": idc}));
+    assert_eq!(unknown, json!([]), "unknown from: {unknown:?}");
+
+    for args in [json!({}), json!({"from": ida}), json!({"to": idc})] {
+        let resp = c.request("tools/call", json!({"name": "path", "arguments": args.clone()}));
+        assert_eq!(resp["result"]["isError"], json!(true), "path {args}: {resp:?}");
+    }
+}
