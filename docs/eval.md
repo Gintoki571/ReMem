@@ -111,3 +111,38 @@ Comparison to the 25-fixture baseline (4/25 = 16% recall@1, 16/25 = 64% recall@5
 stopword-OR fix held. At 40 fixtures recall@1 is 20/37 and recall@5 is 36/37; the larger
 mixed fixture set raised both metrics. Verdict: fix held at 40; remaining weakness is
 tag-only lexical anchors (Q27) and the absence of a no-results floor for adversarial junk.
+
+## Tag boost (2026-09-08)
+
+Implemented the Q27 fix as a third ranking signal in `remem-recall`: `rank::tag_boost`
+returns a bounded 1.0/`TAG_MATCH_BOOST` (1.2) factor per hit, from case-insensitive
+shared-prefix overlap (4 leading characters) between query words and the hit's tags, and
+`RecallEngine::recall` multiplies `final_score` by it before the sort. Queries rarely carry
+a `--tags` filter, and when they do the filter already removed the non-matching rows, so the
+signal comes from the free-text words, not `RecallQuery::tags`. Matching words and tags
+shorter than 4 characters is off: 3 collides by accident (`per`/`perf`, `second`/`security`,
+`production`/`process`), 5 loses the stem drift the channel exists for (`decide`/`decision`).
+
+Same fresh-db 40-fixture run as above (debug build, Cpu 768d):
+
+- Answerable (37): recall@1 23/37 (62%, was 20/37), recall@5 37/37 (100%, was 36/37).
+- Q27 moved miss -> rank 5. Also promoted to rank 1: Q2 (redis sharding), Q14 (graphql rate
+  limit), Q18 (load test rps), Q19 (onboarding docs). Demoted within the window: Q7 rank 1 -> 2,
+  Q28 rank 4 -> 5. Net recall@1 +3 with no recall@5 loss.
+- eval.sh printed totals (26/40, 40/40) count the 3 adversarial queries as rank-1 hits and are
+  not meaningful, as noted above; the adversarial scores are unchanged by this fix.
+- Hits carrying the signal get a `tag` reason, so a boost is auditable in `--json` output.
+
+Remaining weakness is now the adversarial junk (floor is still off by default), not tag anchors.
+
+## Corrected scoring (2026-09-08)
+
+Old inflated `scripts/eval.sh` totals counted the 3 adversarial queries (empty `expect`)
+as rank 1 via empty-substring matching: 26/40 recall@1, 40/40 recall@5. Corrected run on a
+fresh scratch db (`/tmp/remem-eval-fixed.db`, debug build, sibling worktree changes present,
+build succeeded first try): answerable recall@1 23/37, recall@5 35/37, adversarial 3/3 pass.
+Method: every recall runs with `--min-score 0.02` (calibrated floor); empty-expect queries
+PASS only when recall returns `[]` and are reported on a separate adversarial line, excluded
+from recall denominators. Note: the floor drops the rank-5 targets of Q27/Q28 (scores below
+0.02), so recall@5 is 35/37 here vs 37/37 unfloored; adversarial junk (top score ~0.012-0.014)
+is fully suppressed.
