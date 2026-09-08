@@ -1,0 +1,354 @@
+{
+  "memories": [
+    {
+      "kind": "fact",
+      "content": "Staging Postgres runs on port 5432 behind the pgbouncer pool",
+      "tags": [
+        "infra",
+        "db"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "fact",
+      "content": "The production Redis cluster has 3 shards with 2 replicas each",
+      "tags": [
+        "infra",
+        "cache"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "fact",
+      "content": "User passwords are hashed with Argon2id at 64 MiB memory cost",
+      "tags": [
+        "security",
+        "auth"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "decision",
+      "content": "We chose SQLite over Postgres for the local cache because it needs zero setup",
+      "tags": [
+        "decision",
+        "storage"
+      ],
+      "agent": "main",
+      "importance": 0.6
+    },
+    {
+      "kind": "decision",
+      "content": "Deployments to production are frozen during the Friday demo window",
+      "tags": [
+        "deploy",
+        "process"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "mistake",
+      "content": "Pointing the CDN at the origin IP instead of the load balancer caused an outage",
+      "tags": [
+        "deploy",
+        "bug"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "mistake",
+      "content": "The rate limiter counted retries as new requests and throttled legit users",
+      "tags": [
+        "api",
+        "bug"
+      ],
+      "agent": "web-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "preference",
+      "content": "Prefer terse answers with no filler text when replying",
+      "tags": [
+        "style"
+      ],
+      "agent": "main",
+      "importance": 0.5
+    },
+    {
+      "kind": "preference",
+      "content": "Always run the full test suite before pushing to main",
+      "tags": [
+        "testing",
+        "workflow"
+      ],
+      "agent": "ci-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "event",
+      "content": "Migrated the sessions table to the new schema on March 12 without downtime",
+      "tags": [
+        "db",
+        "migration"
+      ],
+      "agent": "db-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "event",
+      "content": "Rotated the API signing keys after the audit finding on April 2",
+      "tags": [
+        "security",
+        "api"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "note",
+      "content": "The billing service exposes Prometheus metrics on port 9102",
+      "tags": [
+        "api",
+        "monitoring"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.5
+    },
+    {
+      "kind": "note",
+      "content": "The design mockups for the settings page live in Figma under Settings v3",
+      "tags": [
+        "ui",
+        "design"
+      ],
+      "agent": "web-agent",
+      "importance": 0.4
+    },
+    {
+      "kind": "fact",
+      "content": "The GraphQL gateway rate limit is 100 requests per minute per token",
+      "tags": [
+        "api",
+        "limits"
+      ],
+      "agent": "web-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "decision",
+      "content": "Adopted Feature Flag X for gradual rollout of the new checkout flow",
+      "tags": [
+        "release",
+        "ui"
+      ],
+      "agent": "main",
+      "importance": 0.6
+    },
+    {
+      "kind": "mistake",
+      "content": "Forgot to bump the migration revision, so the worker ran against a stale schema",
+      "tags": [
+        "db",
+        "bug"
+      ],
+      "agent": "db-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "preference",
+      "content": "Commit messages must reference the ticket number in the first line",
+      "tags": [
+        "style",
+        "workflow"
+      ],
+      "agent": "main",
+      "importance": 0.5
+    },
+    {
+      "kind": "event",
+      "content": "Load test on May 3 peaked at 1200 requests per second with p95 latency of 180 ms",
+      "tags": [
+        "perf",
+        "testing"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.5
+    },
+    {
+      "kind": "note",
+      "content": "Onboarding docs live in the wiki under the Getting Started space",
+      "tags": [
+        "docs",
+        "onboarding"
+      ],
+      "agent": "main",
+      "importance": 0.4
+    },
+    {
+      "kind": "fact",
+      "content": "Nightly backups run at 02:00 UTC and are retained for 30 days",
+      "tags": [
+        "ops",
+        "backup"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "decision",
+      "content": "We use Rust for the ingest pipeline because it needs low GC pause times",
+      "tags": [
+        "perf",
+        "pipeline"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "mistake",
+      "content": "Hardcoded the staging database password in a config file and had to rotate it",
+      "tags": [
+        "security",
+        "bug"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "preference",
+      "content": "Code reviews should focus on correctness first and style second",
+      "tags": [
+        "workflow"
+      ],
+      "agent": "main",
+      "importance": 0.5
+    },
+    {
+      "kind": "event",
+      "content": "Shipped version 2.4 of the mobile app to the beta channel on June 1",
+      "tags": [
+        "release",
+        "mobile"
+      ],
+      "agent": "web-agent",
+      "importance": 0.5
+    },
+    {
+      "kind": "note",
+      "content": "The office VPN requires the YubiKey token to be plugged in before connecting",
+      "tags": [
+        "infra",
+        "security"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.4
+    }
+  ],
+  "queries": [
+    {
+      "query": "what port does the staging postgres database listen on",
+      "expect": "port 5432"
+    },
+    {
+      "query": "how is the production redis cache sharded",
+      "expect": "Redis cluster has 3 shards"
+    },
+    {
+      "query": "how are user passwords stored and hashed",
+      "expect": "Argon2id"
+    },
+    {
+      "query": "why did we pick sqlite for the local cache",
+      "expect": "chose SQLite over Postgres"
+    },
+    {
+      "query": "can we deploy to production on friday",
+      "expect": "frozen during the Friday demo"
+    },
+    {
+      "query": "what caused the outage with the cdn",
+      "expect": "CDN at the origin IP"
+    },
+    {
+      "query": "why were legitimate users being throttled by the rate limiter",
+      "expect": "counted retries"
+    },
+    {
+      "query": "how should the assistant phrase its replies",
+      "expect": "terse answers with no filler"
+    },
+    {
+      "query": "should I run tests before pushing",
+      "expect": "full test suite before pushing"
+    },
+    {
+      "query": "when was the sessions table migrated",
+      "expect": "sessions table to the new schema"
+    },
+    {
+      "query": "did we rotate the api signing keys",
+      "expect": "Rotated the API signing keys"
+    },
+    {
+      "query": "what port do the billing metrics listen on",
+      "expect": "port 9102"
+    },
+    {
+      "query": "where are the settings page design mockups",
+      "expect": "Settings v3"
+    },
+    {
+      "query": "what is the rate limit on the graphql gateway",
+      "expect": "100 requests per minute"
+    },
+    {
+      "query": "how do we roll out the new checkout flow",
+      "expect": "gradual rollout of the new checkout"
+    },
+    {
+      "query": "why did the worker use a stale schema",
+      "expect": "bump the migration revision"
+    },
+    {
+      "query": "what must a commit message contain",
+      "expect": "reference the ticket number"
+    },
+    {
+      "query": "how many requests per second did the load test reach",
+      "expect": "1200 requests per second"
+    },
+    {
+      "query": "where do I find the onboarding docs",
+      "expect": "Getting Started space"
+    },
+    {
+      "query": "when do nightly backups run and how long are they kept",
+      "expect": "02:00 UTC"
+    },
+    {
+      "query": "why is the ingest pipeline written in rust",
+      "expect": "low GC pause"
+    },
+    {
+      "query": "was there ever a leaked database credential",
+      "expect": "staging database password"
+    },
+    {
+      "query": "what should code reviews prioritize",
+      "expect": "correctness first"
+    },
+    {
+      "query": "when did the mobile app beta launch",
+      "expect": "beta channel on June 1"
+    },
+    {
+      "query": "what do I need before connecting to the office vpn",
+      "expect": "YubiKey"
+    }
+  ]
+}
