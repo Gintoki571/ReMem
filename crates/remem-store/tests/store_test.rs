@@ -180,6 +180,27 @@ fn same_text_different_kind_does_not_dedup() {
     assert_eq!(store.list(false).unwrap().len(), 2);
 }
 
+#[test]
+fn purge_removes_row_fts_and_vec() {
+    let store = Store::open(":memory:").unwrap();
+    let id = store.insert(&item("secret tokens live here")).unwrap();
+    store.set_embedding(&id, &axis_vec(0, 1.0)).unwrap();
+    assert_eq!(store.fts_search("secret tokens", 5).unwrap().len(), 1);
+    assert_eq!(store.knn(&axis_vec(0, 1.0), 5).unwrap().len(), 1);
+    assert!(store.purge(&id).unwrap());
+    assert!(store.get(&id).is_none());
+    assert!(store.fts_search("secret tokens", 5).unwrap().is_empty());
+    assert!(store.knn(&axis_vec(0, 1.0), 5).unwrap().is_empty());
+    assert!(store.list(true).unwrap().iter().all(|m| m.id != id));
+    assert!(!store.purge(&id).unwrap(), "second purge finds nothing");
+}
+
+#[test]
+fn purge_unknown_returns_false() {
+    let store = Store::open(":memory:").unwrap();
+    assert!(!store.purge("no-such-id").unwrap());
+}
+
 fn one_hot(i: usize) -> Vec<f32> {
     let mut v = vec![0.0f32; 768];
     v[i] = 1.0;

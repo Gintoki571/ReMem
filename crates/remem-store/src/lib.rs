@@ -119,6 +119,25 @@ impl Store {
         Ok(())
     }
 
+    /// Hard-delete: removes the memories row (the `memories_ad` trigger syncs
+    /// it out of FTS) and the mem_vec row. Returns false if the id is unknown.
+    pub fn purge(&self, id: &str) -> rusqlite::Result<bool> {
+        let rowid: Option<i64> = self
+            .conn
+            .query_row(
+                "SELECT rowid FROM memories WHERE id = ?1",
+                params![id],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let Some(rowid) = rowid else { return Ok(false) };
+        self.conn
+            .execute("DELETE FROM mem_vec WHERE rowid = ?1", params![rowid])?;
+        self.conn
+            .execute("DELETE FROM memories WHERE id = ?1", params![id])?;
+        Ok(true)
+    }
+
     /// Soft-delete: sets deleted = 1. get/fts_search/knn then skip the row.
     pub fn delete(&self, id: &str) -> rusqlite::Result<()> {
         self.conn.execute(
