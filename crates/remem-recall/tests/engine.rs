@@ -392,7 +392,10 @@ fn since_until_filter_on_event_time() {
 fn max_chars_skips_long_top_hit_for_fitting_hits() {
     let (e, path) = engine("budget-skip", FakeEmbedder::new(&[]));
     let long = e
-        .remember(&item(&format!("shared keyword entry long {}", "z".repeat(200))))
+        .remember(&item(&format!(
+            "shared keyword entry long {}",
+            "z".repeat(200)
+        )))
         .unwrap();
     let a = e.remember(&item("shared keyword entry a")).unwrap();
     let b = e.remember(&item("shared keyword entry b")).unwrap();
@@ -406,7 +409,10 @@ fn max_chars_skips_long_top_hit_for_fitting_hits() {
         .unwrap();
     let ids: Vec<_> = hits.iter().map(|h| h.item.id.clone()).collect();
     assert!(!ids.contains(&long), "over-budget top hit leaked: {ids:?}");
-    assert!(ids.contains(&a) && ids.contains(&b), "fitting hits lost: {ids:?}");
+    assert!(
+        ids.contains(&a) && ids.contains(&b),
+        "fitting hits lost: {ids:?}"
+    );
     let used: usize = hits.iter().map(|h| h.item.content.len()).sum();
     assert!(used <= 80, "budget exceeded: {used}");
     cleanup(&path);
@@ -446,5 +452,49 @@ fn no_max_chars_keeps_everything() {
         })
         .unwrap();
     assert_eq!(hits.len(), 1);
+    cleanup(&path);
+}
+
+/// Open a second engine on an existing db file (the store/graph are file-backed,
+/// so a floor test can read what the first engine wrote).
+fn engine_on(path: &std::path::Path, embed: FakeEmbedder) -> RecallEngine {
+    let store = Store::open(path.to_str().unwrap()).unwrap();
+    let graph = remem_graph::Graph::open(path).unwrap();
+    RecallEngine::new(store, Box::new(embed)).with_graph(graph)
+}
+
+/// Score floor: a floor above every score returns nothing instead of junk,
+/// a floor below the real hit keeps it, and the default 0.0 is off.
+#[test]
+fn min_score_floor_drops_junk_and_keeps_real_hits() {
+    let (e, path) = engine("floor", FakeEmbedder::new(&[]));
+    e.remember(&item("staging postgres listens on port 5432"))
+        .unwrap();
+    e.remember(&item("banana split recipe needs bananas"))
+        .unwrap();
+    drop(e);
+
+    let unfloored = engine_on(&path, FakeEmbedder::new(&[]))
+        .recall(&q("staging postgres port", 5))
+        .unwrap();
+    assert!(!unfloored.is_empty(), "default floor must change nothing");
+    let top = unfloored[0].score;
+
+    let kept = engine_on(&path, FakeEmbedder::new(&[]))
+        .with_min_score(top * 0.5)
+        .recall(&q("staging postgres port", 5))
+        .unwrap();
+    assert!(
+        kept.iter().any(|h| h.item.content.contains("port 5432")),
+        "kept: {kept:?}"
+    );
+
+    // Above the best score: even the top hit is dropped, so recall is empty.
+    let empty = engine_on(&path, FakeEmbedder::new(&[]))
+        .with_min_score(top * 2.0)
+        .recall(&q("staging postgres port", 5))
+        .unwrap();
+    assert!(empty.is_empty(), "floor above top hit must bail: {empty:?}");
+
     cleanup(&path);
 }

@@ -253,13 +253,76 @@ fn cli_recall_max_chars() {
     .trim()
     .to_string();
 
-    let hits = remem(&db, &["recall", "budget", "keyword", "--max-chars", "64", "--json"]);
+    let hits = remem(
+        &db,
+        &["recall", "budget", "keyword", "--max-chars", "64", "--json"],
+    );
     assert!(!hits.contains(&long), "over-budget hit leaked: {hits}");
     assert!(hits.contains(&short), "fitting hit lost: {hits}");
 
     // Nothing fits: the top hit still comes back whole.
-    let hits = remem(&db, &["recall", "budget", "keyword", "--max-chars", "1", "--json"]);
+    let hits = remem(
+        &db,
+        &["recall", "budget", "keyword", "--max-chars", "1", "--json"],
+    );
     assert!(hits.contains(&short), "top hit missing: {hits}");
+
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
+
+/// `recall --min-score F` drops junk; omitting it keeps the old behaviour.
+#[test]
+fn cli_recall_min_score() {
+    let db = std::env::temp_dir().join(format!("remem-cli-minscore-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+
+    let id = remem(
+        &db,
+        &["remember", "fact", "staging postgres listens on port 5432"],
+    )
+    .trim()
+    .to_string();
+
+    let hits = remem(&db, &["recall", "staging", "postgres", "port", "--json"]);
+    assert!(hits.contains(&id), "default floor must change nothing");
+    let top = serde_json::from_str::<Vec<serde_json::Value>>(&hits).unwrap()[0]["score"]
+        .as_f64()
+        .unwrap();
+
+    let kept = remem(
+        &db,
+        &[
+            "recall",
+            "staging",
+            "postgres",
+            "port",
+            "--json",
+            "--min-score",
+            &format!("{}", top / 2.0),
+        ],
+    );
+    assert!(kept.contains(&id), "hit above the floor lost: {kept}");
+
+    let empty = remem(
+        &db,
+        &[
+            "recall",
+            "staging",
+            "postgres",
+            "port",
+            "--json",
+            "--min-score",
+            &format!("{}", top * 2.0),
+        ],
+    );
+    assert!(
+        serde_json::from_str::<Vec<serde_json::Value>>(&empty)
+            .unwrap()
+            .is_empty(),
+        "floor above top hit must bail: {empty}"
+    );
 
     for suffix in ["", "-wal", "-shm"] {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));

@@ -68,6 +68,9 @@ enum Cmd {
         /// Character budget for the returned results
         #[arg(long)]
         max_chars: Option<usize>,
+        /// Drop hits scoring below this (0 = off, the default)
+        #[arg(long, default_value_t = remem_recall::DEFAULT_MIN_SCORE)]
+        min_score: f64,
     },
     /// List stored memories (newest first)
     List {
@@ -75,9 +78,7 @@ enum Cmd {
         json: bool,
     },
     /// Hard-delete a memory (row, FTS entry, embedding, graph node)
-    Purge {
-        id: String,
-    },
+    Purge { id: String },
     /// Link two memories in the graph
     Link {
         from: String,
@@ -198,6 +199,7 @@ fn main() -> Result<()> {
             since,
             until,
             max_chars,
+            min_score,
         } => {
             let q = RecallQuery {
                 text: query.join(" "),
@@ -209,7 +211,7 @@ fn main() -> Result<()> {
                 until: until.as_deref().map(parse_time).transpose()?,
                 ..Default::default()
             };
-            let hits = engine(&cli.db)?.recall(&q)?;
+            let hits = engine(&cli.db)?.with_min_score(min_score).recall(&q)?;
             if json {
                 let v: Vec<_> = hits
                     .iter()
@@ -254,8 +256,7 @@ fn main() -> Result<()> {
             if !store.purge(&id).context("purge")? {
                 return Err(anyhow!("unknown id '{id}'"));
             }
-            let graph =
-                remem_graph::Graph::open(&path).map_err(|e| anyhow!("open graph: {e}"))?;
+            let graph = remem_graph::Graph::open(&path).map_err(|e| anyhow!("open graph: {e}"))?;
             graph
                 .forget(&id)
                 .map_err(|e| anyhow!("graph forget: {e}"))?;

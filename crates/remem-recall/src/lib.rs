@@ -5,7 +5,7 @@ pub mod rank;
 pub mod stub;
 
 pub use rank::{
-    final_score, fuse, pack_by_budget, recency_score, rrf, Fused, Ranking,
+    apply_floor, final_score, fuse, pack_by_budget, recency_score, rrf, Fused, Ranking,
     DEFAULT_HALF_LIFE_DAYS, DEFAULT_RRF_K,
 };
 pub use stub::StubEmbedder;
@@ -25,6 +25,16 @@ pub trait Embed {
 
 /// How many top seeds get one graph hop during expansion.
 const GRAPH_EXPANSION_SEEDS: usize = 8;
+
+/// Default score floor: 0.0 means off, so recall is unchanged unless a caller
+/// opts in (`--min-score`). Calibration on docs/eval-fixtures.json (40 memories,
+/// debug binary, Cpu 768d embedder, fresh db): the 3 pure-stopword adversarial
+/// queries (`expect: ""`) top out at 0.0129-0.0138; the lowest top-1 score over
+/// all 37 answerable queries is 0.023. So any floor in 0.014..0.022 drops all
+/// adversarial junk and keeps every answerable top-1 (recall@1 9/37, recall@5
+/// 18/37 unchanged at 0.02). Use 0.02 as the round midpoint; it stays off by
+/// default because a floor that is wrong for one corpus silently returns [].
+pub const DEFAULT_MIN_SCORE: f64 = 0.0;
 
 /// Per-list depth for candidate generation. bm25 and knn both truncate here;
 /// `4 * k` leaves room for fusion to disagree. ponytail: constant depth, no
@@ -56,6 +66,7 @@ pub struct RecallEngine {
     embed: Box<dyn Embed>,
     weights: Weights,
     half_life_days: f64,
+    min_score: f64,
 }
 
 impl RecallEngine {
@@ -67,6 +78,7 @@ impl RecallEngine {
             embed,
             weights: Weights::default(),
             half_life_days: DEFAULT_HALF_LIFE_DAYS,
+            min_score: DEFAULT_MIN_SCORE,
         }
     }
 
@@ -83,6 +95,12 @@ impl RecallEngine {
 
     pub fn with_half_life_days(mut self, days: f64) -> Self {
         self.half_life_days = days;
+        self
+    }
+
+    /// Drop recall hits scoring below `min_score`. `0.0` disables the floor.
+    pub fn with_min_score(mut self, min_score: f64) -> Self {
+        self.min_score = min_score;
         self
     }
 
@@ -264,10 +282,11 @@ impl RecallEngine {
         }
         hits.sort_by(|a, b| b.score.total_cmp(&a.score));
         hits.truncate(k);
-        Ok(match query.max_chars {
+        let hits = match query.max_chars {
             Some(max) => pack_by_budget(hits, max),
             None => hits,
-        })
+        };
+        Ok(apply_floor(hits, self.min_score))
     }
 }
 

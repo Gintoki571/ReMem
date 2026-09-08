@@ -105,8 +105,7 @@ fn harden_db_file(path: &std::path::Path) {
         }
         for t in targets {
             if t.is_file() {
-                let _ =
-                    std::fs::set_permissions(&t, std::fs::Permissions::from_mode(0o600));
+                let _ = std::fs::set_permissions(&t, std::fs::Permissions::from_mode(0o600));
             }
         }
     }
@@ -240,21 +239,37 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
             if let Some(s) = str_arg(args, "session") {
                 item.session_id = s;
             }
-            if let Some(imp) = args.get("importance").and_then(|v| v.as_f64()) {
-                item.importance = imp as f32;
+            match args.get("importance") {
+                None | Some(Value::Null) => {}
+                Some(v) => match v.as_f64() {
+                    Some(imp) => item.importance = imp as f32,
+                    None => return Err(anyhow!("remember: 'importance' must be a number")),
+                },
             }
             let id = eng.remember(&item)?;
             Ok(serde_json::to_string(&json!({"id": id}))?)
         }
         "recall" => {
-            let query = str_arg(args, "query").unwrap_or_default();
-            let k = (args.get("k").and_then(|v| v.as_u64()).unwrap_or(5) as usize).min(MAX_TOP_K);
+            let query = match str_arg(args, "query") {
+                Some(q) if !q.is_empty() => q,
+                _ => return Err(anyhow!("recall: missing 'query'")),
+            };
+            let k = match args.get("k") {
+                None | Some(Value::Null) => 5,
+                Some(v) => match v.as_u64() {
+                    Some(n) => (n as usize).min(MAX_TOP_K),
+                    None => return Err(anyhow!("recall: 'k' must be a non-negative integer")),
+                },
+            };
             let q = RecallQuery {
                 text: query,
                 k,
                 agent_id: str_arg(args, "agent"),
                 session_id: str_arg(args, "session"),
-                max_chars: args.get("maxChars").and_then(|v| v.as_u64()).map(|v| v as usize),
+                max_chars: args
+                    .get("maxChars")
+                    .and_then(|v| v.as_u64())
+                    .map(|v| v as usize),
                 ..Default::default()
             };
             let hits = eng.recall(&q)?;
@@ -299,6 +314,8 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
             Ok(serde_json::to_string(&json!({"purged": purged}))?)
         }
         "related" => {
+            // Unknown id stays []: neighbors of nothing is empty, not an error
+            // (unlike link, which must resolve both endpoints to create an edge).
             let id = str_arg(args, "id").ok_or_else(|| anyhow!("related: missing 'id'"))?;
             let g = eng
                 .graph()
@@ -387,6 +404,12 @@ fn read_message(reader: &mut BufReader<std::io::StdinLock<'_>>) -> Result<Option
 }
 
 fn handle(eng: &RecallEngine, msg: &Value) -> Option<Value> {
+    // Valid JSON that is not an object (42, [], null, "str") is an invalid
+    // request, not a notification: answer -32600 instead of silent drop.
+    if !msg.is_object() {
+        return Some(json!({"jsonrpc": "2.0", "id": null,
+            "error": {"code": -32600, "message": "invalid request: expected object"}}));
+    }
     let method = msg.get("method").and_then(|m| m.as_str()).unwrap_or("");
     let id = msg.get("id").cloned().unwrap_or(Value::Null);
     let has_id = msg.get("id").is_some();

@@ -479,7 +479,7 @@ impl Graph {
 /// True when a graph node id names a Memory node: hubs are namespaced
 /// (`agent:`/`session:`), memories are not.
 fn hub_id_is_memory(id: &str) -> bool {
-    id != "" && !id.starts_with(AGENT_PREFIX) && !id.starts_with(SESSION_PREFIX)
+    !id.is_empty() && !id.starts_with(AGENT_PREFIX) && !id.starts_with(SESSION_PREFIX)
 }
 
 /// Decode a graphqlite value into JSON. graphqlite's `Value` is an untagged
@@ -503,4 +503,3 @@ fn json_of(value: graphqlite::Value) -> JsonValue {
         }
     }
 }
-

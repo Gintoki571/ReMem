@@ -240,11 +240,16 @@ fn second_writer_blocks_then_succeeds_under_contention() {
 fn fts_search_limit_saturates_at_1000() {
     let store = Store::open(":memory:").unwrap();
     for i in 0..1005 {
-        store.insert(&item(&format!("bulk memory number {i}"))).unwrap();
+        store
+            .insert(&item(&format!("bulk memory number {i}")))
+            .unwrap();
     }
     // usize::MAX also covers the negative-LIMIT case: a raw cast to i64
     // would produce -1, which SQLite reads as "no limit".
-    assert_eq!(store.fts_search("bulk memory", usize::MAX).unwrap().len(), 1000);
+    assert_eq!(
+        store.fts_search("bulk memory", usize::MAX).unwrap().len(),
+        1000
+    );
     assert_eq!(store.fts_search("bulk memory", 2_000).unwrap().len(), 1000);
 }
 

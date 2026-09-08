@@ -142,7 +142,10 @@ fn initialize_and_list_tools() {
         serde_json::json!(true)
     );
     let purge = tools.iter().find(|t| t["name"] == "purge").unwrap();
-    assert_eq!(purge["annotations"]["readOnlyHint"], serde_json::json!(false));
+    assert_eq!(
+        purge["annotations"]["readOnlyHint"],
+        serde_json::json!(false)
+    );
     assert_eq!(
         purge["annotations"]["destructiveHint"],
         serde_json::json!(true)
@@ -278,7 +281,9 @@ fn recall_max_chars_truncates_and_unknown_empty_unchanged() {
     let tools = resp["result"]["tools"].as_array().unwrap();
     let recall = tools.iter().find(|t| t["name"] == "recall").unwrap();
     assert!(
-        recall["inputSchema"]["properties"].get("maxChars").is_some(),
+        recall["inputSchema"]["properties"]
+            .get("maxChars")
+            .is_some(),
         "recall schema missing maxChars: {recall:?}"
     );
 
@@ -306,7 +311,10 @@ fn recall_max_chars_truncates_and_unknown_empty_unchanged() {
         json!({"query": "mcpbudget entry", "k": 5, "maxChars": 80}),
     );
     let budgeted_hits = budgeted.as_array().unwrap();
-    assert!(!budgeted_hits.is_empty(), "budget must keep at least one hit");
+    assert!(
+        !budgeted_hits.is_empty(),
+        "budget must keep at least one hit"
+    );
     let budgeted_chars: usize = budgeted_hits
         .iter()
         .map(|h| h["content"].as_str().unwrap_or("").len())
@@ -362,7 +370,10 @@ fn content_length_cap_rejects_huge_frame() {
     c.send_raw("");
     c.send_raw(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#);
     let err = c.read_resp();
-    assert!(err.get("error").is_some(), "expected JSON-RPC error: {err:?}");
+    assert!(
+        err.get("error").is_some(),
+        "expected JSON-RPC error: {err:?}"
+    );
     let ok = c.read_resp();
     assert_eq!(ok["result"]["serverInfo"]["name"], json!("remem-mcp"));
     assert_eq!(ok["id"], json!(1));
@@ -382,7 +393,10 @@ fn recall_k_and_list_limit_clamped_to_1000() {
             json!({"kind": "fact", "content": format!("clamp token entry {i}")}),
         );
     }
-    let huge: Value = c.call("recall", json!({"query": "clamp token entry", "k": 99999999}));
+    let huge: Value = c.call(
+        "recall",
+        json!({"query": "clamp token entry", "k": 99999999}),
+    );
     let capped: Value = c.call("recall", json!({"query": "clamp token entry", "k": 1000}));
     assert_eq!(
         huge.as_array().unwrap().len(),
@@ -398,4 +412,63 @@ fn recall_k_and_list_limit_clamped_to_1000() {
         "limit huge must behave like 1000"
     );
     assert!(l_huge.as_array().unwrap().len() <= 1000);
+}
+
+#[test]
+fn non_object_json_gets_invalid_request() {
+    let mut c = Client::spawn(&temp_db("non-object"));
+    for raw in ["42", "[1,2,3]", "null", "\"hello\""] {
+        c.send_raw(raw);
+        let err = c.read_resp();
+        assert_eq!(err["error"]["code"], json!(-32600), "input {raw}: {err:?}");
+        assert_eq!(err["id"], json!(null), "input {raw}: {err:?}");
+    }
+    let resp = c.request("ping", json!({}));
+    assert_eq!(resp["result"], json!({}), "server must continue: {resp:?}");
+}
+
+#[test]
+fn recall_and_remember_coercions_error_loudly() {
+    let mut c = Client::spawn(&temp_db("coerce"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+    for args in [json!({}), json!({"k": 5}), json!({"query": ""})] {
+        let resp = c.request(
+            "tools/call",
+            json!({"name": "recall", "arguments": args.clone()}),
+        );
+        assert_eq!(
+            resp["result"]["isError"],
+            json!(true),
+            "recall {args}: {resp:?}"
+        );
+    }
+    for args in [
+        json!({"query": "q", "k": -5}),
+        json!({"query": "q", "k": "many"}),
+        json!({"query": "q", "k": 5.5}),
+        json!({"query": "q", "k": true}),
+    ] {
+        let resp = c.request(
+            "tools/call",
+            json!({"name": "recall", "arguments": args.clone()}),
+        );
+        assert_eq!(
+            resp["result"]["isError"],
+            json!(true),
+            "recall {args}: {resp:?}"
+        );
+    }
+    let resp = c.request("tools/call",
+        json!({"name": "remember", "arguments": {"kind": "fact", "content": "coerce imp", "importance": "high"}}));
+    assert_eq!(
+        resp["result"]["isError"],
+        json!(true),
+        "importance str: {resp:?}"
+    );
+    let unknown: Value = c.call("related", json!({"id": "does-not-exist"}));
+    assert_eq!(unknown, json!([]), "unknown related stays []: {unknown:?}");
 }

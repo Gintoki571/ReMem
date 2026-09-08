@@ -259,11 +259,9 @@ impl Store {
 /// `occurred_at` is nullable, so backfilling is a no-op: old rows read as None.
 fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     let has_col = |name: &str| -> rusqlite::Result<bool> {
-        let mut stmt = conn.prepare(
-            "SELECT 1 FROM pragma_table_info('memories') WHERE name = ?1",
-        )?;
-        let present: Option<i64> =
-            stmt.query_row(params![name], |r| r.get(0)).optional()?;
+        let mut stmt =
+            conn.prepare("SELECT 1 FROM pragma_table_info('memories') WHERE name = ?1")?;
+        let present: Option<i64> = stmt.query_row(params![name], |r| r.get(0)).optional()?;
         Ok(present.is_some())
     };
     if !has_col("occurred_at")? {

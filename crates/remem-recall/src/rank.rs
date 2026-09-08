@@ -106,6 +106,14 @@ pub fn final_score(fused: f64, importance: f32, recency: f64) -> f64 {
     fused * (0.5 + 0.5 * importance as f64) * (0.7 + 0.3 * recency)
 }
 
+/// Drop hits whose final score is below `min_score`. Unlike budget packing
+/// this may return an empty list: when even the top hit is junk, the right
+/// answer is no results. `min_score <= 0.0` disables the floor (scores are
+/// always >= 0), so 0.0 means off.
+pub fn apply_floor(hits: Vec<RecallHit>, min_score: f64) -> Vec<RecallHit> {
+    hits.into_iter().filter(|h| h.score >= min_score).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -240,6 +248,39 @@ mod tests {
         assert_eq!(budget_ids(&big), packed(&["a", "b"]));
         assert_eq!(budget_ids(&exact), packed(&["a"]));
         assert!(pack_by_budget(Vec::new(), 10).is_empty());
+    }
+
+    fn scored(id: &str, score: f64) -> RecallHit {
+        let mut h = hit(id, "content");
+        h.score = score;
+        h
+    }
+
+    fn floored_ids(hits: &[RecallHit]) -> Vec<String> {
+        hits.iter().map(|h| h.item.id.clone()).collect()
+    }
+
+    #[test]
+    fn floor_drops_only_hits_below_it() {
+        let hits = vec![scored("a", 0.03), scored("b", 0.02), scored("c", 0.01)];
+        assert_eq!(floored_ids(&apply_floor(hits, 0.02)), packed(&["a", "b"]));
+    }
+
+    #[test]
+    fn floor_zero_is_off_and_keeps_everything() {
+        let hits = vec![scored("a", 0.0), scored("b", 0.5)];
+        assert_eq!(floored_ids(&apply_floor(hits, 0.0)), packed(&["a", "b"]));
+    }
+
+    #[test]
+    fn floor_above_top_hit_returns_empty_even_for_the_top() {
+        let hits = vec![scored("a", 0.013), scored("b", 0.01)];
+        assert!(apply_floor(hits, 0.02).is_empty());
+    }
+
+    #[test]
+    fn floor_on_empty_input_is_empty() {
+        assert!(apply_floor(Vec::new(), 0.5).is_empty());
     }
 
     #[test]
