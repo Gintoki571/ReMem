@@ -65,11 +65,18 @@ enum Cmd {
         /// Only memories whose event time is <= this (unix seconds or YYYY-MM-DD)
         #[arg(long)]
         until: Option<String>,
+        /// Character budget for the returned results
+        #[arg(long)]
+        max_chars: Option<usize>,
     },
     /// List stored memories (newest first)
     List {
         #[arg(long)]
         json: bool,
+    },
+    /// Hard-delete a memory (row, FTS entry, embedding, graph node)
+    Purge {
+        id: String,
     },
     /// Link two memories in the graph
     Link {
@@ -190,10 +197,12 @@ fn main() -> Result<()> {
             session,
             since,
             until,
+            max_chars,
         } => {
             let q = RecallQuery {
                 text: query.join(" "),
                 k,
+                max_chars,
                 agent_id: agent,
                 session_id: session,
                 since: since.as_deref().map(parse_time).transpose()?,
@@ -238,6 +247,19 @@ fn main() -> Result<()> {
                     println!("{}  [{}]  {}", m.id, m.kind.as_str(), m.content);
                 }
             }
+        }
+        Cmd::Purge { id } => {
+            let path = expand(&cli.db);
+            let store = Store::open_path(&path).context("open store")?;
+            if !store.purge(&id).context("purge")? {
+                return Err(anyhow!("unknown id '{id}'"));
+            }
+            let graph =
+                remem_graph::Graph::open(&path).map_err(|e| anyhow!("open graph: {e}"))?;
+            graph
+                .forget(&id)
+                .map_err(|e| anyhow!("graph forget: {e}"))?;
+            println!("purged {id}");
         }
         Cmd::Link { from, to, rel } => {
             engine(&cli.db)?.link(&from, &to, rel.as_deref())?;

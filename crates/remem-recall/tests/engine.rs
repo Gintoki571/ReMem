@@ -149,9 +149,12 @@ fn appearing_in_both_lists_outranks_single_list() {
 #[test]
 fn importance_breaks_ties() {
     let (e, path) = engine("imp", FakeEmbedder::new(&[]));
-    let mut low = item("same content text");
+    // Content must differ or the store's content-hash dedup collapses them.
+    // The differing token is outside the query, so both stay equal candidates
+    // and importance alone decides.
+    let mut low = item("same content text low");
     low.importance = 0.1;
-    let mut high = item("same content text");
+    let mut high = item("same content text high");
     high.importance = 0.9;
     e.remember(&low).unwrap();
     e.remember(&high).unwrap();
@@ -167,11 +170,11 @@ fn importance_breaks_ties() {
 fn recency_breaks_ties() {
     let (e, path) = engine("rec", FakeEmbedder::new(&[]));
     let now = MemoryItem::now();
-    let mut old = item("stale keyword fact");
+    let mut old = item("stale keyword fact old");
     old.updated_at = now - 90 * DAY;
     old.created_at = old.updated_at;
     e.store().insert(&old).unwrap();
-    let fresh = e.remember(&item("stale keyword fact")).unwrap();
+    let fresh = e.remember(&item("stale keyword fact new")).unwrap();
     let hits = e.recall(&q("stale keyword fact", 5)).unwrap();
     assert_eq!(hits.len(), 2);
     assert_eq!(hits[0].item.id, fresh);
@@ -319,13 +322,13 @@ fn weights_tune_fts_vs_vector() {
 fn recency_uses_occurred_at_over_created_at() {
     let (e, path) = engine("two-clocks", FakeEmbedder::new(&[]));
     let now = MemoryItem::now();
-    let mut march = item("quarterly report keyword");
+    let mut march = item("quarterly report keyword march");
     march.created_at = now; // typed today
     march.updated_at = now;
     march.occurred_at = Some(now - 90 * DAY); // happened in March
     let mid = e.store().insert(&march).unwrap();
 
-    let recent = e.remember(&item("quarterly report keyword")).unwrap();
+    let recent = e.remember(&item("quarterly report keyword today")).unwrap();
     let hits = e.recall(&q("quarterly report keyword", 5)).unwrap();
     assert_eq!(hits.len(), 2);
     assert_eq!(hits[0].item.id, recent, "older event time must lose");
@@ -380,5 +383,68 @@ fn since_until_filter_on_event_time() {
     assert_eq!(ids, vec![oid]);
     // Unbounded query is unchanged.
     assert_eq!(window(now - 365 * DAY, now + DAY).len(), 3);
+    cleanup(&path);
+}
+
+/// Token-budget packing: a long top hit is skipped so shorter, still-relevant
+/// hits fit, and the budget never silently blows the caller's context.
+#[test]
+fn max_chars_skips_long_top_hit_for_fitting_hits() {
+    let (e, path) = engine("budget-skip", FakeEmbedder::new(&[]));
+    let long = e
+        .remember(&item(&format!("shared keyword entry long {}", "z".repeat(200))))
+        .unwrap();
+    let a = e.remember(&item("shared keyword entry a")).unwrap();
+    let b = e.remember(&item("shared keyword entry b")).unwrap();
+    let hits = e
+        .recall(&RecallQuery {
+            text: "shared keyword entry".into(),
+            k: 5,
+            max_chars: Some(80),
+            ..Default::default()
+        })
+        .unwrap();
+    let ids: Vec<_> = hits.iter().map(|h| h.item.id.clone()).collect();
+    assert!(!ids.contains(&long), "over-budget top hit leaked: {ids:?}");
+    assert!(ids.contains(&a) && ids.contains(&b), "fitting hits lost: {ids:?}");
+    let used: usize = hits.iter().map(|h| h.item.content.len()).sum();
+    assert!(used <= 80, "budget exceeded: {used}");
+    cleanup(&path);
+}
+
+/// With nothing under budget, the top hit still comes back whole.
+#[test]
+fn max_chars_always_keeps_top_hit() {
+    let (e, path) = engine("budget-top", FakeEmbedder::new(&[]));
+    let top = e
+        .remember(&item(&format!("solo keyword fact {}", "y".repeat(200))))
+        .unwrap();
+    let hits = e
+        .recall(&RecallQuery {
+            text: "solo keyword fact".into(),
+            k: 5,
+            max_chars: Some(1),
+            ..Default::default()
+        })
+        .unwrap();
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].item.id, top);
+    cleanup(&path);
+}
+
+/// No budget means the current top-k behaviour is unchanged.
+#[test]
+fn no_max_chars_keeps_everything() {
+    let (e, path) = engine("budget-off", FakeEmbedder::new(&[]));
+    e.remember(&item(&format!("plain keyword note {}", "x".repeat(200))))
+        .unwrap();
+    let hits = e
+        .recall(&RecallQuery {
+            text: "plain keyword note".into(),
+            k: 5,
+            ..Default::default()
+        })
+        .unwrap();
+    assert_eq!(hits.len(), 1);
     cleanup(&path);
 }

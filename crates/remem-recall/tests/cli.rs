@@ -220,3 +220,48 @@ fn cli_occurred_at_and_date_filters() {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
 }
+
+/// `recall --max-chars N` packs results to a character budget.
+#[test]
+fn cli_recall_max_chars() {
+    let db = std::env::temp_dir().join(format!("remem-cli-maxchars-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    // importance keeps the short memory top-ranked, so the long one is the
+    // candidate that must be skipped rather than the always-kept top hit.
+    let long = remem(
+        &db,
+        &[
+            "remember",
+            "fact",
+            &format!("budget keyword {}", "z".repeat(200)),
+            "--importance",
+            "0.1",
+        ],
+    )
+    .trim()
+    .to_string();
+    let short = remem(
+        &db,
+        &[
+            "remember",
+            "fact",
+            "budget keyword short",
+            "--importance",
+            "0.9",
+        ],
+    )
+    .trim()
+    .to_string();
+
+    let hits = remem(&db, &["recall", "budget", "keyword", "--max-chars", "64", "--json"]);
+    assert!(!hits.contains(&long), "over-budget hit leaked: {hits}");
+    assert!(hits.contains(&short), "fitting hit lost: {hits}");
+
+    // Nothing fits: the top hit still comes back whole.
+    let hits = remem(&db, &["recall", "budget", "keyword", "--max-chars", "1", "--json"]);
+    assert!(hits.contains(&short), "top hit missing: {hits}");
+
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}

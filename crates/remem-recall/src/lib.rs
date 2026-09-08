@@ -5,7 +5,8 @@ pub mod rank;
 pub mod stub;
 
 pub use rank::{
-    final_score, fuse, recency_score, rrf, Fused, Ranking, DEFAULT_HALF_LIFE_DAYS, DEFAULT_RRF_K,
+    final_score, fuse, pack_by_budget, recency_score, rrf, Fused, Ranking,
+    DEFAULT_HALF_LIFE_DAYS, DEFAULT_RRF_K,
 };
 pub use stub::StubEmbedder;
 
@@ -263,7 +264,10 @@ impl RecallEngine {
         }
         hits.sort_by(|a, b| b.score.total_cmp(&a.score));
         hits.truncate(k);
-        Ok(hits)
+        Ok(match query.max_chars {
+            Some(max) => pack_by_budget(hits, max),
+            None => hits,
+        })
     }
 }
 

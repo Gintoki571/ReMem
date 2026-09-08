@@ -3,6 +3,8 @@
 
 use std::collections::HashMap;
 
+use remem_types::RecallHit;
+
 /// Reciprocal rank fusion constant (Cormack et al.), same as v2.
 pub const DEFAULT_RRF_K: usize = 60;
 /// Recency half-life in days, same as v2.
@@ -82,6 +84,23 @@ pub fn fuse(lists: &[Ranking], k: usize) -> Vec<Fused> {
     out
 }
 
+/// Pack hits to a character budget, keeping rank order. A hit that does not
+/// fit the remaining budget is skipped and packing continues with the next
+/// one; the top hit is always returned whole so a matching query never comes
+/// back empty.
+pub fn pack_by_budget(hits: Vec<RecallHit>, max_chars: usize) -> Vec<RecallHit> {
+    let mut out: Vec<RecallHit> = Vec::new();
+    let mut used = 0usize;
+    for hit in hits {
+        let len = hit.item.content.len();
+        if used + len <= max_chars || out.is_empty() {
+            used += len;
+            out.push(hit);
+        }
+    }
+    out
+}
+
 /// Final ranking score: fused * (0.5 + 0.5 * importance) * (0.7 + 0.3 * recency).
 pub fn final_score(fused: f64, importance: f32, recency: f64) -> f64 {
     fused * (0.5 + 0.5 * importance as f64) * (0.7 + 0.3 * recency)
@@ -90,6 +109,7 @@ pub fn final_score(fused: f64, importance: f32, recency: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use remem_types::{MemoryItem, MemoryKind};
 
     fn ids(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| s.to_string()).collect()
@@ -172,6 +192,54 @@ mod tests {
     #[test]
     fn recency_clamps_future_dates() {
         assert!((recency_score(200, 30.0, 100) - 1.0).abs() < 1e-12);
+    }
+
+    fn hit(id: &str, content: &str) -> RecallHit {
+        let mut item = MemoryItem::new(MemoryKind::Fact, content.to_string());
+        item.id = id.to_string();
+        RecallHit {
+            item,
+            score: 1.0,
+            reasons: vec![],
+        }
+    }
+
+    fn packed(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    fn budget_ids(hits: &[RecallHit]) -> Vec<String> {
+        hits.iter().map(|h| h.item.id.clone()).collect()
+    }
+
+    #[test]
+    fn pack_keeps_all_when_budget_is_generous() {
+        let hits = vec![hit("a", "aaaa"), hit("b", "bbbb")];
+        assert_eq!(budget_ids(&pack_by_budget(hits, 100)), packed(&["a", "b"]));
+    }
+
+    #[test]
+    fn pack_skips_what_does_not_fit_and_continues() {
+        // rank order a,b,c; the long b is skipped but short c still fits.
+        let hits = vec![hit("a", "aaaa"), hit("b", &"b".repeat(50)), hit("c", "cc")];
+        assert_eq!(budget_ids(&pack_by_budget(hits, 10)), packed(&["a", "c"]));
+    }
+
+    #[test]
+    fn pack_never_returns_empty_when_there_is_a_top_hit() {
+        let hits = vec![hit("a", &"a".repeat(100)), hit("b", &"b".repeat(100))];
+        assert_eq!(budget_ids(&pack_by_budget(hits.clone(), 1)), packed(&["a"]));
+        assert_eq!(budget_ids(&pack_by_budget(hits, 0)), packed(&["a"]));
+    }
+
+    #[test]
+    fn pack_respects_exact_budget_and_empty_input() {
+        let hits = vec![hit("a", "aaaa"), hit("b", "bbbb")];
+        let big = pack_by_budget(hits.clone(), 8);
+        let exact = pack_by_budget(hits, 7);
+        assert_eq!(budget_ids(&big), packed(&["a", "b"]));
+        assert_eq!(budget_ids(&exact), packed(&["a"]));
+        assert!(pack_by_budget(Vec::new(), 10).is_empty());
     }
 
     #[test]

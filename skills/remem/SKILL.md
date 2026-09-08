@@ -25,8 +25,9 @@ cargo build   # binary at ./target/debug/remem
 # other commands
 ./target/debug/remem list [--json]
 ./target/debug/remem link <fromId> <toId> [--rel REL]
+./target/debug/remem purge <id>  # hard-delete: row, FTS entry, embedding, graph node
 ./target/debug/remem stats
-./target/debug/remem validate
+./target/debug/remem validate  # store/graph consistency, exit 1 if issues
 ```
 
 Notes: `--db` overrides the DB path (env `REMEM_DB`, default `~/.remem/remem.db`). `--tags` is comma-separated. `--occurred-at`, `--since`, `--until` take unix seconds or YYYY-MM-DD. `list` takes no `--k`. MCP tools: remember, recall, list, link, forget (by id), stats, validate.

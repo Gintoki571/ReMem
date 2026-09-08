@@ -37,10 +37,11 @@ Binary: `./target/debug/remem`. Global flag `--db <path>` (env `REMEM_DB`, defau
 | `recall` | `remem recall <query...> [--k 5] [--json] [--agent NAME] [--session NAME] [--since SECS_OR_YYYY-MM-DD] [--until SECS_OR_YYYY-MM-DD]` |
 | `list` | `remem list [--json]` (newest first) |
 | `link` | `remem link <fromId> <toId> [--rel REL]` |
+| `purge` | `remem purge <id>` (hard-delete row, FTS entry, embedding, graph node) |
 | `stats` | `remem stats` (JSON counts) |
 | `validate` | `remem validate` (dangling edges + orphans, exit 1 if any) |
 
-Kinds: `fact | decision | mistake | preference | event | note`. `list` takes no `--k`; `link` takes `--rel` (not `--type`). MCP tools: `remember`, `recall`, `list`, `link`, `forget` (delete by id), `stats`, `validate`.
+Kinds: `fact | decision | mistake | preference | event | note`. `list` takes no `--k`; `link` takes `--rel` (not `--type`). MCP tools: `remember`, `recall`, `list`, `link`, `forget` (delete by id), `purge` (hard-delete by id), `stats`, `validate`, `related` (graph neighbors of an id, optional `rel` filter).
 
 ### Examples
 
@@ -62,6 +63,13 @@ export REMEM_DB="$HOME/.remem/remem.db"
 # 4. Backdate an event and use the MCP tools (forget by id, validate for health)
 ./target/debug/remem remember event "cut v3 release" --occurred-at 2026-09-01 --agent prime
 ```
+
+## Quality
+
+40-fixture eval (`docs/eval.md`, runner `scripts/eval.sh`, 2026-09-08):
+answerable queries recall@1 20/37 (54%), recall@5 36/37 (97%).
+3 adversarial pure-stopword queries have no good answer and return near-zero-score junk.
+25-fixture baseline was recall@1 4/25 (16%), recall@5 16/25 (64%).
 
 ## GPU / CUDA note
 

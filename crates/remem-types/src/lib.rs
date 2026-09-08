@@ -95,6 +95,9 @@ pub struct RecallQuery {
     pub since: Option<i64>,
     /// Inclusive upper bound on the event clock.
     pub until: Option<i64>,
+    /// Result budget in characters (content length). Hits that do not fit are
+    /// skipped rather than truncating the tail. None means no budget.
+    pub max_chars: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
