@@ -102,7 +102,7 @@ fn initialize_and_list_tools() {
     let tools = resp["result"]["tools"].as_array().unwrap();
     let names: Vec<_> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
     for want in [
-        "remember", "recall", "list", "link", "forget", "stats", "validate",
+        "remember", "recall", "list", "link", "forget", "purge", "stats", "validate",
     ] {
         assert!(names.contains(&want), "missing tool {want}: {names:?}");
     }
@@ -129,6 +129,41 @@ fn initialize_and_list_tools() {
         forget["annotations"]["destructiveHint"],
         serde_json::json!(true)
     );
+    let purge = tools.iter().find(|t| t["name"] == "purge").unwrap();
+    assert_eq!(purge["annotations"]["readOnlyHint"], serde_json::json!(false));
+    assert_eq!(
+        purge["annotations"]["destructiveHint"],
+        serde_json::json!(true)
+    );
+}
+
+#[test]
+fn purge_existing_then_recall_empty_and_unknown_false() {
+    let mut c = Client::spawn(&temp_db("purge"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+
+    let r: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "mcp purge zulu unique token"}),
+    );
+    let id = r["id"].as_str().unwrap().to_string();
+
+    let p: Value = c.call("purge", json!({"id": id}));
+    assert_eq!(p["purged"], json!(true), "purge existing: {p:?}");
+
+    let hits: Value = c.call("recall", json!({"query": "mcp purge zulu", "k": 5}));
+    let hits = hits.as_array().unwrap();
+    assert!(
+        hits.iter().all(|h| h["id"] != id),
+        "purged id still recalled: {hits:?}"
+    );
+
+    let p2: Value = c.call("purge", json!({"id": "does-not-exist"}));
+    assert_eq!(p2["purged"], json!(false), "purge unknown: {p2:?}");
 }
 
 #[test]

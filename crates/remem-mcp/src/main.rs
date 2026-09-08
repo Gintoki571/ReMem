@@ -96,6 +96,11 @@ fn tools_list() -> Value {
          "inputSchema": {"type": "object",
             "properties": {"id": {"type": "string"}},
             "required": ["id"]}},
+        {"name": "purge", "description": "Hard-delete a memory by id (removes row, FTS and vector entries).",
+         "annotations": {"readOnlyHint": false, "destructiveHint": true},
+         "inputSchema": {"type": "object",
+            "properties": {"id": {"type": "string"}},
+            "required": ["id"]}},
         {"name": "stats", "description": "Database and graph counts.",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object", "properties": {}}},
@@ -195,6 +200,16 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
             let forgotten = eng.store().get(&id).is_some();
             eng.forget(&id)?;
             Ok(serde_json::to_string(&json!({"forgotten": forgotten}))?)
+        }
+        "purge" => {
+            let id = str_arg(args, "id").ok_or_else(|| anyhow!("purge: missing 'id'"))?;
+            let purged = eng.store().purge(&id).map_err(|e| anyhow!("purge: {e}"))?;
+            if purged {
+                if let Some(g) = eng.graph() {
+                    g.forget(&id).map_err(|e| anyhow!("graph forget: {e}"))?;
+                }
+            }
+            Ok(serde_json::to_string(&json!({"purged": purged}))?)
         }
         "stats" => Ok(serde_json::to_string(&eng.stats()?)?),
         "validate" => {
