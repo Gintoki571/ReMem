@@ -11,7 +11,7 @@ Status: DRAFT. Branch `v3`, unreleased. Docs only, no API freeze claimed.
 - Graph links with `graph#` recall reasons; `related`/`central`/`path` ops.
 - `validate` health check (empty output means healthy); `stats` JSON counts.
 - MCP server over stdio: 11 tools (remember/recall/list/link/forget/purge/stats/validate/related/central/path).
-- 11 CLI subcommands on `remem` binary: `remember`/`recall`/`list`/`link`/`forget`/`purge`/`stats`/`validate`/`related`/`central`/`path` (full CLI/MCP parity).
+- 11 CLI subcommands on `remem` binary: `remember`/`recall`/`list`/`link`/`forget`/`purge`/`stats`/`validate`/`related`/`central`/`path` (full CLI/MCP parity); `list` takes `--limit`, recall `k=0` returns empty.
 - Onboarding demo (`scripts/demo.sh`) and eval harness (`scripts/eval.sh`).
 - CPU-by-default local embeddings (768d); CUDA opt-in via feature flag.
 
@@ -23,7 +23,7 @@ Status: DRAFT. Branch `v3`, unreleased. Docs only, no API freeze claimed.
 - Floored run detail: the floor costs exactly the two rank-5 tag-anchor targets Q27/Q28
   (scores below 0.02); adversarial junk (top score ~0.012-0.016) is fully suppressed at 0.02.
 - Baseline (25 fixtures): 4/25 @1 (16%), 16/25 @5 (64%).
-- `cargo test --workspace --tests` (this machine): 141 passed, 0 failed, 2 ignored
+- `cargo test --workspace` (this machine, HEAD `aed76fb`): 144 passed, 0 failed, 2 ignored
   (embed `#[ignore]`d CUDA smoke + bench). The old `cli_recall_max_chars` failure is fixed.
 - `cargo test --workspace` (plain) compiles: the broken `knn-probe.rs` example is gone;
   examples dir holds only `near-dup-calibrate.rs`.
@@ -49,12 +49,13 @@ Status: DRAFT. Branch `v3`, unreleased. Docs only, no API freeze claimed.
 - Score floor default off (`0.0` = off); adversarial junk (~0.012-0.016) needs
   `--min-score 0.02`, which also drops the two weakest rank-5 tag anchors (tracker #1).
 - Near-duplicate report on write: `similar:` line (CLI) / `similar` array (MCP) landed
-  (`SIMILAR_MAX_DISTANCE` 0.48); tracker #2 stays open for follow-ups.
+  (`SIMILAR_MAX_DISTANCE` 0.48, floor stays opt-in); tracker #2 closed.
 - CLI forget/related/central/path landed (tracker #3 closed); MCP recall `since`/`until`
   also landed. MCP `remember occurredAt` landed (tracker #4 closed).
-- Tag-anchor ranking beyond the 1.05x prefix boost (Q27/Q28, tracker #6); recall `k=0`
-  quirk (returns 5 hits); MCP nits (case-sensitive `Content-Length`, `related` vs `link`
-  unknown-id consistency).
+- Score floor default stays off (`0.0` = off); tracker #1 closed.
+- Tag-anchor ranking beyond the 1.05x prefix boost (Q27/Q28, tracker #6 open); MCP nits
+  (case-sensitive `Content-Length`, `related` vs `link` unknown-id consistency).
+- GPU build blocked upstream (tracker #5 open); year-bound checked dates landed.
 - GPU build blocked upstream: candle-kernels `compatibility.cuh` vs CUDA 13 on sm_75
   (see `docs/cuda.md`).
 - Gemini provider down (semaphore timeouts); recall built on qwen instead.

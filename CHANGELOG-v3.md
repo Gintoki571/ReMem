@@ -7,6 +7,15 @@
 
 ## Engine (store/graph/embed/recall/CLI)
 
+- Store `busy_timeout` and limit clamps on read paths.
+- Migration runs old-DB column fixes before schema index creation.
+- Strict row decoding surfaces corruption instead of silent defaults.
+- Importance clamped to 0..1, NaN-safe.
+- CLI `forget`/`related`/`central`/`path` subcommands (MCP parity).
+- CLI `list --limit` flag for bounded listing.
+- Recall `k=0` returns empty instead of defaulting to 5 hits.
+- Year-bound checked dates on write, glossary terms defined.
+
 - Rust memory engine: SQLite store with vector search, graph links, embeddings, and recall CLI.
 - `validate` command: checks store/graph consistency and reports issues.
 - Recall ranking tuned for recency and importance weighting.
@@ -23,8 +32,15 @@
 - `purge` tool: hard-deletes a forgotten memory.
 - `related` tool: graph neighbors of a memory id, with optional edge-type filter.
 - `recall` accepts `maxChars`, passed through to token-budget packing.
+- `recall` accepts `minScore` floor passthrough and `since`/`until` time filters.
+- `central`/`path` MCP tools with `get()` caller fix.
+- `remember` accepts `occurredAt`, matching the CLI `--occurred-at` flag.
+- `remember` matches the committed `String` engine API; MCP coercion errors surfaced.
+- Near-duplicate report on write: `similar` array (`SIMILAR_MAX_DISTANCE` 0.48), floor stays opt-in.
 
 ## Quality (eval/validate/fixes)
+
+- Tag boost 1.05x with narrowed multiplier bands (post-tag-boost eval 62% @1, 100% @5).
 
 - Recall eval harness: 16% @1 / 64% @5 on the probe set, with notes.
 - Release performance numbers published.
@@ -41,6 +57,14 @@
 - CLI flags and MCP tools refresh.
 - Security review notes.
 
+## Docs (catch-up)
+
+- Landing checklist, MCP `similar[]` contract, skill similar/floor notes, README quality pass.
+- Parity map refresh, roadmap 31/37 confirmed, release checks 2 and 3 green, goal audit (7/7 met).
+- Stale-claim sweep across 10 files; dogfood digest; merge-to-main recon.
+
 ## CI
 
 - Rust toolchain via dtolnay action for reliable CI builds.
+- Demo e2e CI job without model; demo script respects `REMEM_DB`.
+- Full-workspace `fmt` pass and clippy `err_expect` fix in MCP test.
