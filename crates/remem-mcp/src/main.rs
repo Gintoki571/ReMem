@@ -152,7 +152,8 @@ fn tools_list() -> Value {
             "properties": {"kind": {"type": "string"}, "content": {"type": "string"},
                 "tags": {"type": "array", "items": {"type": "string"}},
                 "agent": {"type": "string"}, "session": {"type": "string"},
-                "importance": {"type": "number"}},
+                "importance": {"type": "number"},
+                "occurredAt": {"type": "string", "description": "unix seconds or YYYY-MM-DD (UTC midnight)"}},
             "required": ["kind", "content"]}},
         {"name": "recall", "description": "Ranked recall over stored memories.",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
@@ -218,6 +219,39 @@ fn str_arg(args: &Value, key: &str) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+// ponytail: local copy of remem-recall parse_time (unix secs or YYYY-MM-DD
+// as UTC midnight); unify into one shared helper when that file is free.
+fn parse_occurred_at(s: &str) -> Result<i64> {
+    if let Ok(secs) = s.trim().parse::<i64>() {
+        return Ok(secs);
+    }
+    let mut parts = s.trim().split('-');
+    let (y, m, d) = match (parts.next(), parts.next(), parts.next(), parts.next()) {
+        (Some(y), Some(m), Some(d), None) => (y, m, d),
+        _ => return Err(anyhow!("invalid occurredAt '{s}' (unix seconds or YYYY-MM-DD)")),
+    };
+    let parse = |v: &str| {
+        v.parse::<i64>()
+            .map_err(|_| anyhow!(format!("invalid occurredAt '{s}'")))
+    };
+    let (y, m, d) = (parse(y)?, parse(m)?, parse(d)?);
+    if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
+        return Err(anyhow!("invalid occurredAt '{s}'"));
+    }
+    Ok(days_from_civil(y, m, d) * 86_400)
+}
+
+/// Days since the unix epoch for a proleptic Gregorian date.
+fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = y - era * 400;
+    let mp = if m > 2 { m - 3 } else { m + 9 };
+    let doy = (153 * mp + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
 fn call_tool(eng: &RecallEngine, name: &str, args: &Value) -> Value {
     match dispatch(eng, name, args) {
         Ok(v) => text_result(v),
@@ -254,6 +288,12 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                     Some(imp) => item.importance = imp as f32,
                     None => return Err(anyhow!("remember: 'importance' must be a number")),
                 },
+            }
+            if let Some(when) = str_arg(args, "occurredAt") {
+                item.occurred_at = Some(
+                    parse_occurred_at(&when)
+                        .map_err(|e| anyhow!("remember: {e:#}"))?,
+                );
             }
             let id = eng.remember(&item)?;
             Ok(serde_json::to_string(&json!({"id": id}))?)
@@ -630,6 +670,74 @@ mod tests {
             err.contains("create db parent dir"),
             "must carry context: {err}"
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn remember_occurred_at_backdate_passes_since_filter() {
+        let _env = EnvGuard::lock();
+        let dir = std::env::temp_dir().join(format!(
+            "remem-mcp-occurred-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let db = dir.join("remem.db");
+        std::env::set_var("REMEM_DB", &db);
+        let _ = std::fs::remove_dir_all(&dir);
+        let eng = engine().expect("engine opens fresh db");
+        let out = dispatch(
+            &eng,
+            "remember",
+            &json!({"kind": "fact", "content": "mcp occurred backdate zebra token",
+                "occurredAt": "2020-01-01"}),
+        )
+        .expect("backdated remember");
+        let id: String = serde_json::from_str::<Value>(&out)
+            .unwrap()["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let stored = eng.store().get(&id).unwrap().expect("stored item");
+        assert_eq!(
+            stored.occurred_at,
+            Some(parse_occurred_at("2020-01-01").unwrap()),
+            "date must stick: {stored:?}"
+        );
+        // --since style filter on the event clock: after 2021 hides it,
+        // after 2019 finds it.
+        let q = |since: &str| RecallQuery {
+            text: "mcp occurred backdate zebra".to_string(),
+            k: 5,
+            since: Some(parse_occurred_at(since).unwrap()),
+            ..Default::default()
+        };
+        let hidden = eng.recall(&q("2021-01-01")).expect("recall");
+        assert!(
+            hidden.iter().all(|h| h.item.id != id),
+            "backdated hit must hide after since 2021: {hidden:?}"
+        );
+        let found = eng.recall(&q("2019-01-01")).expect("recall");
+        assert!(
+            found.iter().any(|h| h.item.id == id),
+            "backdated hit must surface after since 2019: {found:?}"
+        );
+        // Invalid dates fail loudly, like bad kinds.
+        for bad in ["not-a-date", "2020-13-01", "2020-01", ""] {
+            let err = dispatch(
+                &eng,
+                "remember",
+                &json!({"kind": "fact", "content": "x", "occurredAt": bad}),
+            )
+            .err()
+            .expect("invalid occurredAt must error");
+            assert!(
+                format!("{err:#}").contains("occurredAt"),
+                "loud occurredAt error for '{bad}': {err:#}"
+            );
+        }
         let _ = std::fs::remove_dir_all(&dir);
     }
 
