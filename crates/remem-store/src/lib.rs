@@ -43,6 +43,20 @@ impl Store {
         // depend on a library default.)
         conn.busy_timeout(std::time::Duration::from_secs(5))?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
+        // Old DBs predate occurred_at/content_hash: SCHEMA creates indexes on
+        // those columns, so add them BEFORE applying it (fresh DBs have no
+        // memories table yet — skip those errors, SCHEMA creates it).
+        for ddl in [
+            "ALTER TABLE memories ADD COLUMN occurred_at INTEGER",
+            "ALTER TABLE memories ADD COLUMN content_hash TEXT",
+        ] {
+            match conn.execute_batch(ddl) {
+                Ok(()) => {}
+                Err(e) if e.to_string().contains("no such table") => {}
+                Err(e) if e.to_string().contains("duplicate column") => {}
+                Err(e) => return Err(e),
+            }
+        }
         conn.execute_batch(SCHEMA)?;
         migrate(&conn)?;
         Ok(Self { conn })

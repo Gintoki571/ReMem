@@ -315,3 +315,27 @@ fn open_migrates_a_database_without_the_occurred_at_column() {
         let _ = std::fs::remove_file(format!("{}{}", path.display(), suffix));
     }
 }
+
+#[test]
+fn open_old_db_without_new_columns_migrates() {
+    let dir = std::env::temp_dir().join(format!("remem-old-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&dir);
+    // Simulate a pre-occurred_at/pre-content_hash database.
+    {
+        let conn = rusqlite::Connection::open(&dir).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE memories(id TEXT PRIMARY KEY, kind TEXT, content TEXT, tags TEXT, agent_id TEXT, session_id TEXT, importance REAL, created_at INTEGER, updated_at INTEGER, deleted INTEGER DEFAULT 0)",
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO memories VALUES (?1,'note','legacy row','[]','a','s',0.5,1,1,0)",
+            rusqlite::params!["legacy-id"],
+        )
+        .unwrap();
+    }
+    let store = Store::open(dir.to_str().unwrap()).unwrap();
+    let got = store.get("legacy-id").unwrap();
+    assert_eq!(got.content, "legacy row");
+    assert!(got.occurred_at.is_none());
+    let _ = std::fs::remove_file(&dir);
+}
