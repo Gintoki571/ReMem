@@ -15,14 +15,14 @@ fn insert_get_roundtrip() {
     let store = Store::open(":memory:").unwrap();
     let m = item("rust borrows are checked at compile time");
     let id = store.insert(&m).unwrap();
-    let got = store.get(&id).unwrap();
+    let got = store.get(&id).unwrap().unwrap();
     assert_eq!(got.id, id);
     assert_eq!(got.content, m.content);
     assert_eq!(got.kind, m.kind);
     assert_eq!(got.tags, m.tags);
     assert_eq!(got.agent_id, "agent-1");
     assert_eq!(got.importance, 0.8);
-    assert!(store.get("no-such-id").is_none());
+    assert!(store.get("no-such-id").unwrap().is_none());
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn fts_stays_in_sync_on_update_and_delete() {
     assert_eq!(store.fts_search("dragonflies", 5).unwrap()[0].0.id, id);
     store.delete(&id).unwrap();
     assert!(store.fts_search("dragonflies", 5).unwrap().is_empty());
-    assert!(store.get(&id).is_none(), "soft-deleted rows read as gone");
+    assert!(store.get(&id).unwrap().is_none(), "soft-deleted rows read as gone");
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn file_store_reopens_with_data() {
         store.insert(&item("persist me")).unwrap()
     };
     let store = Store::open(path.to_str().unwrap()).unwrap();
-    assert_eq!(store.get(&id).unwrap().content, "persist me");
+    assert_eq!(store.get(&id).unwrap().unwrap().content, "persist me");
     assert_eq!(store.fts_search("persist", 5).unwrap().len(), 1);
     std::fs::remove_file(&path).ok();
 }
@@ -188,7 +188,7 @@ fn purge_removes_row_fts_and_vec() {
     assert_eq!(store.fts_search("secret tokens", 5).unwrap().len(), 1);
     assert_eq!(store.knn(&axis_vec(0, 1.0), 5).unwrap().len(), 1);
     assert!(store.purge(&id).unwrap());
-    assert!(store.get(&id).is_none());
+    assert!(store.get(&id).unwrap().is_none());
     assert!(store.fts_search("secret tokens", 5).unwrap().is_empty());
     assert!(store.knn(&axis_vec(0, 1.0), 5).unwrap().is_empty());
     assert!(store.list(true).unwrap().iter().all(|m| m.id != id));
@@ -230,7 +230,7 @@ fn second_writer_blocks_then_succeeds_under_contention() {
         "second writer failed instead of waiting out the lock: {:?}",
         res.err()
     );
-    assert!(Store::open(&path).unwrap().get(&res.unwrap()).is_some());
+    assert!(Store::open(&path).unwrap().get(&res.unwrap()).unwrap().is_some());
     for suffix in ["", "-wal", "-shm"] {
         let _ = std::fs::remove_file(format!("{}{}", path, suffix));
     }
@@ -282,7 +282,7 @@ fn occurred_at_roundtrips_through_insert_get_list_and_fts() {
     let mut m = item("the march release shipped on the fifteenth");
     m.occurred_at = Some(1_700_000_000);
     let id = store.insert(&m).unwrap();
-    assert_eq!(store.get(&id).unwrap().occurred_at, Some(1_700_000_000));
+    assert_eq!(store.get(&id).unwrap().unwrap().occurred_at, Some(1_700_000_000));
     assert_eq!(
         store.list(false).unwrap()[0].occurred_at,
         Some(1_700_000_000)
@@ -291,7 +291,7 @@ fn occurred_at_roundtrips_through_insert_get_list_and_fts() {
     assert_eq!(hits[0].0.occurred_at, Some(1_700_000_000));
     // absent stays absent
     let plain = store.insert(&item("no event time")).unwrap();
-    assert_eq!(store.get(&plain).unwrap().occurred_at, None);
+    assert_eq!(store.get(&plain).unwrap().unwrap().occurred_at, None);
 }
 
 /// A pre-occurred_at database must gain the column on open, not fail.
@@ -311,11 +311,11 @@ fn open_migrates_a_database_without_the_occurred_at_column() {
             .unwrap();
     }
     let store = Store::open(path.to_str().unwrap()).unwrap();
-    assert_eq!(store.get(&legacy_id).unwrap().occurred_at, None);
+    assert_eq!(store.get(&legacy_id).unwrap().unwrap().occurred_at, None);
     let mut m = item("backfilled row");
     m.occurred_at = Some(42);
     let id = store.insert(&m).unwrap();
-    assert_eq!(store.get(&id).unwrap().occurred_at, Some(42));
+    assert_eq!(store.get(&id).unwrap().unwrap().occurred_at, Some(42));
     for suffix in ["", "-wal", "-shm"] {
         let _ = std::fs::remove_file(format!("{}{}", path.display(), suffix));
     }
@@ -339,7 +339,7 @@ fn open_old_db_without_new_columns_migrates() {
         .unwrap();
     }
     let store = Store::open(dir.to_str().unwrap()).unwrap();
-    let got = store.get("legacy-id").unwrap();
+    let got = store.get("legacy-id").unwrap().unwrap();
     assert_eq!(got.content, "legacy row");
     assert!(got.occurred_at.is_none());
     let _ = std::fs::remove_file(&dir);

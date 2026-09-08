@@ -107,18 +107,16 @@ impl Store {
     }
 
     /// Returns None for unknown or soft-deleted ids.
-    /// PK lookup on a healthy database cannot fail; an error surfaces as None.
-    pub fn get(&self, id: &str) -> Option<MemoryItem> {
+    /// A corrupt row (unknown kind, unparseable tags) surfaces as Err.
+    pub fn get(&self, id: &str) -> rusqlite::Result<Option<MemoryItem>> {
         self.conn
             .query_row(
-                "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at
+                "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
                  FROM memories WHERE id = ?1 AND deleted = 0",
                 params![id],
                 row_to_item,
             )
             .optional()
-            .ok()
-            .flatten()
     }
 
     /// Update content/metadata. Keeps id and created_at.
@@ -172,7 +170,7 @@ impl Store {
 
     pub fn list(&self, include_deleted: bool) -> rusqlite::Result<Vec<MemoryItem>> {
         let sql = format!(
-            "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at
+            "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
              FROM memories {} ORDER BY created_at DESC, rowid DESC",
             if include_deleted { "" } else { "WHERE deleted = 0" }
         );
@@ -188,7 +186,7 @@ impl Store {
         limit: usize,
     ) -> rusqlite::Result<Vec<(MemoryItem, f32)>> {
         let mut stmt = self.conn.prepare(
-            "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, rank
+            "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, rank, m.rowid AS m_rowid
              FROM memories_fts f
              JOIN memories m ON m.rowid = f.rowid
              WHERE memories_fts MATCH ?2 AND m.deleted = 0
@@ -293,12 +291,35 @@ pub fn content_hash(kind: &MemoryKind, content: &str) -> String {
 }
 
 fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryItem> {
-    let tags_json: String = row.get(3)?;
+    let id: String = row.get(0)?;
+    let kind_str: String = row.get(1)?;
+    // m_rowid is selected last by get/list/fts_search callers; absent in ad-hoc queries.
+    let rowid: Option<i64> = row.get("m_rowid").ok().flatten();
+    let who = match rowid {
+        Some(r) => format!("id '{id}' (rowid {r})"),
+        None => format!("id '{id}'"),
+    };
+    let conv_err = |idx: usize, msg: String| {
+        rusqlite::Error::FromSqlConversionFailure(
+            idx,
+            rusqlite::types::Type::Text,
+            Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, msg)),
+        )
+    };
+    let kind = MemoryKind::parse(&kind_str)
+        .ok_or_else(|| conv_err(1, format!("unknown kind '{kind_str}' for memory {who}")))?;
+    // tags is NOT NULL with a '[]' default, but tolerate NULL (legacy/foreign rows).
+    let tags_json: Option<String> = row.get(3)?;
+    let tags: Vec<String> = match tags_json {
+        None => Vec::new(),
+        Some(s) => serde_json::from_str(&s)
+            .map_err(|e| conv_err(3, format!("unparseable tags JSON for memory {who}: {e}")))?,
+    };
     Ok(MemoryItem {
-        id: row.get(0)?,
-        kind: MemoryKind::parse(&row.get::<_, String>(1)?).unwrap_or(MemoryKind::Note),
+        id,
+        kind,
         content: row.get(2)?,
-        tags: serde_json::from_str(&tags_json).unwrap_or_default(),
+        tags,
         agent_id: row.get(4)?,
         session_id: row.get(5)?,
         importance: row.get::<_, f64>(6)? as f32,
