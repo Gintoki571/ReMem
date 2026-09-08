@@ -1,0 +1,76 @@
+# ReMem v3 (Rust)
+
+Local-first long-term memory engine for AI agents. v3 is a Rust rewrite of the v2 TypeScript engine.
+
+- `main` branch: legacy v1 engine (do not modify).
+- `v2` branch: TypeScript engine.
+- `v3` branch (this): Rust engine, active development.
+
+Storage is a single SQLite file: relational tables + FTS5 keyword index + sqlite-vec vector index + graphqlite graph projection, all in the same file.
+
+## Crate layout
+
+- `crates/remem-types` - shared domain types (`MemoryKind`, `MemoryItem`, `RecallQuery`, `RecallHit`). Additive changes only.
+- `crates/remem-store` - SQLite storage via rusqlite (bundled) + sqlite-vec `=0.1.9`. Schema lives in `crates/remem-store/schema.sql`. Do not use sqlite-vec 0.1.10-alpha.4 (fails to compile: missing `sqlite-vec-diskann.c`).
+- `crates/remem-graph` - graphqlite 0.8 graph over the same DB file. Hub ids are namespaced (`agent:<name>`, `session:<name>`); `neighbors()` returns memory mids only.
+- `crates/remem-embed` - local BERT embeddings (cadet-embed-base-v1) via candle. Mean-pool + L2 norm, 768 dims. CPU by default, CUDA via feature flag.
+- `crates/remem-recall` - RRF fusion of vector + FTS rankings (plus recency/importance weighting) and the `remem` binary (`src/main.rs`). Uses the real local embedder when the model dir is present, stub embedder fallback otherwise.
+
+## Build and test
+
+```bash
+cargo build
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --check
+```
+
+All three of test, clippy, and fmt must pass before committing.
+
+## CLI reference
+
+Binary: `./target/debug/remem`. Global flag `--db <path>` (env `REMEM_DB`, default `~/.remem/remem.db`).
+
+| Command | Usage |
+|---|---|
+| `remember` | `remem remember <kind> <text...> [--tags t1,t2] [--agent NAME] [--session NAME] [--importance 0.5]` |
+| `recall` | `remem recall <query...> [--k 5] [--json] [--agent NAME] [--session NAME]` |
+| `list` | `remem list [--json]` (newest first) |
+| `link` | `remem link <fromId> <toId> [--rel REL]` |
+| `stats` | `remem stats` (JSON counts) |
+
+Kinds: `fact | decision | mistake | preference | event | note`. There is no `validate` subcommand. `list` takes no `--k`; `link` takes `--rel` (not `--type`).
+
+### Examples
+
+```bash
+export REMEM_DB="$HOME/.remem/remem.db"
+
+# 1. Save a memory
+./target/debug/remem remember mistake "sqlite-vec 0.1.10-alpha.4 does not compile, pin 0.1.9" \
+  --tags sqlite-vec,rust --agent prime --importance 0.9
+
+# 2. Recall by meaning (top 5, JSON output)
+./target/debug/remem recall "which sqlite-vec version builds" --k 5 --json
+
+# 3. Recall filtered to one agent, then check DB counts
+./target/debug/remem recall "graph hub ids" --k 5 --agent prime
+./target/debug/remem stats
+```
+
+## GPU / CUDA note
+
+Default build is CPU-only and always works. CUDA is opt-in:
+
+```bash
+cargo build --features cuda         # crate remem-embed exposes feature `cuda`
+cargo test --workspace --features cuda
+```
+
+Runtime device selection is `Device::cuda_if_available`, with CPU fallback. The model dir defaults to `/home/bindesh/rag/cadet-embed-base-v1`, overridable with `REMEM_EMBED_MODEL_DIR`. The GPU smoke test is `#[ignore]`d; run it explicitly on a CUDA host with `cargo test -p remem-embed --features cuda -- --ignored`.
+
+## CI behavior
+
+`.github/workflows/ci.yml` runs two jobs on every push/PR: a Node job (typecheck + lint + vitest) and a Rust job (`cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`).
+
+Embedder tests skip (pass) when the model dir is absent: each test returns early after printing `skip: no local model at ...`. So CI without the model weights stays green. The CLI also never fails for a missing model: `main.rs` prints `embedder: local model unavailable (...), using stub` and recalls with the stub embedder.

@@ -5,26 +5,29 @@ description: Persistent long-term memory store for agents. Save facts, decisions
 
 # Remem
 
-Local long-term memory backed by SQLite+FTS5, local ONNX embeddings, and LatticeDB.
+Local long-term memory (v3 Rust binary) backed by SQLite+FTS5, local BERT embeddings, and a graphqlite graph projection in the same DB file.
 
 ## CLI
 
 ```bash
-export REMEM_DATA_DIR="$HOME/.remem-agent"
+export REMEM_DB="$HOME/.remem/remem.db"
 cd /home/bindesh/prime-agent/remem
+cargo build   # binary at ./target/debug/remem
 
 # save a memory (kinds: fact | decision | mistake | preference | event | note)
-npx tsx src/cli/cli.ts remember <kind> "<content>" --tags t1,t2 --agent <name> --importance 0.8
+./target/debug/remem remember <kind> "<content>" --tags t1,t2 --agent <name> --session <name> --importance 0.8
 
-# recall by meaning (semantic + keyword fusion)
-npx tsx src/cli/cli.ts recall "<natural language query>" --k 5
+# recall by meaning (vector + keyword fusion)
+./target/debug/remem recall "<natural language query>" --k 5
+./target/debug/remem recall "<query>" --k 5 --json --agent <name> --session <name>
 
 # other commands
-npx tsx src/cli/cli.ts list --k 20
-npx tsx src/cli/cli.ts link <fromId> <toId> --type CAUSED_BY
-npx tsx src/cli/cli.ts events --after 0
-npx tsx src/cli/cli.ts stats
+./target/debug/remem list [--json]
+./target/debug/remem link <fromId> <toId> [--rel REL]
+./target/debug/remem stats
 ```
+
+Notes: `--db` overrides the DB path (env `REMEM_DB`, default `~/.remem/remem.db`). `--tags` is comma-separated. There is no `validate` subcommand; `list` takes no `--k`.
 
 ## When to save
 
@@ -45,3 +48,4 @@ npx tsx src/cli/cli.ts stats
 - Tags: component name, lowercase, comma-separated.
 - importance: 0.5 default, 0.9+ for "cost me an hour" lessons.
 - Set --agent to the agent name (prime, or the subagent name) so memories are attributable.
+- Set --session when memories belong to one task thread, and filter recall with --session.
