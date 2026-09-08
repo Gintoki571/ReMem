@@ -33,13 +33,14 @@ Binary: `./target/debug/remem`. Global flag `--db <path>` (env `REMEM_DB`, defau
 
 | Command | Usage |
 |---|---|
-| `remember` | `remem remember <kind> <text...> [--tags t1,t2] [--agent NAME] [--session NAME] [--importance 0.5]` |
-| `recall` | `remem recall <query...> [--k 5] [--json] [--agent NAME] [--session NAME]` |
+| `remember` | `remem remember <kind> <text...> [--tags t1,t2] [--agent NAME] [--session NAME] [--importance 0.5] [--occurred-at SECS_OR_YYYY-MM-DD]` |
+| `recall` | `remem recall <query...> [--k 5] [--json] [--agent NAME] [--session NAME] [--since SECS_OR_YYYY-MM-DD] [--until SECS_OR_YYYY-MM-DD]` |
 | `list` | `remem list [--json]` (newest first) |
 | `link` | `remem link <fromId> <toId> [--rel REL]` |
 | `stats` | `remem stats` (JSON counts) |
+| `validate` | `remem validate` (dangling edges + orphans, exit 1 if any) |
 
-Kinds: `fact | decision | mistake | preference | event | note`. There is no `validate` subcommand. `list` takes no `--k`; `link` takes `--rel` (not `--type`).
+Kinds: `fact | decision | mistake | preference | event | note`. `list` takes no `--k`; `link` takes `--rel` (not `--type`). MCP tools: `remember`, `recall`, `list`, `link`, `forget` (delete by id), `stats`, `validate`.
 
 ### Examples
 
@@ -53,9 +54,13 @@ export REMEM_DB="$HOME/.remem/remem.db"
 # 2. Recall by meaning (top 5, JSON output)
 ./target/debug/remem recall "which sqlite-vec version builds" --k 5 --json
 
-# 3. Recall filtered to one agent, then check DB counts
-./target/debug/remem recall "graph hub ids" --k 5 --agent prime
-./target/debug/remem stats
+# 3. Recall filtered to one agent + session + time window, then validate
+./target/debug/remem recall "graph hub ids" --k 5 --agent prime --session v3-docs
+./target/debug/remem recall "sqlite-vec build" --k 5 --since 2026-08-01 --until 2026-09-08
+./target/debug/remem validate && ./target/debug/remem stats
+
+# 4. Backdate an event and use the MCP tools (forget by id, validate for health)
+./target/debug/remem remember event "cut v3 release" --occurred-at 2026-09-01 --agent prime
 ```
 
 ## GPU / CUDA note

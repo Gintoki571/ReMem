@@ -15,19 +15,21 @@ cd /home/bindesh/prime-agent/remem
 cargo build   # binary at ./target/debug/remem
 
 # save a memory (kinds: fact | decision | mistake | preference | event | note)
-./target/debug/remem remember <kind> "<content>" --tags t1,t2 --agent <name> --session <name> --importance 0.8
+./target/debug/remem remember <kind> "<content>" --tags t1,t2 --agent <name> --session <name> --importance 0.8 --occurred-at 2026-09-01
 
 # recall by meaning (vector + keyword fusion)
 ./target/debug/remem recall "<natural language query>" --k 5
 ./target/debug/remem recall "<query>" --k 5 --json --agent <name> --session <name>
+./target/debug/remem recall "<query>" --k 5 --since 2026-08-01 --until 2026-09-08
 
 # other commands
 ./target/debug/remem list [--json]
 ./target/debug/remem link <fromId> <toId> [--rel REL]
 ./target/debug/remem stats
+./target/debug/remem validate
 ```
 
-Notes: `--db` overrides the DB path (env `REMEM_DB`, default `~/.remem/remem.db`). `--tags` is comma-separated. There is no `validate` subcommand; `list` takes no `--k`.
+Notes: `--db` overrides the DB path (env `REMEM_DB`, default `~/.remem/remem.db`). `--tags` is comma-separated. `--occurred-at`, `--since`, `--until` take unix seconds or YYYY-MM-DD. `list` takes no `--k`. MCP tools: remember, recall, list, link, forget (by id), stats, validate.
 
 ## When to save
 
