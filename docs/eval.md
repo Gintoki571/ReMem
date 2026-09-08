@@ -146,3 +146,26 @@ PASS only when recall returns `[]` and are reported on a separate adversarial li
 from recall denominators. Note: the floor drops the rank-5 targets of Q27/Q28 (scores below
 0.02), so recall@5 is 35/37 here vs 37/37 unfloored; adversarial junk (top score ~0.012-0.014)
 is fully suppressed.
+
+## Post-tag-boost green-watch run (2026-09-08, independent verification)
+
+Green-watch protocol: `cargo test --workspace` passed on the first of up to 6 attempts
+(10 min apart), so the eval ran immediately. Debug `remem` rebuilt and sha-verified
+(`cargo build` after rebuild: binary hash unchanged), so the numbers below are pinned to the
+current worktree (get()-caller fix + tag boost in `remem-recall`, mcp fix in `remem-mcp`).
+Two independent `scripts/eval.sh` runs on a fresh `/tmp/remem-eval.db` gave identical
+results; three earlier runs during the sibling handoff landed on the pre-tag-boost binary and
+reproduced exactly the 20/37 + 36/37 baseline above.
+
+- Answerable (37): recall@1 23/37 (62%, was 20/37), recall@5 37/37 (100%, was 36/37).
+- Q27 ("wait what did we decide at the start of the year about spending"): miss -> rank 5.
+  Its target ("The Q1 decision ...") now carries a `tag` reason (1.2x, `decide`/`decision`
+  prefix overlap). Also promoted to rank 1: Q2, Q14, Q18, Q19; Q7 demoted 1 -> 2 within
+  the top 5.
+- Delta vs the 20/37 + 36/37 run: recall@1 +3, recall@5 +1, no query lost its top-5 rank.
+- Adversarial (3, empty `expect`): all three still return 5 hits with top fusion scores
+  ~0.012-0.014 (junk, not empty); unfloored eval.sh prints them as rank-1, which is why its
+  combined 26/40 + 40/40 is not meaningful (see Corrected scoring above).
+- Verdict: tag boost confirmed. The remaining weakness is adversarial junk, not tag anchors;
+  the calibrated `--min-score 0.02` floor (corrected-scoring run: 35/37 floored) trades the
+  two weakest rank-5 hits for a hard suppression of the junk channel.
