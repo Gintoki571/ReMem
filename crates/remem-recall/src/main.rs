@@ -187,8 +187,16 @@ fn main() -> Result<()> {
             if let Some(when) = occurred_at.as_deref() {
                 item.occurred_at = Some(parse_time(when)?);
             }
-            let id = engine(&cli.db)?.remember(&item)?;
+            let (id, similar) = engine(&cli.db)?.remember(&item)?;
+            // Line 1 stays the bare id: eval.sh and scripts take stdout line 0.
             println!("{id}");
+            if !similar.is_empty() {
+                let list: Vec<String> = similar
+                    .iter()
+                    .map(|(sid, d)| format!("{sid} {d:.3}"))
+                    .collect();
+                println!("similar: [{}]", list.join(", "));
+            }
         }
         Cmd::Recall {
             query,

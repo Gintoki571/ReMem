@@ -32,7 +32,9 @@ fn cli_roundtrip() {
             "deploy,ops",
         ],
     )
-    .trim()
+    .lines()
+    .next()
+    .unwrap()
     .to_string();
     let id2 = remem(
         &db,
@@ -44,7 +46,9 @@ fn cli_roundtrip() {
             "0.9",
         ],
     )
-    .trim()
+    .lines()
+    .next()
+    .unwrap()
     .to_string();
     assert!(!id1.is_empty() && !id2.is_empty());
 
@@ -87,8 +91,18 @@ fn cli_validate_flags_orphans_and_passes_linked_memories() {
         )
     };
 
-    let a = run(&["remember", "fact", "alpha"]).1.trim().to_string();
-    let b = run(&["remember", "fact", "beta"]).1.trim().to_string();
+    let a = run(&["remember", "fact", "alpha"])
+        .1
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+    let b = run(&["remember", "fact", "beta"])
+        .1
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
 
     let (code, stdout) = run(&["validate"]);
     assert_eq!(
@@ -139,7 +153,9 @@ fn cli_occurred_at_and_date_filters() {
             &march.to_string(),
         ],
     )
-    .trim()
+    .lines()
+    .next()
+    .unwrap()
     .to_string();
     let _recent = remem(&db, &["remember", "event", "march launch today"]);
 
@@ -238,7 +254,9 @@ fn cli_recall_max_chars() {
             "0.1",
         ],
     )
-    .trim()
+    .lines()
+    .next()
+    .unwrap()
     .to_string();
     let short = remem(
         &db,
@@ -250,7 +268,9 @@ fn cli_recall_max_chars() {
             "0.9",
         ],
     )
-    .trim()
+    .lines()
+    .next()
+    .unwrap()
     .to_string();
 
     let hits = remem(
@@ -282,7 +302,9 @@ fn cli_recall_min_score() {
         &db,
         &["remember", "fact", "staging postgres listens on port 5432"],
     )
-    .trim()
+    .lines()
+    .next()
+    .unwrap()
     .to_string();
 
     let hits = remem(&db, &["recall", "staging", "postgres", "port", "--json"]);
@@ -324,6 +346,77 @@ fn cli_recall_min_score() {
         "floor above top hit must bail: {empty}"
     );
 
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
+
+/// `remember` probes the new embedding against stored ones BEFORE inserting
+/// and prints a `similar: [id dist, ...]` line when the writer is re-saving a
+/// paraphrase. Distances are embedder-dependent (stub vs real BERT differ), so
+/// these assertions stay structural: the line appears, names the stored id,
+/// and the second id in it is the earlier paraphrase row.
+#[test]
+fn cli_remember_reports_similar_for_paraphrase_only() {
+    let db = std::env::temp_dir().join(format!("remem-cli-similar-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let base = "the deploy script uses rsync over ssh to copy artifacts to the bastion host";
+    // same text + one appended word; distinct topics that share no framing
+    let para = "the deploy script uses rsync over ssh to copy artifacts to the bastion host today";
+    let other = "banana bread recipe needs three ripe bananas and a handful of walnuts";
+
+    let first = remem(&db, &["remember", "fact", base])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+    assert!(
+        !first.contains("similar"),
+        "empty store must stay silent: {first}"
+    );
+
+    let out = remem(&db, &["remember", "fact", para]);
+    let lines: Vec<&str> = out.trim().lines().collect();
+    assert_eq!(lines.len(), 2, "want id + similar line: {out}");
+    assert!(
+        !lines[0].contains("similar"),
+        "id line must stay bare: {out}"
+    );
+    let similar = lines[1];
+    assert!(
+        similar.starts_with("similar: [") && similar.ends_with(']'),
+        "similar line shape: {out}"
+    );
+    assert!(
+        similar.contains(&first),
+        "similar must name the stored id: {out}"
+    );
+
+    let third = remem(&db, &["remember", "fact", other]);
+    assert!(
+        !third.contains("similar"),
+        "distinct memory must stay silent: {third}"
+    );
+
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
+
+/// An exact re-save dedups on content_hash: the original id comes back and the
+/// `similar` line stays off (the probe would otherwise match the stored copy).
+#[test]
+fn cli_exact_remember_reprint_has_no_similar_line() {
+    let db = std::env::temp_dir().join(format!("remem-cli-similar-dup-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let text = "the one and only deploy script note";
+    let first = remem(&db, &["remember", "fact", text])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+    let again = remem(&db, &["remember", "fact", text]);
+    assert_eq!(again.trim(), first, "exact dup must return one bare id");
     for suffix in ["", "-wal", "-shm"] {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }

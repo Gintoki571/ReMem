@@ -174,7 +174,7 @@ fn recency_breaks_ties() {
     old.updated_at = now - 90 * DAY;
     old.created_at = old.updated_at;
     e.store().insert(&old).unwrap();
-    let fresh = e.remember(&item("stale keyword fact new")).unwrap();
+    let fresh = e.remember(&item("stale keyword fact new")).unwrap().0;
     let hits = e.recall(&q("stale keyword fact", 5)).unwrap();
     assert_eq!(hits.len(), 2);
     assert_eq!(hits[0].item.id, fresh);
@@ -193,8 +193,8 @@ fn kind_and_tag_filters() {
     a.kind = MemoryKind::Decision;
     let mut b = item("deploy the app again");
     b.tags = vec!["prod".into()];
-    let aid = e.remember(&a).unwrap();
-    let bid = e.remember(&b).unwrap();
+    let aid = e.remember(&a).unwrap().0;
+    let bid = e.remember(&b).unwrap().0;
     let hits = e
         .recall(&RecallQuery {
             text: "deploy".into(),
@@ -227,7 +227,7 @@ fn graph_expansion_surfaces_linked_memory() {
         "graph",
         FakeEmbedder::new(&[("database tuning notes", 0), ("query", 0)]),
     );
-    let hub_id = e.remember(&item("database tuning notes")).unwrap();
+    let hub_id = e.remember(&item("database tuning notes")).unwrap().0;
     let sat = item("completely different pastry");
     let sat_id = sat.id.clone();
     e.remember(&sat).unwrap();
@@ -249,7 +249,7 @@ fn hub_edges_do_not_pollute_graph_expansion() {
     let mut m = item("tagged memory with agent");
     m.agent_id = "agent-a".into();
     m.session_id = "sess-1".into();
-    let id = e.remember(&m).unwrap();
+    let id = e.remember(&m).unwrap().0;
     e.remember(&item("unrelated banana bread")).unwrap();
     let hits = e.recall(&q("tagged memory with agent", 5)).unwrap();
     assert_eq!(hits[0].item.id, id);
@@ -277,7 +277,7 @@ fn k_truncates_hits() {
 #[test]
 fn forget_removes_from_recall_and_stats() {
     let (e, path) = engine("forget", FakeEmbedder::new(&[]));
-    let id = e.remember(&item("temporary keyword note")).unwrap();
+    let id = e.remember(&item("temporary keyword note")).unwrap().0;
     e.remember(&item("keep this keyword note")).unwrap();
     assert_eq!(e.stats().unwrap()["memories"], 2);
     assert_eq!(e.stats().unwrap()["graph"]["nodes"], 2);
@@ -328,7 +328,10 @@ fn recency_uses_occurred_at_over_created_at() {
     march.occurred_at = Some(now - 90 * DAY); // happened in March
     let mid = e.store().insert(&march).unwrap();
 
-    let recent = e.remember(&item("quarterly report keyword today")).unwrap();
+    let recent = e
+        .remember(&item("quarterly report keyword today"))
+        .unwrap()
+        .0;
     let hits = e.recall(&q("quarterly report keyword", 5)).unwrap();
     assert_eq!(hits.len(), 2);
     assert_eq!(hits[0].item.id, recent, "older event time must lose");
@@ -355,7 +358,7 @@ fn since_until_filter_on_event_time() {
     no_event.created_at = now - 10 * DAY;
     no_event.updated_at = no_event.created_at;
     let nid = e.store().insert(&no_event).unwrap();
-    let fresh = e.remember(&item("shared keyword fresh thing")).unwrap();
+    let fresh = e.remember(&item("shared keyword fresh thing")).unwrap().0;
 
     let window = |since: i64, until: i64| {
         e.recall(&RecallQuery {
@@ -396,9 +399,10 @@ fn max_chars_skips_long_top_hit_for_fitting_hits() {
             "shared keyword entry long {}",
             "z".repeat(200)
         )))
-        .unwrap();
-    let a = e.remember(&item("shared keyword entry a")).unwrap();
-    let b = e.remember(&item("shared keyword entry b")).unwrap();
+        .unwrap()
+        .0;
+    let a = e.remember(&item("shared keyword entry a")).unwrap().0;
+    let b = e.remember(&item("shared keyword entry b")).unwrap().0;
     let hits = e
         .recall(&RecallQuery {
             text: "shared keyword entry".into(),
@@ -424,7 +428,8 @@ fn max_chars_always_keeps_top_hit() {
     let (e, path) = engine("budget-top", FakeEmbedder::new(&[]));
     let top = e
         .remember(&item(&format!("solo keyword fact {}", "y".repeat(200))))
-        .unwrap();
+        .unwrap()
+        .0;
     let hits = e
         .recall(&RecallQuery {
             text: "solo keyword fact".into(),
@@ -563,5 +568,151 @@ fn no_tag_overlap_leaves_ranking_unchanged() {
         "unrelated tag must not lift the target: {order:?}"
     );
     assert!(!hits.iter().any(|h| h.reasons.iter().any(|r| r == "tag")));
+    cleanup(&path);
+}
+
+/// Embedder with explicit vectors per text (unknown text -> e767, far from
+/// dims 0..N), so a test can place memories at an exact L2 distance.
+struct VecEmbedder {
+    map: HashMap<String, Vec<f32>>,
+}
+
+impl VecEmbedder {
+    fn new(pairs: &[(&str, Vec<f32>)]) -> Self {
+        Self {
+            map: pairs
+                .iter()
+                .map(|(t, v)| (t.to_string(), v.clone()))
+                .collect(),
+        }
+    }
+}
+
+fn dim(i: usize, w: f32) -> Vec<f32> {
+    let mut v = vec![0.0f32; 768];
+    v[i] = w;
+    v
+}
+
+/// cos(a, b) = 0.95 -> L2 = 0.3162; the e1-only vector below is at 1.0.
+fn paraphrase_of(i: usize) -> Vec<f32> {
+    let mut v = dim(i, 0.95);
+    v[i + 1] = (1.0 - 0.95f32 * 0.95).sqrt();
+    v
+}
+
+impl remem_recall::Embed for VecEmbedder {
+    fn embed(&self, texts: &[&str]) -> anyhow::Result<Vec<Vec<f32>>> {
+        Ok(texts
+            .iter()
+            .map(|t| self.map.get(*t).cloned().unwrap_or_else(|| dim(767, 1.0)))
+            .collect())
+    }
+}
+
+fn vec_engine(tag: &str, pairs: &[(&str, Vec<f32>)]) -> (RecallEngine, PathBuf) {
+    let path = temp_db(tag);
+    let store = Store::open(path.to_str().unwrap()).unwrap();
+    let graph = remem_graph::Graph::open(&path).unwrap();
+    (
+        RecallEngine::new(store, Box::new(VecEmbedder::new(pairs))).with_graph(graph),
+        path,
+    )
+}
+
+/// The near-duplicate write probe: a paraphrase at cos 0.95 (L2 0.316, inside
+/// SIMILAR_MAX_DISTANCE) is reported with its id and distance; a distinct
+/// memory at L2 1.0 is not. The probe runs before insert, so the new memory
+/// itself never appears, and the first write into an empty store is silent.
+#[test]
+fn remember_reports_near_duplicate_paraphrase_only() {
+    let a = "we ship with cargo because it is fast";
+    let b = "we ship with cargo because it is quick"; // paraphrase: dim-0 mix
+    let c = "unrelated pastry content"; // orthogonal
+    let (e, path) = vec_engine(
+        "near-dup",
+        &[(a, dim(0, 1.0)), (b, paraphrase_of(0)), (c, dim(1, 1.0))],
+    );
+
+    let (ida, sim0) = e.remember(&item(a)).unwrap();
+    assert!(sim0.is_empty(), "empty store must report nothing: {sim0:?}");
+
+    let (idb, sim) = e.remember(&item(b)).unwrap();
+    assert_ne!(idb, ida);
+    assert_eq!(sim.len(), 1, "only the paraphrase is near: {sim:?}");
+    assert_eq!(sim[0].0, ida);
+    assert!((sim[0].1 - 0.3162).abs() < 1e-3, "distance {sim:?}");
+
+    let (_, sim) = e.remember(&item(c)).unwrap();
+    assert!(sim.is_empty(), "distinct memory must stay silent: {sim:?}");
+    cleanup(&path);
+}
+
+/// The calibrated boundary: cos 0.95 (L2 0.316) fires, cos 0.80 (L2 0.632)
+/// does not. The gap is fixture-measured (see SIMILAR_MAX_DISTANCE), so a
+/// threshold change that swallows either side shows up here.
+#[test]
+fn near_dup_threshold_sits_between_paraphrase_and_distinct() {
+    let a = "anchor memory content one";
+    let close = "cos 0.95 rewrite of the anchor";
+    let far = "cos 0.80 rewrite of the anchor";
+    let mut v = dim(0, 0.8);
+    v[1] = (1.0 - 0.64f32).sqrt();
+    let (e, path) = vec_engine(
+        "near-dup-edge",
+        &[(a, dim(0, 1.0)), (close, paraphrase_of(0)), (far, v)],
+    );
+    let ida = e.remember(&item(a)).unwrap().0;
+
+    // cos 0.80 against the anchor only: silent.
+    let (_, sim) = e.remember(&item(far)).unwrap();
+    assert!(sim.is_empty(), "cos 0.80 must stay silent: {sim:?}");
+    // cos 0.95 now sees the anchor (0.316) and the cos-0.80 row (0.324 from
+    // close, so it fires too); what matters is that the anchor is reported.
+    let (_, sim) = e.remember(&item(close)).unwrap();
+    assert!(
+        sim.iter().any(|(id, _)| *id == ida),
+        "cos 0.95 must fire: {sim:?}"
+    );
+    cleanup(&path);
+}
+
+/// The probe is capped at 3 neighbours, so a writer gets the signal without a
+/// dump when a whole cluster of near-identical re-saves already exists.
+#[test]
+fn near_dup_caps_at_three_neighbours() {
+    let mut pairs = vec![("probe anchor", dim(0, 1.0))];
+    for i in 0..5 {
+        pairs.push((
+            Box::leak(format!("probe rewrite {i}").into_boxed_str()),
+            paraphrase_of(0),
+        ));
+    }
+    let (e, path) = vec_engine("near-dup-cap", &pairs);
+    e.remember(&item("probe anchor")).unwrap();
+    for i in 0..5 {
+        let (_, sim) = e.remember(&item(&format!("probe rewrite {i}"))).unwrap();
+        assert!(sim.len() <= 3, "probe returned {}: {sim:?}", sim.len());
+        assert!(!sim.is_empty(), "rewrites are near-dups: {sim:?}");
+    }
+    cleanup(&path);
+}
+
+/// An exact re-save dedups on content_hash and must not double-report: the
+/// call returns the original id with an empty similar list (the probe would
+/// otherwise find the stored copy at distance 0).
+#[test]
+fn exact_duplicate_dedups_and_reports_no_similar() {
+    let (e, path) = vec_engine("exact-dup", &[("same content twice", dim(0, 1.0))]);
+    let (ida, _) = e.remember(&item("same content twice")).unwrap();
+    let mut again = item("same content twice");
+    again.id = "second-uuid".to_string();
+    let (id2, sim) = e.remember(&again).unwrap();
+    assert_eq!(id2, ida, "exact dup must return the stored id");
+    assert!(
+        sim.is_empty(),
+        "exact dup must not also report similar: {sim:?}"
+    );
+    assert_eq!(e.stats().unwrap()["memories"], 1);
     cleanup(&path);
 }

@@ -12,7 +12,7 @@ pub use stub::StubEmbedder;
 
 use anyhow::{anyhow, Context, Result};
 use remem_graph::Graph;
-use remem_store::Store;
+use remem_store::{content_hash, Store};
 use remem_types::{MemoryItem, RecallHit, RecallQuery};
 use std::collections::HashSet;
 
@@ -35,6 +35,28 @@ const GRAPH_EXPANSION_SEEDS: usize = 8;
 /// 18/37 unchanged at 0.02). Use 0.02 as the round midpoint; it stays off by
 /// default because a floor that is wrong for one corpus silently returns [].
 pub const DEFAULT_MIN_SCORE: f64 = 0.0;
+
+/// Max L2 distance for a `remember` near-duplicate report. Vectors are
+/// L2-normalized, so d = sqrt(2 - 2 cos): d = 0.48 is cos ~ 0.885.
+///
+/// Calibration (`crates/remem-recall/examples/near-dup-calibrate.rs`, real
+/// Cpu 768d embedder over all 40 docs/eval-fixtures.json memories, 780 pairs):
+/// the 4 deliberate paraphrase pairs measure 0.4176, 0.4313, 0.4331 and
+/// 0.6349; the closest NON-paraphrase pair (two "docs live in the wiki"
+/// notes) measures 0.5183. So no single threshold fires on all four
+/// paraphrases while staying silent on every distinct pair — the 3-against-1
+/// split is what a tight threshold buys. 0.48 sits in the gap: it fires on 3
+/// of 4 paraphrases (misses only 22/35, the loosest rewrite) and stays silent
+/// on all 776 distinct pairs. Below it the signal degrades to noise; a writer
+/// shown near-duplicates on every second save will ignore them. 0.48 is also
+/// the round midpoint of the usable 0.44..0.51 band. Re-check on a new corpus
+/// before moving it: the gap is fixture-specific, not universal.
+pub const SIMILAR_MAX_DISTANCE: f32 = 0.48;
+
+/// How many neighbours the write probe pulls before thresholding. 3 per the
+/// tracker; a 4th near-dup would itself be a re-save worth seeing, but the
+/// writer only needs enough to recognize the duplicate.
+const SIMILAR_PROBE_K: usize = 3;
 
 /// Per-list depth for candidate generation. bm25 and knn both truncate here;
 /// `4 * k` leaves room for fusion to disagree. ponytail: constant depth, no
@@ -130,9 +152,26 @@ impl RecallEngine {
         Ok(v.pop().expect("length checked above"))
     }
 
-    /// Insert, project onto the graph, and index the embedding.
-    pub fn remember(&self, item: &MemoryItem) -> Result<String> {
+    /// Insert, project onto the graph, and index the embedding. Returns the
+    /// id plus near-duplicate neighbours probed (before insert) against the
+    /// already-stored embeddings: up to `SIMILAR_PROBE_K` memories closer than
+    /// [`SIMILAR_MAX_DISTANCE`], as (id, L2 distance). Exact duplicates
+    /// dedup on content_hash and report nothing (the store returns their id).
+    pub fn remember(&self, item: &MemoryItem) -> Result<(String, Vec<(String, f32)>)> {
         let vec = self.embed_one(&item.content)?;
+        let is_dup = self
+            .store
+            .find_by_hash(&content_hash(&item.kind, &item.content))
+            .is_some();
+        let similar: Vec<(String, f32)> = if is_dup {
+            Vec::new()
+        } else {
+            self.store
+                .knn(&vec, SIMILAR_PROBE_K)?
+                .into_iter()
+                .filter(|(_id, dist)| *dist <= SIMILAR_MAX_DISTANCE)
+                .collect()
+        };
         let id = self.store.insert(item).context("store insert")?;
         self.store
             .set_embedding(&id, &vec)
@@ -140,7 +179,7 @@ impl RecallEngine {
         if let Some(g) = &self.graph {
             g.attach(item).map_err(|e| anyhow!("graph attach: {e}"))?;
         }
-        Ok(id)
+        Ok((id, similar))
     }
 
     /// Remove a memory from store and graph.
