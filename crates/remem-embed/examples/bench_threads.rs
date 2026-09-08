@@ -12,5 +12,10 @@ fn main() {
         let _ = m.embed(&[text]).unwrap();
     }
     let dt = t0.elapsed();
-    println!("threads={} total_10x={:.2}s per_op={:.3}s", threads, dt.as_secs_f64(), dt.as_secs_f64() / 10.0);
+    println!(
+        "threads={} total_10x={:.2}s per_op={:.3}s",
+        threads,
+        dt.as_secs_f64(),
+        dt.as_secs_f64() / 10.0
+    );
 }
