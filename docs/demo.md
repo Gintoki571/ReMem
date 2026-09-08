@@ -7,10 +7,10 @@ one fact, one decision and one mistake (each with tags and an agent id), then
 exercises recall, link, validate, stats, purge and an MCP-vs-CLI parity check
 (`tools/list` over stdio must report 11 tools). Any step failing exits nonzero.
 
-Note: the `remem` CLI exposes `purge` (hard delete: row, FTS entry,
-embedding, plus graph forget) and surfaces related memories through recall
-`graph#` reasons. The same engine ops are also available as the MCP
-`forget` / `related` tools (see `crates/remem-mcp`).
+Note: the `remem` CLI mirrors the graph tools: `forget` (soft delete),
+`related`, `central`, `path`, plus `purge` (hard delete: row, FTS entry,
+embedding, graph forget). Related memories also surface through recall
+`graph#` reasons (see `crates/remem-mcp` for the MCP equivalents).
 
 ## Script source (`scripts/demo.sh`)
 
@@ -66,9 +66,8 @@ echo "=== 7. stats ==="
 $BIN stats
 
 echo "=== 8. purge the mistake, prove it is gone ==="
-# NOTE: the CLI exposes purge (hard delete: row, FTS entry, embedding, plus
-# graph forget). The same engine ops are also available as the MCP
-# `forget` / `related` tools (see crates/remem-mcp).
+# NOTE: purge is the hard delete (row, FTS entry, embedding, graph forget).
+# `remem forget <id>` is the soft equivalent; related/central/path also exist.
 $BIN purge "$MISTAKE_ID"
 if $BIN list | grep -q "$MISTAKE_ID"; then echo "FAIL: purged id still listed" >&2; exit 1; fi
 $BIN validate

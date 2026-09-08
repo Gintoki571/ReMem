@@ -37,11 +37,15 @@ Binary: `./target/debug/remem`. Global flag `--db <path>` (env `REMEM_DB`, defau
 | `recall` | `remem recall <query...> [--k 5] [--json] [--agent NAME] [--session NAME] [--since SECS_OR_YYYY-MM-DD] [--until SECS_OR_YYYY-MM-DD]` |
 | `list` | `remem list [--json]` (newest first) |
 | `link` | `remem link <fromId> <toId> [--rel REL]` |
+| `forget` | `remem forget <id>` (soft-delete: row kept, graph node and edges dropped) |
 | `purge` | `remem purge <id>` (hard-delete row, FTS entry, embedding, graph node) |
+| `related` | `remem related <id> [--rel REL]` (neighbours as `id  rel`, Memory-only, sorted) |
+| `central` | `remem central [--limit 10]` (PageRank as `id  score`, desc) |
+| `path` | `remem path <from> <to>` (shortest path one id per line, empty if unreachable) |
 | `stats` | `remem stats` (JSON counts) |
 | `validate` | `remem validate` (dangling edges + orphans, exit 1 if any) |
 
-Kinds: `fact | decision | mistake | preference | event | note`. `list` takes no `--k`; `link` takes `--rel` (not `--type`). MCP tools: `remember`, `recall`, `list`, `link`, `forget` (delete by id), `purge` (hard-delete by id), `stats`, `validate`, `related` (graph neighbors of an id, optional `rel` filter).
+Kinds: `fact | decision | mistake | preference | event | note`. `list` takes no `--k`; `link` takes `--rel` (not `--type`). MCP tools: all of the above plus `central` (PageRank top-k) and `path` (shortest memory-to-memory path); `forget` is soft, `purge` hard. Unknown ids in `forget`/`related`/`path` give no output, not an error.
 
 ### Examples
 

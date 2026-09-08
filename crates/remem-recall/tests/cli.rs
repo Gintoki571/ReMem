@@ -421,3 +421,94 @@ fn cli_exact_remember_reprint_has_no_similar_line() {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
 }
+
+/// forget (soft), related (Memory-only, --rel filter), central (PageRank
+/// scored), path (unreachable = empty). Unknown ids are empty/false, not
+/// errors, mirroring the MCP tools.
+#[test]
+fn cli_forget_related_central_and_path() {
+    let db = std::env::temp_dir().join(format!("remem-cli-graph-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let mk = |text: &str| {
+        remem(&db, &["remember", "fact", text])
+            .lines()
+            .next()
+            .unwrap()
+            .to_string()
+    };
+    let a = mk("node alpha");
+    let b = mk("node beta");
+    let c = mk("node gamma");
+    let d = mk("isolated delta");
+    remem(&db, &["link", &a, &b, "--rel", "SUPERSEDES"]);
+    remem(&db, &["link", &b, &c, "--rel", "RELATES_TO"]);
+
+    // related: both directions, sorted by id, Memory-only (hubs stay out)
+    let mut want: Vec<String> = vec![format!("{a}  SUPERSEDES"), format!("{c}  RELATES_TO")];
+    want.sort();
+    let got: Vec<String> = remem(&db, &["related", &b])
+        .lines()
+        .map(String::from)
+        .collect();
+    assert_eq!(got, want, "related both directions");
+
+    let filtered: Vec<String> = remem(&db, &["related", &b, "--rel", "SUPERSEDES"])
+        .lines()
+        .map(String::from)
+        .collect();
+    assert_eq!(filtered, vec![format!("{a}  SUPERSEDES")], "--rel filter");
+    assert_eq!(remem(&db, &["related", &a]), format!("{b}  SUPERSEDES\n"));
+
+    // path follows edges; delta is unreachable
+    let hops = remem(&db, &["path", &a, &c]);
+    let hops: Vec<&str> = hops.lines().collect();
+    assert_eq!(hops, vec![a.as_str(), b.as_str(), c.as_str()], "a->c path");
+    assert_eq!(remem(&db, &["path", &a, &d]), "", "unreachable is empty");
+    assert_eq!(remem(&db, &["path", &a, &b]).lines().next().unwrap(), a);
+
+    // central: ranked by PageRank, --limit caps the output
+    let all = remem(&db, &["central"]);
+    let lines: Vec<&str> = all.lines().collect();
+    assert_eq!(lines.len(), 4, "every memory ranked: {all}");
+    let scores: Vec<f64> = lines
+        .iter()
+        .map(|l| l.split_whitespace().nth(1).unwrap().parse().unwrap())
+        .collect();
+    assert!(
+        scores.windows(2).all(|w| w[0] >= w[1]),
+        "must be sorted desc: {all}"
+    );
+    assert_eq!(
+        remem(&db, &["central", "--limit", "1"]).lines().count(),
+        1,
+        "--limit 1"
+    );
+    assert_eq!(remem(&db, &["central", "--limit", "0"]), "", "--limit 0");
+
+    // forget is soft: gone from list/recall/related, and reversible-looking
+    assert!(remem(&db, &["forget", &b]).contains(&b));
+    let listing = remem(&db, &["list"]);
+    assert!(
+        !listing.contains(&b) && listing.contains(&a) && listing.contains(&c),
+        "list after forget: {listing}"
+    );
+    assert_eq!(remem(&db, &["related", &a]), "", "forgotten neighbour gone");
+    assert_eq!(
+        remem(&db, &["path", &a, &c]),
+        "",
+        "forgotten node breaks the path"
+    );
+    assert_eq!(remem(&db, &["central", "--limit", "5"]).lines().count(), 3);
+    // soft vs hard: purge actually removes the row
+    let purged = remem(&db, &["purge", &c]);
+    assert!(purged.contains(&c), "purge output: {purged}");
+
+    // unknown ids: empty output, exit 0 (never an error)
+    assert_eq!(remem(&db, &["related", "nope-1"]), "");
+    assert_eq!(remem(&db, &["path", "nope-1", "nope-2"]), "");
+    assert_eq!(remem(&db, &["forget", "nope-3"]), "");
+
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}

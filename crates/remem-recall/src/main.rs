@@ -77,6 +77,8 @@ enum Cmd {
         #[arg(long)]
         json: bool,
     },
+    /// Soft-delete a memory (row kept, graph node and edges dropped)
+    Forget { id: String },
     /// Hard-delete a memory (row, FTS entry, embedding, graph node)
     Purge { id: String },
     /// Link two memories in the graph
@@ -86,6 +88,20 @@ enum Cmd {
         #[arg(long)]
         rel: Option<String>,
     },
+    /// Graph neighbours of a memory as `id  rel` lines (Memory nodes only)
+    Related {
+        id: String,
+        /// Only edges of this type
+        #[arg(long)]
+        rel: Option<String>,
+    },
+    /// Top memories by graph PageRank as `id  score` lines
+    Central {
+        #[arg(long, default_value_t = 10)]
+        limit: usize,
+    },
+    /// Shortest memory-to-memory path as `from` .. `to` lines (empty if unreachable)
+    Path { from: String, to: String },
     /// Database and graph counts
     Stats,
     /// Report dangling graph edges and orphan memories (exit 1 if any)
@@ -258,6 +274,16 @@ fn main() -> Result<()> {
                 }
             }
         }
+        Cmd::Forget { id } => {
+            let eng = engine(&cli.db)?;
+            // Soft-delete, mirroring MCP forget: an unknown id is a no-op, not
+            // an error, and reports forgotten: false.
+            let forgotten = eng.store().get(&id).context("forget")?.is_some();
+            if forgotten {
+                eng.forget(&id)?;
+                println!("forgot {id}");
+            }
+        }
         Cmd::Purge { id } => {
             let path = expand(&cli.db);
             let store = Store::open_path(&path).context("open store")?;
@@ -272,6 +298,45 @@ fn main() -> Result<()> {
         }
         Cmd::Link { from, to, rel } => {
             engine(&cli.db)?.link(&from, &to, rel.as_deref())?;
+        }
+        Cmd::Related { id, rel } => {
+            // Unknown id stays empty: neighbours of nothing is empty, not an
+            // error (unlike link, which must resolve both endpoints).
+            let eng = engine(&cli.db)?;
+            let g = eng.graph().context("engine has no graph open")?;
+            let filter = rel.unwrap_or_default();
+            let mut hits: Vec<(String, String)> = g
+                .neighbors(&id)
+                .map_err(|e| anyhow!("graph neighbors: {e}"))?
+                .into_iter()
+                .filter(|(_, r)| filter.is_empty() || *r == filter)
+                .collect();
+            hits.sort();
+            for (nid, r) in hits {
+                println!("{nid}  {r}");
+            }
+        }
+        Cmd::Central { limit } => {
+            let eng = engine(&cli.db)?;
+            let g = eng.graph().context("engine has no graph open")?;
+            for (id, score) in g
+                .central()
+                .map_err(|e| anyhow!("graph central: {e}"))?
+                .into_iter()
+                .take(limit)
+            {
+                println!("{id}  {score:.6}");
+            }
+        }
+        Cmd::Path { from, to } => {
+            let eng = engine(&cli.db)?;
+            let g = eng.graph().context("engine has no graph open")?;
+            for id in g
+                .shortest_path(&from, &to)
+                .map_err(|e| anyhow!("graph path: {e}"))?
+            {
+                println!("{id}");
+            }
         }
         Cmd::Stats => {
             println!(
