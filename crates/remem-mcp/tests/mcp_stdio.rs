@@ -703,3 +703,51 @@ fn recall_since_until_bounds_event_time() {
         "bad since: {resp:?}"
     );
 }
+
+/// `remember` returns a `similar` array: near-duplicate neighbours of the new
+/// embedding, probed before insert. Distances depend on the embedder (stub vs
+/// real BERT differ), so assertions are structural, not numeric.
+#[test]
+fn remember_returns_similar_array_for_paraphrase() {
+    let mut c = Client::spawn(&temp_db("similar"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+
+    let base = "the deploy script uses rsync over ssh to copy artifacts to the bastion host";
+    let para = "the deploy script uses rsync over ssh to copy artifacts to the bastion host today";
+    let other = "banana bread recipe needs three ripe bananas and a handful of walnuts";
+
+    let a: Value = c.call("remember", json!({"kind": "fact", "content": base}));
+    assert_eq!(
+        a["similar"],
+        json!([]),
+        "empty store must stay silent: {a:?}"
+    );
+    let ida = a["id"].as_str().unwrap().to_string();
+
+    let b: Value = c.call("remember", json!({"kind": "fact", "content": para}));
+    let sim = b["similar"].as_array().unwrap();
+    assert!(!sim.is_empty(), "paraphrase must report a near-dup: {b:?}");
+    assert!(sim.len() <= 3, "the probe is capped at 3: {b:?}");
+    assert_eq!(sim[0]["id"], json!(ida), "want the stored id: {b:?}");
+    assert!(sim[0]["distance"].as_f64().unwrap() > 0.0, "{b:?}");
+
+    let d: Value = c.call("remember", json!({"kind": "fact", "content": other}));
+    assert_eq!(
+        d["similar"],
+        json!([]),
+        "distinct memory stays silent: {d:?}"
+    );
+
+    // An exact re-save dedups on content_hash and must not double-report.
+    let dup: Value = c.call("remember", json!({"kind": "fact", "content": base}));
+    assert_eq!(
+        dup["id"],
+        json!(ida),
+        "exact dup returns the stored id: {dup:?}"
+    );
+    assert_eq!(dup["similar"], json!([]), "no double-report: {dup:?}");
+}

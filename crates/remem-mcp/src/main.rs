@@ -299,10 +299,14 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                 item.occurred_at =
                     Some(parse_occurred_at(&when).map_err(|e| anyhow!("remember: {e:#}"))?);
             }
-            // NOTE: engine `remember` will grow a `similar` near-dup report
-            // (uncommitted sibling work); re-add the array here when it lands.
-            let id = eng.remember(&item)?;
-            Ok(serde_json::to_string(&json!({"id": id}))?)
+            let (id, similar) = eng.remember(&item)?;
+            let similar: Vec<Value> = similar
+                .iter()
+                .map(|(sid, d)| json!({"id": sid, "distance": (d * 1000.0).round() / 1000.0}))
+                .collect();
+            Ok(serde_json::to_string(
+                &json!({"id": id, "similar": similar}),
+            )?)
         }
         "recall" => {
             let query = match str_arg(args, "query") {
@@ -750,8 +754,7 @@ mod tests {
                 "remember",
                 &json!({"kind": "fact", "content": "x", "occurredAt": bad}),
             )
-            .err()
-            .expect("invalid occurredAt must error");
+            .expect_err("invalid occurredAt must error");
             assert!(
                 format!("{err:#}").contains("occurredAt"),
                 "loud occurredAt error for '{bad}': {err:#}"
