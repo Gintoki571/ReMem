@@ -1,0 +1,48 @@
+@startuml
+!theme plain
+title remem v3 storage schema (one SQLite file)
+
+entity "memories" as mem {
+  * id : TEXT <<PK>>
+  --
+  * kind : TEXT
+  * content : TEXT
+  * tags : TEXT
+  * importance : REAL
+  * created_at : INT
+  * updated_at : INT
+  occurred_at : INT (nullable)
+  content_hash : TEXT (nullable)
+}
+
+entity "memories_fts" as fts {
+  * rowid : INT <<FK>>
+  --
+  * content : TEXT
+}
+
+entity "mem_vec" as vec {
+  * rowid : INT <<FK>>
+  --
+  * embedding : FLOAT[768]
+}
+
+entity "nodes" as nodes {
+  * node_id : TEXT <<PK>>
+  --
+  mid : TEXT
+  kind : TEXT
+}
+
+entity "edges" as edges {
+  * rowid : INT <<PK>>
+  --
+  * source_id : TEXT <<FK>>
+  * target_id : TEXT <<FK>>
+}
+
+mem ||--|| fts : "external content\nrowid = memories.rowid"
+mem ||--|| vec : "rowid = memories.rowid"
+mem ||--o{ nodes : "mid = memories.id"
+nodes ||--o{ edges : "source/target"
+@enduml

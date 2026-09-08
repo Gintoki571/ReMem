@@ -62,3 +62,5 @@ Six crates under `crates/`, one Cargo workspace. One SQLite file holds relationa
 - [component](diagrams/component.puml) ([png](diagrams/component.png)): CLI/MCP binaries -> RecallEngine -> store/graph/embed crates -> one SQLite file.
 - [remember sequence](diagrams/sequence-remember.puml) ([png](diagrams/sequence-remember.png)): agent -> CLI/MCP -> embed -> store -> graph, with similar[]/dedup decisions.
 - [recall sequence](diagrams/sequence-recall.puml) ([png](diagrams/sequence-recall.png)): agent -> engine -> FTS + vector + graph-hop -> RRF fuse -> pack -> floor -> hits.
+- [schema ER](diagrams/schema-er.puml) ([png](diagrams/schema-er.png)): memories + FTS/vec/graph tables, rowid links, nullable fields.
+- [recall activity](diagrams/activity-recall.puml) ([png](diagrams/activity-recall.png)): parse -> retrieve -> RRF -> pack -> floor, empty/over-budget branches.

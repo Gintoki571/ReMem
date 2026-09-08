@@ -1,0 +1,27 @@
+@startuml
+!theme plain
+title recall flow
+
+start
+
+:Parse query;
+:Embed query;
+:Retrieve FTS + vector + graph hop;
+:Fuse with RRF;
+:Apply tag boost;
+:Pack by budget;
+
+if (Over budget?) then (yes)
+  :Trim to budget;
+endif
+
+if (Empty result?) then (yes)
+  :Return empty hits;
+  stop
+endif
+
+:Apply score floor;
+:Return hits;
+
+stop
+@enduml
