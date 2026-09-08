@@ -512,3 +512,24 @@ fn cli_forget_related_central_and_path() {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
 }
+
+#[test]
+fn cli_recall_k_zero_returns_empty() {
+    use std::process::Command;
+    let db = std::env::temp_dir().join(format!("remem-cli-k0-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let out = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args(["--db", db.to_str().unwrap(), "remember", "fact", "k zero keyword fact"])
+        .output()
+        .expect("run remem");
+    assert!(out.status.success());
+    let out = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args(["--db", db.to_str().unwrap(), "recall", "k", "zero", "keyword", "--k", "0"])
+        .output()
+        .expect("run remem");
+    assert!(out.status.success(), "exit 0 expected");
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "", "k=0 must print nothing");
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}

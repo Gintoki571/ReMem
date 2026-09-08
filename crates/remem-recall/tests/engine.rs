@@ -263,6 +263,15 @@ fn hub_edges_do_not_pollute_graph_expansion() {
 }
 
 #[test]
+fn k_zero_returns_empty_without_search() {
+    let (e, path) = engine("k0", FakeEmbedder::new(&[]));
+    e.remember(&item("shared keyword entry zero")).unwrap();
+    let hits = e.recall(&q("shared keyword entry", 0)).unwrap();
+    assert!(hits.is_empty(), "k=0 must return no results: {hits:?}");
+    cleanup(&path);
+}
+
+#[test]
 fn k_truncates_hits() {
     let (e, path) = engine("k", FakeEmbedder::new(&[]));
     for i in 0..10 {

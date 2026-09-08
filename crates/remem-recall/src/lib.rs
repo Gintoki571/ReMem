@@ -218,12 +218,17 @@ impl RecallEngine {
     }
 
     /// Ranked recall over FTS, vector and (optionally) graph expansion.
+    /// `k == 0` means "no results": returns [] before any FTS/vector work.
+    /// (list/central/path limits are separate paths and keep their defaults.)
     pub fn recall(&self, query: &RecallQuery) -> Result<Vec<RecallHit>> {
+        if query.k == 0 {
+            return Ok(Vec::new());
+        }
         let text = query.text.trim();
         if text.is_empty() {
             return Ok(Vec::new());
         }
-        let k = if query.k == 0 { 5 } else { query.k };
+        let k = query.k;
         let depth = LIST_DEPTH_FACTOR * k;
         let now = MemoryItem::now();
 
