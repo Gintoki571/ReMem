@@ -169,3 +169,13 @@ reproduced exactly the 20/37 + 36/37 baseline above.
 - Verdict: tag boost confirmed. The remaining weakness is adversarial junk, not tag anchors;
   the calibrated `--min-score 0.02` floor (corrected-scoring run: 35/37 floored) trades the
   two weakest rank-5 hits for a hard suppression of the junk channel.
+
+## Boost width check (2026-09-08)
+
+Per docs/ranking-study.md (fused 23/37 @1 still trails FTS-alone 33/37 and vector-alone
+34/34 @1), the tag boost was re-measured at 1.05x against 1.2x with the corrected floored
+runner: both give recall@1 23/37 and recall@5 35/37; they differ only in which of Q7/Q19
+ranks first. Kept 1.2x (it is what clears the tag-only anchors over the top-5 boundary in the
+unfloored run). Conclusion recorded in the `TAG_MATCH_BOOST` doc comment: the constant is not
+the lever, the post-RRF importance/recency bands are, and offline re-ranking of `--k 40`
+output mispredicts because list depth is 4k.

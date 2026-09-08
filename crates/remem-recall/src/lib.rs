@@ -5,8 +5,8 @@ pub mod rank;
 pub mod stub;
 
 pub use rank::{
-    apply_floor, final_score, fuse, pack_by_budget, recency_score, rrf, Fused, Ranking,
-    DEFAULT_HALF_LIFE_DAYS, DEFAULT_RRF_K,
+    apply_floor, final_score, fuse, pack_by_budget, recency_score, rrf, tag_boost, tokens, Fused,
+    Ranking, DEFAULT_HALF_LIFE_DAYS, DEFAULT_RRF_K,
 };
 pub use stub::StubEmbedder;
 
@@ -261,8 +261,10 @@ impl RecallEngine {
         let fused = fuse(&lists, DEFAULT_RRF_K);
         let mut hits: Vec<RecallHit> = Vec::new();
         for entry in fused {
-            let Some(item) = self.store.get(&entry.id) else {
-                continue; // deleted between list and fetch
+            // Strict decode: skip a row that vanished or fails to decode
+            // instead of failing the whole recall.
+            let Ok(Some(item)) = self.store.get(&entry.id) else {
+                continue;
             };
             // Two clocks: rank by when it happened, not when it was typed.
             let recency = recency_score(item.event_time(), self.half_life_days, now);
@@ -279,6 +281,25 @@ impl RecallEngine {
                 score,
                 reasons,
             });
+        }
+        // Tag channel: FTS and the embedder both see content only, so when a
+        // query's lexical anchor lives in tags ("decide" vs `decision`) nothing
+        // else can rank it. See rank::tag_boost for the matching rules.
+        {
+            let tagged: Vec<(&str, &[String])> = hits
+                .iter()
+                .map(|h| (h.item.id.as_str(), &h.item.tags[..]))
+                .collect();
+            let factors: Vec<f64> = tag_boost(&tagged, &tokens(text))
+                .into_iter()
+                .map(|(_, f)| f)
+                .collect();
+            for (hit, factor) in hits.iter_mut().zip(factors) {
+                if factor > 1.0 {
+                    hit.score *= factor;
+                    hit.reasons.push("tag".to_string());
+                }
+            }
         }
         hits.sort_by(|a, b| b.score.total_cmp(&a.score));
         hits.truncate(k);

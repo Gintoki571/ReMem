@@ -101,9 +101,92 @@ pub fn pack_by_budget(hits: Vec<RecallHit>, max_chars: usize) -> Vec<RecallHit> 
     out
 }
 
-/// Final ranking score: fused * (0.5 + 0.5 * importance) * (0.7 + 0.3 * recency).
+/// Final ranking score: fused * (0.9 + 0.1 * importance) * (0.9 + 0.1 * recency).
+///
+/// Both bands are deliberately narrow (docs/multiplier-proposal.md,
+/// docs/ranking-study.md). RRF inputs are strong on their own (FTS-alone 33/37
+/// and vector-alone 34/37 recall@1 on the eval fixtures) while the fused rank
+/// trailed both, because a wide multiplier outvotes a dual `fts#1 + vector#1`
+/// agreement. At 0.5..1.0 x 0.7..1.0 the worst case swung a score by 2.14x, far
+/// more than the ~10% gap between adjacent ranks, so importance and recency
+/// decided the order. Each band now caps its swing at 11%, keeping both signals
+/// as tie-breakers that can never override the fusion.
 pub fn final_score(fused: f64, importance: f32, recency: f64) -> f64 {
-    fused * (0.5 + 0.5 * importance as f64) * (0.7 + 0.3 * recency)
+    fused * (0.9 + 0.1 * importance as f64) * (0.9 + 0.1 * recency)
+}
+
+/// Multiplier for a hit whose tags share a word with the query: a tie-breaker,
+/// not an override, and capped at one factor per hit.
+///
+/// Small on purpose. With RRF inputs at 89-92% recall@1 alone (docs/ranking-study.md), the
+/// job is to lift a tag-only anchor over the few hits fused immediately above it, not to
+/// reorder the list. 1.05x measured the same recall@1 as 1.2x on the eval fixtures and lost
+/// nothing at recall@5, so there is no reason to go wider. Beware tuning offline: re-ranking
+/// `--k 40` output predicted a different winner than the real k=5 runner, because list depth
+/// is 4k and the candidate set changes with k.
+pub const TAG_MATCH_BOOST: f64 = 1.05;
+
+/// Leading characters a query word and a tag must agree on to count as a
+/// match. Measured on docs/eval-fixtures.json: 3 pulls noise (`per`/`perf`,
+/// `second`/`security`, `production`/`process`), 5 loses the stem drift the
+/// channel exists for (`decide`/`decision`). 4 is the only width that gets
+/// both right.
+pub const TAG_MIN_PREFIX: usize = 4;
+
+/// Split on non-alphanumerics, lowercased. Manual scan so this crate does not
+/// need a regex dependency.
+pub fn tokens(text: &str) -> Vec<String> {
+    text.split(|c: char| !c.is_alphanumeric())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_lowercase())
+        .collect()
+}
+
+/// Lexical overlap between query words and hit tags.
+///
+/// One `(id, factor)` per input hit, in input order: `TAG_MATCH_BOOST` when
+/// any of the hit's tags overlaps a query word, else `1.0`.
+///
+/// Deliberately not driven by `RecallQuery::tags`: that filter already dropped
+/// non-matching rows, so every surviving hit shares those tags and the filter
+/// carries no ranking signal. The useful signal is overlap between words in the
+/// free-text query and a hit's tags, which is what Q27 needs ("decide" vs tag
+/// `decision`) - a link that exists only in tags, so neither FTS (content) nor
+/// the embedder separates it.
+///
+/// Matching is case-insensitive on both sides and keyed on shared prefix
+/// length: a word and a tag match when they agree on the first
+/// [`TAG_MIN_PREFIX`] characters. That covers plural/stem drift
+/// (`decide`/`decision`, `backups`/`backup`) without a stemmer, which exact word
+/// equality would miss. Words and tags shorter than the prefix length cannot
+/// match, so the 3-letter tags (`api`, `db`, `ui`) and function words are
+/// excluded for free. The boost is capped at one factor per hit however many
+/// words match, so a vague query cannot stack it; drift can still over-match
+/// (`worker`/`workflow`), bounded at [`TAG_MATCH_BOOST`].
+pub fn tag_boost(hits: &[(&str, &[String])], query_words: &[String]) -> Vec<(String, f64)> {
+    hits.iter()
+        .map(|(id, tags)| {
+            let shared = query_words.iter().any(|w| {
+                let w = prefix(w);
+                tags.iter().any(|t| {
+                    let t = prefix(t);
+                    t.len() >= TAG_MIN_PREFIX && w.len() >= TAG_MIN_PREFIX && t == w
+                })
+            });
+            let factor = if shared { TAG_MATCH_BOOST } else { 1.0 };
+            ((*id).to_string(), factor)
+        })
+        .collect()
+}
+
+/// Lowercased first [`TAG_MIN_PREFIX`] characters. Char-based, so a multibyte
+/// tag cannot be sliced mid-codepoint, and case-folded on both sides so a
+/// `Decision` tag matches a `decide` query.
+fn prefix(text: &str) -> String {
+    text.chars()
+        .flat_map(char::to_lowercase)
+        .take(TAG_MIN_PREFIX)
+        .collect()
 }
 
 /// Drop hits whose final score is below `min_score`. Unlike budget packing
@@ -283,11 +366,79 @@ mod tests {
         assert!(apply_floor(Vec::new(), 0.5).is_empty());
     }
 
+    fn tg(tags: &[&str]) -> Vec<String> {
+        tags.iter().map(|t| t.to_string()).collect()
+    }
+
+    fn boost_of(out: &[(String, f64)], id: &str) -> f64 {
+        out.iter().find(|(i, _)| i == id).unwrap().1
+    }
+
+    #[test]
+    fn tag_boost_matches_stems_and_case() {
+        let (a, b) = (tg(&["decision", "process"]), tg(&["storage"]));
+        let hits: Vec<(&str, &[String])> = vec![("t", &a), ("o", &b)];
+        let out = tag_boost(&hits, &tokens("What did we DECIDE about spending"));
+        assert_eq!(boost_of(&out, "t"), TAG_MATCH_BOOST); // decide ~ decision
+        assert_eq!(boost_of(&out, "o"), 1.0);
+        assert_eq!(
+            out.iter().map(|(i, _)| i.as_str()).collect::<Vec<_>>(),
+            vec!["t", "o"] // input order preserved
+        );
+    }
+
+    #[test]
+    fn tag_boost_ignores_short_words_and_tags() {
+        let (a, b) = (tg(&["api"]), tg(&["decision"]));
+        let hits: Vec<(&str, &[String])> = vec![("a", &a), ("b", &b)];
+        // "api" is a 3-char tag and "db"/"ui" 3-char words: no match either way.
+        let out = tag_boost(&hits, &tokens("db ui api decide"));
+        assert_eq!(boost_of(&out, "a"), 1.0);
+        assert_eq!(boost_of(&out, "b"), TAG_MATCH_BOOST);
+        assert!(tag_boost(&[], &tokens("decision")).is_empty());
+    }
+
+    #[test]
+    fn tag_boost_folds_case_on_both_sides() {
+        let a = tg(&["Decision"]);
+        let hits: Vec<(&str, &[String])> = vec![("a", &a)];
+        // Tag folded too, not just the query word.
+        let out = tag_boost(&hits, &tokens("what did we decide"));
+        assert_eq!(boost_of(&out, "a"), TAG_MATCH_BOOST);
+    }
+
+    #[test]
+    fn tag_boost_survives_multibyte_tags() {
+        // Byte-slicing at 4 would panic mid-codepoint on these: `日本` is 2 chars
+        // but 6 bytes, so the old length check passed and a[..4] split a char.
+        let (a, b, c) = (tg(&["Überblick"]), tg(&["日本語タグ"]), tg(&["日本"]));
+        let hits: Vec<(&str, &[String])> = vec![("a", &a), ("b", &b), ("c", &c)];
+        let out = tag_boost(&hits, &tokens("überblick 日本語タ 日本語"));
+        assert_eq!(boost_of(&out, "a"), TAG_MATCH_BOOST); // case-folded, non-ASCII
+        assert_eq!(boost_of(&out, "b"), TAG_MATCH_BOOST); // char-based prefix
+        assert_eq!(boost_of(&out, "c"), 1.0); // 2-char tag cannot reach 4 chars
+    }
+
+    #[test]
+    fn tag_boost_is_bounded_and_capped_per_hit() {
+        let a = tg(&["backup", "testing", "deploy"]);
+        let hits: Vec<(&str, &[String])> = vec![("a", &a)];
+        // Three matching words still give one factor, not boost^3.
+        let out = tag_boost(&hits, &tokens("backups testing deploy now"));
+        assert_eq!(boost_of(&out, "a"), TAG_MATCH_BOOST);
+        assert!((1.0..=1.3).contains(&boost_of(&out, "a")), "bounded band");
+    }
+
     #[test]
     fn final_score_formula() {
         let s = final_score(1.0, 0.5, 1.0);
-        assert!((s - 1.0 * 0.75 * 1.0).abs() < 1e-12);
+        assert!((s - 0.95 * 1.0).abs() < 1e-12);
         let s = final_score(1.0, 0.9, 0.0);
-        assert!((s - 0.95 * 0.7).abs() < 1e-6); // importance goes through f32
+        assert!((s - 0.99 * 0.9).abs() < 1e-6); // importance goes through f32
+                                                // A dual fts#1+vector#1 (2/61) must beat an importance-1.0 single-list
+                                                // hit (1/61): the old 0.5..1.0 band inverted exactly this.
+        let dual = final_score(2.0 / 61.0, 0.0, 0.0);
+        let solo = final_score(1.0 / 61.0, 1.0, 1.0);
+        assert!(dual > solo, "multipliers must not override fusion");
     }
 }

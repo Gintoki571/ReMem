@@ -498,3 +498,70 @@ fn min_score_floor_drops_junk_and_keeps_real_hits() {
 
     cleanup(&path);
 }
+
+/// Build a Q27-shaped store: the query's only lexical anchor for the target is
+/// its tag. Returns the recalled contents in rank order.
+fn tag_q27_store(tag: &str) -> (RecallEngine, PathBuf) {
+    let (e, path) = engine(
+        "tagboost",
+        FakeEmbedder::new(&[
+            ("what did we decide about spending", 0),
+            ("infra agent retried the flaky sync job", 0),
+            ("the load test reached nine thousand requests", 0),
+            ("quarterly numbers are reviewed by finance", 1),
+        ]),
+    );
+    let mut target = MemoryItem::new(
+        MemoryKind::Decision,
+        "quarterly numbers are reviewed by finance".to_string(),
+    );
+    target.tags = vec![tag.to_string()];
+    e.remember(&target).unwrap();
+    // The other three carry no tag and share the query's vector exactly, so
+    // they can only be beaten by a signal outside FTS/vector.
+    for c in [
+        "infra agent retried the flaky sync job",
+        "the load test reached nine thousand requests",
+    ] {
+        let mut d = MemoryItem::new(MemoryKind::Note, c.to_string());
+        d.tags = vec!["ops".to_string()];
+        e.remember(&d).unwrap();
+    }
+    (e, path)
+}
+
+/// Q27 from docs/eval.md: "decide" appears in no content, only in the tag
+/// `decision`. FTS is dead, the embedder ties the target with two decoys, and
+/// the tag boost is what puts it first. no_tag_overlap_... is the control: same
+/// store, tag renamed, target drops back below the decoys.
+#[test]
+fn tag_word_in_query_lifts_tagged_target_to_first() {
+    let (e, path) = tag_q27_store("decision");
+    let hits = e
+        .recall(&q("what did we decide about spending", 5))
+        .unwrap();
+    let order: Vec<&str> = hits.iter().map(|h| h.item.content.as_str()).collect();
+    assert_eq!(
+        order[0], "quarterly numbers are reviewed by finance",
+        "tag-anchored target must rank first: {order:?}"
+    );
+    assert!(hits[0].reasons.iter().any(|r| r == "tag"));
+    // Without the shared tag word the same store ranks it below the decoys.
+    drop(e);
+    cleanup(&path);
+}
+
+#[test]
+fn no_tag_overlap_leaves_ranking_unchanged() {
+    let (e, path) = tag_q27_store("finance");
+    let hits = e
+        .recall(&q("what did we decide about spending", 5))
+        .unwrap();
+    let order: Vec<&str> = hits.iter().map(|h| h.item.content.as_str()).collect();
+    assert_ne!(
+        order[0], "quarterly numbers are reviewed by finance",
+        "unrelated tag must not lift the target: {order:?}"
+    );
+    assert!(!hits.iter().any(|h| h.reasons.iter().any(|r| r == "tag")));
+    cleanup(&path);
+}
