@@ -25,6 +25,10 @@ pub fn register_vec_extension() {
     });
 }
 
+/// Upper bound for user-supplied result limits. A raw `limit as i64` can wrap
+/// to negative, and SQLite reads `LIMIT -1` as "no limit" (full-table read).
+pub const MAX_LIMIT: i64 = 1000;
+
 pub struct Store {
     conn: Connection,
 }
@@ -33,6 +37,11 @@ impl Store {
     pub fn open(path: &str) -> rusqlite::Result<Self> {
         register_vec_extension();
         let conn = Connection::open(path)?;
+        // Same file as the graph connection; wait out its write transactions
+        // instead of failing with SQLITE_BUSY. (rusqlite already defaults to
+        // 5000 ms; set it explicitly so parity with Graph::open does not
+        // depend on a library default.)
+        conn.busy_timeout(std::time::Duration::from_secs(5))?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.execute_batch(SCHEMA)?;
         migrate(&conn)?;
@@ -173,7 +182,7 @@ impl Store {
              LIMIT ?3",
         )?;
         let rows = stmt.query_map(
-            params![limit as i64, fts_quote(query), limit as i64],
+            params![clamp_limit(limit), fts_quote(query), clamp_limit(limit)],
             |row| {
                 let item = row_to_item(row)?;
                 let rank: f64 = row.get(10)?;
@@ -218,7 +227,7 @@ impl Store {
              WHERE m.deleted = 0 AND v.embedding MATCH ?1 AND v.k = ?2
              ORDER BY v.distance",
         )?;
-        let rows = stmt.query_map(params![serialize_f32(query), k as i64], |row| {
+        let rows = stmt.query_map(params![serialize_f32(query), clamp_limit(k)], |row| {
             let id: String = row.get(0)?;
             let dist: f64 = row.get(1)?;
             Ok((id, dist as f32))
@@ -315,6 +324,11 @@ fn fts_quote(query: &str) -> String {
     } else {
         kept.join(" OR ")
     }
+}
+
+fn clamp_limit(n: usize) -> i64 {
+    // try_from first: `usize::MAX as i64` wraps to -1 = "no limit" in SQLite.
+    i64::try_from(n).unwrap_or(i64::MAX).min(MAX_LIMIT)
 }
 
 fn check_dims(n: usize) -> rusqlite::Result<()> {

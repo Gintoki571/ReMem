@@ -201,6 +201,64 @@ fn purge_unknown_returns_false() {
     assert!(!store.purge("no-such-id").unwrap());
 }
 
+#[test]
+fn second_writer_blocks_then_succeeds_under_contention() {
+    let dir = std::env::temp_dir().join(format!("remem-busy-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("busy.db");
+    let _ = std::fs::remove_file(&path);
+    let path = path.to_str().unwrap().to_string();
+    let a = Store::open(&path).unwrap();
+    let b = Store::open(&path).unwrap();
+    a.connection().execute_batch("BEGIN IMMEDIATE").unwrap();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        tx.send(b.insert(&item("written while another writer holds the lock")))
+            .unwrap();
+    });
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    // The first writer still holds the write txn: the second must be waiting,
+    // not failed with an instant SQLITE_BUSY and not done.
+    assert!(
+        rx.try_recv().is_err(),
+        "second writer returned while the first still held the write txn"
+    );
+    a.connection().execute_batch("COMMIT").unwrap();
+    let res = rx.recv().unwrap();
+    assert!(
+        res.is_ok(),
+        "second writer failed instead of waiting out the lock: {:?}",
+        res.err()
+    );
+    assert!(Store::open(&path).unwrap().get(&res.unwrap()).is_some());
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(format!("{}{}", path, suffix));
+    }
+}
+
+#[test]
+fn fts_search_limit_saturates_at_1000() {
+    let store = Store::open(":memory:").unwrap();
+    for i in 0..1005 {
+        store.insert(&item(&format!("bulk memory number {i}"))).unwrap();
+    }
+    // usize::MAX also covers the negative-LIMIT case: a raw cast to i64
+    // would produce -1, which SQLite reads as "no limit".
+    assert_eq!(store.fts_search("bulk memory", usize::MAX).unwrap().len(), 1000);
+    assert_eq!(store.fts_search("bulk memory", 2_000).unwrap().len(), 1000);
+}
+
+#[test]
+fn knn_limit_saturates_at_1000() {
+    let store = Store::open(":memory:").unwrap();
+    for i in 0..3 {
+        let id = store.insert(&item(&format!("vec memory {i}"))).unwrap();
+        store.set_embedding(&id, &axis_vec(i, 1.0)).unwrap();
+    }
+    let hits = store.knn(&one_hot(0), usize::MAX).unwrap();
+    assert_eq!(hits.len(), 3);
+}
+
 fn one_hot(i: usize) -> Vec<f32> {
     let mut v = vec![0.0f32; 768];
     v[i] = 1.0;
