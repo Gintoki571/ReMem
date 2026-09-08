@@ -91,7 +91,15 @@ fn tools_list() -> Value {
             "properties": {"from": {"type": "string"}, "to": {"type": "string"},
                 "rel": {"type": "string"}},
             "required": ["from", "to"]}},
+        {"name": "forget", "description": "Delete a memory by id.",
+         "annotations": {"readOnlyHint": false, "destructiveHint": true},
+         "inputSchema": {"type": "object",
+            "properties": {"id": {"type": "string"}},
+            "required": ["id"]}},
         {"name": "stats", "description": "Database and graph counts.",
+         "annotations": {"readOnlyHint": true, "destructiveHint": false},
+         "inputSchema": {"type": "object", "properties": {}}},
+        {"name": "validate", "description": "Validate store/graph consistency; returns a list of issues (empty means healthy).",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object", "properties": {}}},
     ])
@@ -182,7 +190,17 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
             eng.link(&from, &to, str_arg(args, "rel").as_deref())?;
             Ok(serde_json::to_string(&json!({"ok": true}))?)
         }
+        "forget" => {
+            let id = str_arg(args, "id").ok_or_else(|| anyhow!("forget: missing 'id'"))?;
+            let forgotten = eng.store().get(&id).is_some();
+            eng.forget(&id)?;
+            Ok(serde_json::to_string(&json!({"forgotten": forgotten}))?)
+        }
         "stats" => Ok(serde_json::to_string(&eng.stats()?)?),
+        "validate" => {
+            let g = eng.graph().ok_or_else(|| anyhow!("engine has no graph open"))?;
+            Ok(serde_json::to_string(&json!({"issues": g.validate()}))?)
+        }
         _ => Err(anyhow!("unknown tool '{name}'")),
     }
 }

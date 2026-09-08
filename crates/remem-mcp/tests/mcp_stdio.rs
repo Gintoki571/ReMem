@@ -101,7 +101,7 @@ fn initialize_and_list_tools() {
     let resp = c.request("tools/list", json!({}));
     let tools = resp["result"]["tools"].as_array().unwrap();
     let names: Vec<_> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
-    for want in ["remember", "recall", "list", "link", "stats"] {
+    for want in ["remember", "recall", "list", "link", "forget", "stats", "validate"] {
         assert!(names.contains(&want), "missing tool {want}: {names:?}");
     }
     let remember = tools.iter().find(|t| t["name"] == "remember").unwrap();
@@ -112,6 +112,9 @@ fn initialize_and_list_tools() {
     );
     let recall = tools.iter().find(|t| t["name"] == "recall").unwrap();
     assert_eq!(recall["annotations"]["readOnlyHint"], serde_json::json!(true));
+    let forget = tools.iter().find(|t| t["name"] == "forget").unwrap();
+    assert_eq!(forget["annotations"]["readOnlyHint"], serde_json::json!(false));
+    assert_eq!(forget["annotations"]["destructiveHint"], serde_json::json!(true));
 }
 
 #[test]
@@ -150,6 +153,14 @@ fn remember_recall_link_stats_roundtrip() {
 
     let stats: Value = c.call("stats", json!({}));
     assert!(stats["memories"].as_u64().unwrap() >= 2, "stats: {stats:?}");
+
+    let v: Value = c.call("validate", json!({}));
+    assert_eq!(v["issues"], json!([]), "expected healthy db: {v:?}");
+
+    let f: Value = c.call("forget", json!({"id": ida}));
+    assert_eq!(f["forgotten"], json!(true), "forget existing: {f:?}");
+    let f2: Value = c.call("forget", json!({"id": "does-not-exist"}));
+    assert_eq!(f2["forgotten"], json!(false), "forget unknown: {f2:?}");
 
     // unknown tool surfaces as isError, not a protocol error
     let resp = c.request("tools/call", json!({"name": "nope", "arguments": {}}));
