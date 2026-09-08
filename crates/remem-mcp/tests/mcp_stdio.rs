@@ -487,7 +487,9 @@ fn recall_min_score_filters_below_floor() {
     let tools = resp["result"]["tools"].as_array().unwrap();
     let recall = tools.iter().find(|t| t["name"] == "recall").unwrap();
     assert!(
-        recall["inputSchema"]["properties"].get("minScore").is_some(),
+        recall["inputSchema"]["properties"]
+            .get("minScore")
+            .is_some(),
         "recall schema missing minScore: {recall:?}"
     );
 
@@ -496,7 +498,10 @@ fn recall_min_score_filters_below_floor() {
         json!({"kind": "fact", "content": "minscore floor check delta token"}),
     );
 
-    let hits: Value = c.call("recall", json!({"query": "minscore floor check delta", "k": 5}));
+    let hits: Value = c.call(
+        "recall",
+        json!({"query": "minscore floor check delta", "k": 5}),
+    );
     let hits = hits.as_array().unwrap();
     assert!(!hits.is_empty(), "unfiltered recall must return hits");
     assert!(
@@ -508,7 +513,11 @@ fn recall_min_score_filters_below_floor() {
         "recall",
         json!({"query": "minscore floor check delta", "k": 5, "minScore": 1.0}),
     );
-    assert_eq!(floored, json!([]), "minScore 1.0 must floor all hits: {floored:?}");
+    assert_eq!(
+        floored,
+        json!([]),
+        "minScore 1.0 must floor all hits: {floored:?}"
+    );
 
     // Non-number minScore errors loudly, like k.
     let resp = c.request(
@@ -559,7 +568,10 @@ fn central_returns_scored_mids_on_linked_data() {
 
     let ranked: Value = c.call("central", json!({}));
     let arr = ranked.as_array().unwrap();
-    assert!(!arr.is_empty(), "central must rank linked memories: {ranked:?}");
+    assert!(
+        !arr.is_empty(),
+        "central must rank linked memories: {ranked:?}"
+    );
     for entry in arr {
         assert!(entry["id"].is_string(), "scored mid: {entry:?}");
         assert!(entry["score"].is_number(), "scored mid: {entry:?}");
@@ -570,8 +582,15 @@ fn central_returns_scored_mids_on_linked_data() {
     let limited: Value = c.call("central", json!({"limit": 1}));
     assert_eq!(limited.as_array().unwrap().len(), 1, "limit 1: {limited:?}");
 
-    let resp = c.request("tools/call", json!({"name": "central", "arguments": {"limit": "many"}}));
-    assert_eq!(resp["result"]["isError"], json!(true), "limit str: {resp:?}");
+    let resp = c.request(
+        "tools/call",
+        json!({"name": "central", "arguments": {"limit": "many"}}),
+    );
+    assert_eq!(
+        resp["result"]["isError"],
+        json!(true),
+        "limit str: {resp:?}"
+    );
 }
 
 #[test]
@@ -583,9 +602,18 @@ fn path_chain_and_unknown_empty() {
         "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
     );
 
-    let a: Value = c.call("remember", json!({"kind": "fact", "content": "path alpha token"}));
-    let b: Value = c.call("remember", json!({"kind": "fact", "content": "path beta token"}));
-    let cc: Value = c.call("remember", json!({"kind": "fact", "content": "path gamma token"}));
+    let a: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "path alpha token"}),
+    );
+    let b: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "path beta token"}),
+    );
+    let cc: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "path gamma token"}),
+    );
     let ida = a["id"].as_str().unwrap().to_string();
     let idb = b["id"].as_str().unwrap().to_string();
     let idc = cc["id"].as_str().unwrap().to_string();
@@ -596,13 +624,129 @@ fn path_chain_and_unknown_empty() {
     assert_eq!(p, json!([ida, idb, idc]), "A->B->C: {p:?}");
 
     let unreachable: Value = c.call("path", json!({"from": idc, "to": ida}));
-    assert_eq!(unreachable, json!([]), "reverse unreachable: {unreachable:?}");
+    assert_eq!(
+        unreachable,
+        json!([]),
+        "reverse unreachable: {unreachable:?}"
+    );
 
     let unknown: Value = c.call("path", json!({"from": "does-not-exist", "to": idc}));
     assert_eq!(unknown, json!([]), "unknown from: {unknown:?}");
 
     for args in [json!({}), json!({"from": ida}), json!({"to": idc})] {
-        let resp = c.request("tools/call", json!({"name": "path", "arguments": args.clone()}));
-        assert_eq!(resp["result"]["isError"], json!(true), "path {args}: {resp:?}");
+        let resp = c.request(
+            "tools/call",
+            json!({"name": "path", "arguments": args.clone()}),
+        );
+        assert_eq!(
+            resp["result"]["isError"],
+            json!(true),
+            "path {args}: {resp:?}"
+        );
     }
+}
+
+#[test]
+fn recall_since_until_bounds_event_time() {
+    let mut c = Client::spawn(&temp_db("since-until"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+
+    let resp = c.request("tools/list", json!({}));
+    let tools = resp["result"]["tools"].as_array().unwrap();
+    let recall = tools.iter().find(|t| t["name"] == "recall").unwrap();
+    assert!(
+        recall["inputSchema"]["properties"].get("since").is_some(),
+        "recall schema missing since: {recall:?}"
+    );
+    assert!(
+        recall["inputSchema"]["properties"].get("until").is_some(),
+        "recall schema missing until: {recall:?}"
+    );
+
+    let r: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "sinceuntil backdate quartz token",
+            "occurredAt": "2020-01-01"}),
+    );
+    let id = r["id"].as_str().unwrap().to_string();
+
+    let found: Value = c.call(
+        "recall",
+        json!({"query": "sinceuntil backdate quartz", "k": 5, "until": "2021-01-01"}),
+    );
+    assert!(
+        found.as_array().unwrap().iter().any(|h| h["id"] == id),
+        "until-after-it must find backdated hit: {found:?}"
+    );
+
+    let hidden: Value = c.call(
+        "recall",
+        json!({"query": "sinceuntil backdate quartz", "k": 5, "since": "2021-01-01"}),
+    );
+    assert!(
+        hidden.as_array().unwrap().iter().all(|h| h["id"] != id),
+        "since-after-it must hide backdated hit: {hidden:?}"
+    );
+
+    let resp = c.request(
+        "tools/call",
+        json!({"name": "recall",
+            "arguments": {"query": "sinceuntil backdate quartz", "since": "not-a-date"}}),
+    );
+    assert_eq!(
+        resp["result"]["isError"],
+        json!(true),
+        "bad since: {resp:?}"
+    );
+}
+
+/// `remember` returns a `similar` array: near-duplicate neighbours of the new
+/// embedding, probed before insert. Distances depend on the embedder (stub vs
+/// real BERT), so assertions are structural, not numeric.
+#[test]
+fn remember_returns_similar_array_for_paraphrase() {
+    let mut c = Client::spawn(&temp_db("similar"));
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+
+    let base = "the deploy script uses rsync over ssh to copy artifacts to the bastion host";
+    let para = "the deploy script uses rsync over ssh to copy artifacts to the bastion host today";
+    let other = "banana bread recipe needs three ripe bananas and a handful of walnuts";
+
+    let a: Value = c.call("remember", json!({"kind": "fact", "content": base}));
+    assert_eq!(a["similar"], json!([]), "empty store: {a:?}");
+    let ida = a["id"].as_str().unwrap().to_string();
+
+    let b: Value = c.call("remember", json!({"kind": "fact", "content": para}));
+    let sim = b["similar"].as_array().unwrap();
+    assert!(!sim.is_empty(), "paraphrase must report a near-dup: {b:?}");
+    assert!(sim.len() <= 3, "probe is capped at 3: {b:?}");
+    assert_eq!(sim[0]["id"], json!(ida), "want the stored id: {b:?}");
+    assert!(
+        sim[0]["distance"].as_f64().unwrap() > 0.0,
+        "distance: {b:?}"
+    );
+
+    let d: Value = c.call("remember", json!({"kind": "fact", "content": other}));
+    assert_eq!(
+        d["similar"],
+        json!([]),
+        "distinct memory stays silent: {d:?}"
+    );
+
+    // exact re-save dedups on content_hash and does not double-report
+    let dup: Value = c.call("remember", json!({"kind": "fact", "content": base}));
+    assert_eq!(
+        dup["id"],
+        json!(ida),
+        "exact dup returns the stored id: {dup:?}"
+    );
+    assert_eq!(dup["similar"], json!([]), "no double-report: {dup:?}");
 }

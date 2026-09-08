@@ -160,7 +160,9 @@ fn tools_list() -> Value {
          "inputSchema": {"type": "object",
             "properties": {"query": {"type": "string"}, "k": {"type": "integer"},
                 "agent": {"type": "string"}, "session": {"type": "string"},
-                "maxChars": {"type": "integer"}, "minScore": {"type": "number"}},
+                "maxChars": {"type": "integer"}, "minScore": {"type": "number"},
+                "since": {"type": "string", "description": "unix seconds or YYYY-MM-DD (UTC midnight)"},
+                "until": {"type": "string", "description": "unix seconds or YYYY-MM-DD (UTC midnight)"}},
             "required": ["query"]}},
         {"name": "list", "description": "List stored memories (newest first).",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
@@ -228,7 +230,11 @@ fn parse_occurred_at(s: &str) -> Result<i64> {
     let mut parts = s.trim().split('-');
     let (y, m, d) = match (parts.next(), parts.next(), parts.next(), parts.next()) {
         (Some(y), Some(m), Some(d), None) => (y, m, d),
-        _ => return Err(anyhow!("invalid occurredAt '{s}' (unix seconds or YYYY-MM-DD)")),
+        _ => {
+            return Err(anyhow!(
+                "invalid occurredAt '{s}' (unix seconds or YYYY-MM-DD)"
+            ))
+        }
     };
     let parse = |v: &str| {
         v.parse::<i64>()
@@ -290,13 +296,17 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                 },
             }
             if let Some(when) = str_arg(args, "occurredAt") {
-                item.occurred_at = Some(
-                    parse_occurred_at(&when)
-                        .map_err(|e| anyhow!("remember: {e:#}"))?,
-                );
+                item.occurred_at =
+                    Some(parse_occurred_at(&when).map_err(|e| anyhow!("remember: {e:#}"))?);
             }
-            let id = eng.remember(&item)?;
-            Ok(serde_json::to_string(&json!({"id": id}))?)
+            let (id, similar) = eng.remember(&item)?;
+            let similar: Vec<Value> = similar
+                .iter()
+                .map(|(sid, d)| json!({"id": sid, "distance": (d * 1000.0).round() / 1000.0}))
+                .collect();
+            Ok(serde_json::to_string(
+                &json!({"id": id, "similar": similar}),
+            )?)
         }
         "recall" => {
             let query = match str_arg(args, "query") {
@@ -317,6 +327,14 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                         .ok_or_else(|| anyhow!("recall: 'minScore' must be a number"))?,
                 ),
             };
+            let since = match str_arg(args, "since") {
+                None => None,
+                Some(s) => Some(parse_occurred_at(&s).map_err(|e| anyhow!("recall: {e:#}"))?),
+            };
+            let until = match str_arg(args, "until") {
+                None => None,
+                Some(s) => Some(parse_occurred_at(&s).map_err(|e| anyhow!("recall: {e:#}"))?),
+            };
             let q = RecallQuery {
                 text: query,
                 k,
@@ -326,6 +344,8 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                     .get("maxChars")
                     .and_then(|v| v.as_u64())
                     .map(|v| v as usize),
+                since,
+                until,
                 ..Default::default()
             };
             // Floor lives on the engine (same pattern as the CLI's
@@ -361,7 +381,11 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
         }
         "forget" => {
             let id = str_arg(args, "id").ok_or_else(|| anyhow!("forget: missing 'id'"))?;
-            let forgotten = eng.store().get(&id).map_err(|e| anyhow!("forget: {e}"))?.is_some();
+            let forgotten = eng
+                .store()
+                .get(&id)
+                .map_err(|e| anyhow!("forget: {e}"))?
+                .is_some();
             eng.forget(&id)?;
             Ok(serde_json::to_string(&json!({"forgotten": forgotten}))?)
         }
@@ -695,8 +719,7 @@ mod tests {
                 "occurredAt": "2020-01-01"}),
         )
         .expect("backdated remember");
-        let id: String = serde_json::from_str::<Value>(&out)
-            .unwrap()["id"]
+        let id: String = serde_json::from_str::<Value>(&out).unwrap()["id"]
             .as_str()
             .unwrap()
             .to_string();
