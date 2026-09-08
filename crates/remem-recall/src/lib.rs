@@ -245,7 +245,8 @@ impl RecallEngine {
             let Some(item) = self.store.get(&entry.id) else {
                 continue; // deleted between list and fetch
             };
-            let recency = recency_score(item.updated_at, self.half_life_days, now);
+            // Two clocks: rank by when it happened, not when it was typed.
+            let recency = recency_score(item.event_time(), self.half_life_days, now);
             let mut reasons = entry.reasons;
             if recency > 0.9 {
                 reasons.push("recent".to_string());
@@ -284,6 +285,17 @@ fn matches(item: &MemoryItem, query: &RecallQuery) -> bool {
     }
     if let Some(sid) = &query.session_id {
         if item.session_id != *sid {
+            return false;
+        }
+    }
+    let t = item.event_time();
+    if let Some(since) = &query.since {
+        if t < *since {
+            return false;
+        }
+    }
+    if let Some(until) = &query.until {
+        if t > *until {
             return false;
         }
     }

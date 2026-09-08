@@ -35,6 +35,7 @@ impl Store {
         let conn = Connection::open(path)?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.execute_batch(SCHEMA)?;
+        migrate(&conn)?;
         Ok(Self { conn })
     }
 
@@ -45,8 +46,8 @@ impl Store {
 
     pub fn insert(&self, item: &MemoryItem) -> rusqlite::Result<String> {
         self.conn.execute(
-            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, deleted)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0)",
+            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, deleted)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0)",
             params![
                 item.id,
                 item.kind.as_str(),
@@ -57,6 +58,7 @@ impl Store {
                 item.importance as f64,
                 item.created_at,
                 item.updated_at,
+                item.occurred_at,
             ],
         )?;
         Ok(item.id.clone())
@@ -67,7 +69,7 @@ impl Store {
     pub fn get(&self, id: &str) -> Option<MemoryItem> {
         self.conn
             .query_row(
-                "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at
+                "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at
                  FROM memories WHERE id = ?1 AND deleted = 0",
                 params![id],
                 row_to_item,
@@ -80,7 +82,7 @@ impl Store {
     /// Update content/metadata. Keeps id and created_at.
     pub fn update(&self, item: &MemoryItem) -> rusqlite::Result<()> {
         self.conn.execute(
-            "UPDATE memories SET kind = ?2, content = ?3, tags = ?4, agent_id = ?5, session_id = ?6, importance = ?7, updated_at = ?8
+            "UPDATE memories SET kind = ?2, content = ?3, tags = ?4, agent_id = ?5, session_id = ?6, importance = ?7, updated_at = ?8, occurred_at = ?9
              WHERE id = ?1",
             params![
                 item.id,
@@ -91,6 +93,7 @@ impl Store {
                 item.session_id,
                 item.importance as f64,
                 item.updated_at,
+                item.occurred_at,
             ],
         )?;
         Ok(())
@@ -107,7 +110,7 @@ impl Store {
 
     pub fn list(&self, include_deleted: bool) -> rusqlite::Result<Vec<MemoryItem>> {
         let sql = format!(
-            "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at
+            "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at
              FROM memories {} ORDER BY created_at DESC, rowid DESC",
             if include_deleted { "" } else { "WHERE deleted = 0" }
         );
@@ -123,7 +126,7 @@ impl Store {
         limit: usize,
     ) -> rusqlite::Result<Vec<(MemoryItem, f32)>> {
         let mut stmt = self.conn.prepare(
-            "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, rank
+            "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, rank
              FROM memories_fts f
              JOIN memories m ON m.rowid = f.rowid
              WHERE memories_fts MATCH ?2 AND m.deleted = 0
@@ -134,7 +137,7 @@ impl Store {
             params![limit as i64, fts_quote(query), limit as i64],
             |row| {
                 let item = row_to_item(row)?;
-                let rank: f64 = row.get(9)?;
+                let rank: f64 = row.get(10)?;
                 Ok((item, rank as f32))
             },
         )?;
@@ -190,6 +193,18 @@ impl Store {
     }
 }
 
+/// Add columns introduced after a database file was first created.
+/// `occurred_at` is nullable, so backfilling is a no-op: old rows read as None.
+fn migrate(conn: &Connection) -> rusqlite::Result<()> {
+    let mut stmt =
+        conn.prepare("SELECT 1 FROM pragma_table_info('memories') WHERE name = 'occurred_at'")?;
+    let present: Option<i64> = stmt.query_row([], |r| r.get(0)).optional()?;
+    if present.is_none() {
+        conn.execute_batch("ALTER TABLE memories ADD COLUMN occurred_at INTEGER")?;
+    }
+    Ok(())
+}
+
 fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryItem> {
     let tags_json: String = row.get(3)?;
     Ok(MemoryItem {
@@ -202,18 +217,38 @@ fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryItem> {
         importance: row.get::<_, f64>(6)? as f32,
         created_at: row.get(7)?,
         updated_at: row.get(8)?,
+        occurred_at: row.get(9)?,
     })
 }
 
-/// Escape a user query into a safe FTS5 one: each whitespace token becomes a
-/// double-quoted term (implicit AND). Prevents FTS5 syntax errors and column
-/// filters from raw input like "foo-bar" or embedded quotes.
+const STOPWORDS: &[&str] = &[
+    "a", "an", "and", "are", "as", "at", "be", "but", "by", "did", "do", "does", "for", "from",
+    "had", "has", "have", "how", "i", "in", "is", "it", "no", "not", "of", "on", "or", "that",
+    "the", "this", "to", "was", "what", "when", "where", "which", "who", "will", "with",
+];
+
+/// Escape a user query into a safe FTS5 one: drop English stopwords, then join
+/// the remaining quoted terms with OR so filler words cannot kill the match on
+/// natural-language queries. Prevents FTS5 syntax errors and column filters
+/// from raw input like "foo-bar" or embedded quotes. All-stopword queries
+/// fall back to the raw (still-quoted) tokens so they do not match everything.
 fn fts_quote(query: &str) -> String {
-    query
-        .split_whitespace()
-        .map(|term| format!("\"{}\"", term.replace('"', "\"\"\"")))
-        .collect::<Vec<_>>()
-        .join(" ")
+    let quoted = |t: &str| format!("\"{}\"", t.replace('"', "\"\"\""));
+    let tokens: Vec<&str> = query.split_whitespace().collect();
+    let kept: Vec<String> = tokens
+        .iter()
+        .filter(|t| !STOPWORDS.contains(&t.to_ascii_lowercase().as_str()))
+        .map(|t| quoted(t))
+        .collect();
+    if kept.is_empty() {
+        tokens
+            .iter()
+            .map(|t| quoted(t))
+            .collect::<Vec<_>>()
+            .join(" OR ")
+    } else {
+        kept.join(" OR ")
+    }
 }
 
 fn check_dims(n: usize) -> rusqlite::Result<()> {
@@ -227,4 +262,31 @@ fn check_dims(n: usize) -> rusqlite::Result<()> {
 
 fn serialize_f32(v: &[f32]) -> Vec<u8> {
     v.iter().flat_map(|f| f.to_le_bytes()).collect()
+}
+
+#[cfg(test)]
+mod fts_quote_tests {
+    use super::fts_quote;
+
+    #[test]
+    fn drops_stopwords_and_ors_content_tokens() {
+        assert_eq!(fts_quote("what is the parser"), "\"parser\"");
+        assert_eq!(
+            fts_quote("how do OR queries work"),
+            "\"queries\" OR \"work\""
+        );
+    }
+
+    #[test]
+    fn all_stopword_query_falls_back_to_quoted_tokens() {
+        assert_eq!(
+            fts_quote("to be or not"),
+            "\"to\" OR \"be\" OR \"or\" OR \"not\""
+        );
+    }
+
+    #[test]
+    fn empty_query_is_empty() {
+        assert_eq!(fts_quote("   "), "");
+    }
 }

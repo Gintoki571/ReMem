@@ -197,9 +197,7 @@ fn kind_and_tag_filters() {
             text: "deploy".into(),
             k: 5,
             kinds: Some(vec![MemoryKind::Decision]),
-            tags: None,
-            agent_id: None,
-            session_id: None,
+            ..Default::default()
         })
         .unwrap();
     assert_eq!(hits.len(), 1);
@@ -210,8 +208,7 @@ fn kind_and_tag_filters() {
             k: 5,
             kinds: None,
             tags: Some(vec!["prod".into()]),
-            agent_id: None,
-            session_id: None,
+            ..Default::default()
         })
         .unwrap();
     assert_eq!(hits.len(), 1);
@@ -314,5 +311,74 @@ fn weights_tune_fts_vs_vector() {
     });
     let hits = e.recall(&q("keyword", 5)).unwrap();
     assert_eq!(hits[0].item.content, "pastry content");
+    cleanup(&path);
+}
+
+/// The two clocks: an event typed today about March must rank by March.
+#[test]
+fn recency_uses_occurred_at_over_created_at() {
+    let (e, path) = engine("two-clocks", FakeEmbedder::new(&[]));
+    let now = MemoryItem::now();
+    let mut march = item("quarterly report keyword");
+    march.created_at = now; // typed today
+    march.updated_at = now;
+    march.occurred_at = Some(now - 90 * DAY); // happened in March
+    let mid = e.store().insert(&march).unwrap();
+
+    let recent = e.remember(&item("quarterly report keyword")).unwrap();
+    let hits = e.recall(&q("quarterly report keyword", 5)).unwrap();
+    assert_eq!(hits.len(), 2);
+    assert_eq!(hits[0].item.id, recent, "older event time must lose");
+    let m = hits.iter().find(|h| h.item.id == mid).unwrap();
+    assert!(!m.reasons.contains(&"recent".to_string()));
+    // 30d half-life on the event clock, not the typing clock
+    let r = rank::recency_score(march.occurred_at.unwrap(), 30.0, now);
+    assert!((r - 0.125).abs() < 1e-6);
+    cleanup(&path);
+}
+
+/// "What happened in March?" - date range over the event clock, falling back
+/// to created_at for memories with no occurred_at.
+#[test]
+fn since_until_filter_on_event_time() {
+    let (e, path) = engine("range", FakeEmbedder::new(&[]));
+    let now = MemoryItem::now();
+    let mut old_event = item("shared keyword march thing");
+    old_event.created_at = now;
+    old_event.updated_at = now;
+    old_event.occurred_at = Some(now - 40 * DAY);
+    let oid = e.store().insert(&old_event).unwrap();
+    let mut no_event = item("shared keyword recent thing");
+    no_event.created_at = now - 10 * DAY;
+    no_event.updated_at = no_event.created_at;
+    let nid = e.store().insert(&no_event).unwrap();
+    let fresh = e.remember(&item("shared keyword fresh thing")).unwrap();
+
+    let window = |since: i64, until: i64| {
+        e.recall(&RecallQuery {
+            text: "shared keyword".into(),
+            k: 10,
+            since: Some(since),
+            until: Some(until),
+            ..Default::default()
+        })
+        .unwrap()
+    };
+    // The 30-day band: the March event is out (its event clock is older),
+    // the no-occurred_at row is in via its created_at, and so is fresh.
+    let ids: Vec<_> = window(now - 30 * DAY, now + DAY)
+        .into_iter()
+        .map(|h| h.item.id)
+        .collect();
+    assert!(!ids.contains(&oid), "march event excluded: {ids:?}");
+    assert!(ids.contains(&nid) && ids.contains(&fresh), "got {ids:?}");
+    // A band covering the older event pulls it in and drops the rest.
+    let ids: Vec<_> = window(now - 50 * DAY, now - 30 * DAY)
+        .into_iter()
+        .map(|h| h.item.id)
+        .collect();
+    assert_eq!(ids, vec![oid]);
+    // Unbounded query is unchanged.
+    assert_eq!(window(now - 365 * DAY, now + DAY).len(), 3);
     cleanup(&path);
 }

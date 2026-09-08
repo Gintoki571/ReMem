@@ -47,6 +47,10 @@ pub struct MemoryItem {
     pub importance: f32,
     pub created_at: i64,
     pub updated_at: i64,
+    /// When the thing happened, as opposed to when we typed it. None for
+    /// timeless memories. Absent in older payloads deserializes to None.
+    #[serde(default)]
+    pub occurred_at: Option<i64>,
 }
 
 impl MemoryItem {
@@ -69,7 +73,13 @@ impl MemoryItem {
             importance: 0.5,
             created_at: now,
             updated_at: now,
+            occurred_at: None,
         }
+    }
+
+    /// The event clock: when it happened if known, else when it was stored.
+    pub fn event_time(&self) -> i64 {
+        self.occurred_at.unwrap_or(self.created_at)
     }
 }
 
@@ -81,6 +91,10 @@ pub struct RecallQuery {
     pub tags: Option<Vec<String>>,
     pub agent_id: Option<String>,
     pub session_id: Option<String>,
+    /// Inclusive lower bound on the event clock (see MemoryItem::event_time).
+    pub since: Option<i64>,
+    /// Inclusive upper bound on the event clock.
+    pub until: Option<i64>,
 }
 
 #[derive(Debug, Clone)]

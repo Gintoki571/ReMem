@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS memories (
   importance REAL NOT NULL DEFAULT 0.5,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
+  occurred_at INTEGER,
   deleted INTEGER NOT NULL DEFAULT 0
 );
 

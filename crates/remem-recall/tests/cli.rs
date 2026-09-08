@@ -115,3 +115,108 @@ fn cli_validate_flags_orphans_and_passes_linked_memories() {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
 }
+
+/// Two clocks through the CLI: --occurred-at stores the event time,
+/// --since/--until filter recall on it.
+#[test]
+fn cli_occurred_at_and_date_filters() {
+    let db = std::env::temp_dir().join(format!("remem-cli-clocks-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let day = 86_400;
+    let march = now - 40 * day;
+
+    let old = remem(
+        &db,
+        &[
+            "remember",
+            "event",
+            "march launch retro",
+            "--occurred-at",
+            &march.to_string(),
+        ],
+    )
+    .trim()
+    .to_string();
+    let _recent = remem(&db, &["remember", "event", "march launch today"]);
+
+    // list --json carries the event clock
+    let listing = remem(&db, &["list", "--json"]);
+    assert!(
+        listing.contains(&format!("\"occurred_at\": {march}")),
+        "list: {listing}"
+    );
+
+    // YYYY-MM-DD parses to unix seconds of that day (UTC midnight)
+    remem(
+        &db,
+        &[
+            "remember",
+            "event",
+            "iso dated event",
+            "--occurred-at",
+            "2024-03-01",
+        ],
+    );
+    let listing = remem(&db, &["list", "--json"]);
+    assert!(
+        listing.contains(&format!("\"occurred_at\": {}", 1709251200)),
+        "iso parse failed: {listing}"
+    );
+
+    // Recall restricted to the last 10 days must drop the 40-day-old event
+    let hits = remem(
+        &db,
+        &[
+            "recall",
+            "march launch",
+            "--since",
+            &(now - 10 * day).to_string(),
+            "--json",
+        ],
+    );
+    assert!(
+        !hits.contains(&old),
+        "old event leaked into --since window: {hits}"
+    );
+
+    // A window around the event time finds it by event clock
+    let hits = remem(
+        &db,
+        &[
+            "recall",
+            "march launch",
+            "--since",
+            &(march - day).to_string(),
+            "--until",
+            &(march + day).to_string(),
+            "--json",
+        ],
+    );
+    assert!(
+        hits.contains(&old),
+        "event missing from its own window: {hits}"
+    );
+
+    // Bad flag value fails loudly
+    let bad = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args([
+            "--db",
+            db.to_str().unwrap(),
+            "remember",
+            "event",
+            "x",
+            "--occurred-at",
+            "not-a-date",
+        ])
+        .output()
+        .expect("run remem");
+    assert!(!bad.status.success());
+
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}

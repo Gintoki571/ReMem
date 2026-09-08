@@ -82,9 +82,9 @@ pub fn fuse(lists: &[Ranking], k: usize) -> Vec<Fused> {
     out
 }
 
-/// Final ranking score: fused * (0.5 + importance) * (0.7 + 0.3 * recency).
+/// Final ranking score: fused * (0.5 + 0.5 * importance) * (0.7 + 0.3 * recency).
 pub fn final_score(fused: f64, importance: f32, recency: f64) -> f64 {
-    fused * (0.5 + importance as f64) * (0.7 + 0.3 * recency)
+    fused * (0.5 + 0.5 * importance as f64) * (0.7 + 0.3 * recency)
 }
 
 #[cfg(test)]
@@ -177,8 +177,8 @@ mod tests {
     #[test]
     fn final_score_formula() {
         let s = final_score(1.0, 0.5, 1.0);
-        assert!((s - 1.0 * 1.0 * 1.0).abs() < 1e-12);
+        assert!((s - 1.0 * 0.75 * 1.0).abs() < 1e-12);
         let s = final_score(1.0, 0.9, 0.0);
-        assert!((s - 1.4 * 0.7).abs() < 1e-6); // importance goes through f32
+        assert!((s - 0.95 * 0.7).abs() < 1e-6); // importance goes through f32
     }
 }

@@ -43,6 +43,9 @@ enum Cmd {
         session: String,
         #[arg(long, default_value_t = 0.5)]
         importance: f32,
+        /// When it happened: unix seconds or YYYY-MM-DD (default: storage time)
+        #[arg(long)]
+        occurred_at: Option<String>,
     },
     /// Ranked recall for a query
     Recall {
@@ -56,6 +59,12 @@ enum Cmd {
         agent: Option<String>,
         #[arg(long)]
         session: Option<String>,
+        /// Only memories whose event time is >= this (unix seconds or YYYY-MM-DD)
+        #[arg(long)]
+        since: Option<String>,
+        /// Only memories whose event time is <= this (unix seconds or YYYY-MM-DD)
+        #[arg(long)]
+        until: Option<String>,
     },
     /// List stored memories (newest first)
     List {
@@ -73,6 +82,39 @@ enum Cmd {
     Stats,
     /// Report dangling graph edges and orphan memories (exit 1 if any)
     Validate,
+}
+
+/// Parse a unix timestamp or a `YYYY-MM-DD` date (UTC midnight) into seconds.
+fn parse_time(s: &str) -> Result<i64> {
+    if let Ok(secs) = s.trim().parse::<i64>() {
+        return Ok(secs);
+    }
+    let mut parts = s.trim().split('-');
+    let (y, m, d) = match (parts.next(), parts.next(), parts.next(), parts.next()) {
+        (Some(y), Some(m), Some(d), None) => (y, m, d),
+        _ => return Err(anyhow!("invalid time '{s}' (unix seconds or YYYY-MM-DD)")),
+    };
+    let parse = |v: &str| {
+        v.parse::<i64>()
+            .map_err(|_| anyhow!(format!("invalid date '{s}'")))
+    };
+    let (y, m, d) = (parse(y)?, parse(m)?, parse(d)?);
+    if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
+        return Err(anyhow!("invalid date '{s}'"));
+    }
+    Ok(days_from_civil(y, m, d) * 86_400)
+}
+
+/// Days since the unix epoch for a proleptic Gregorian date (Howard Hinnant's
+/// `days_from_civil`), so YYYY-MM-DD needs no date crate.
+fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = y - era * 400;
+    let mp = if m > 2 { m - 3 } else { m + 9 };
+    let doy = (153 * mp + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
 }
 
 fn expand(path: &str) -> PathBuf {
@@ -124,6 +166,7 @@ fn main() -> Result<()> {
             agent,
             session,
             importance,
+            occurred_at,
         } => {
             let kind = MemoryKind::parse(&kind).ok_or_else(|| {
                 anyhow!("unknown kind '{kind}' (fact|decision|mistake|preference|event|note)")
@@ -133,6 +176,9 @@ fn main() -> Result<()> {
             item.agent_id = agent;
             item.session_id = session;
             item.importance = importance;
+            if let Some(when) = occurred_at.as_deref() {
+                item.occurred_at = Some(parse_time(when)?);
+            }
             let id = engine(&cli.db)?.remember(&item)?;
             println!("{id}");
         }
@@ -142,12 +188,16 @@ fn main() -> Result<()> {
             json,
             agent,
             session,
+            since,
+            until,
         } => {
             let q = RecallQuery {
                 text: query.join(" "),
                 k,
                 agent_id: agent,
                 session_id: session,
+                since: since.as_deref().map(parse_time).transpose()?,
+                until: until.as_deref().map(parse_time).transpose()?,
                 ..Default::default()
             };
             let hits = engine(&cli.db)?.recall(&q)?;

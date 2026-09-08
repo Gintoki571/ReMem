@@ -44,6 +44,20 @@ fn fts_finds_keywords_and_ranks() {
 }
 
 #[test]
+fn fts_survives_filler_words_in_nl_query() {
+    let store = Store::open(":memory:").unwrap();
+    let a = item("the parser walks the token stream");
+    let ia = store.insert(&a).unwrap();
+    // Every content token ANDed would match nothing; OR after stopword drop hits.
+    let hits = store.fts_search("what is the parser", 10).unwrap();
+    assert_eq!(hits[0].0.id, ia);
+    let hits = store
+        .fts_search("what is the parser token stream about", 10)
+        .unwrap();
+    assert_eq!(hits[0].0.id, ia);
+}
+
+#[test]
 fn fts_stays_in_sync_on_update_and_delete() {
     let store = Store::open(":memory:").unwrap();
     let mut m = item("original text about butterflies");
@@ -142,4 +156,49 @@ fn axis_vec(i: usize, scale: f32) -> Vec<f32> {
     let mut v = vec![0.0f32; 768];
     v[i] = scale;
     v
+}
+
+#[test]
+fn occurred_at_roundtrips_through_insert_get_list_and_fts() {
+    let store = Store::open(":memory:").unwrap();
+    let mut m = item("the march release shipped on the fifteenth");
+    m.occurred_at = Some(1_700_000_000);
+    let id = store.insert(&m).unwrap();
+    assert_eq!(store.get(&id).unwrap().occurred_at, Some(1_700_000_000));
+    assert_eq!(
+        store.list(false).unwrap()[0].occurred_at,
+        Some(1_700_000_000)
+    );
+    let hits = store.fts_search("march release", 5).unwrap();
+    assert_eq!(hits[0].0.occurred_at, Some(1_700_000_000));
+    // absent stays absent
+    let plain = store.insert(&item("no event time")).unwrap();
+    assert_eq!(store.get(&plain).unwrap().occurred_at, None);
+}
+
+/// A pre-occurred_at database must gain the column on open, not fail.
+#[test]
+fn open_migrates_a_database_without_the_occurred_at_column() {
+    let dir = std::env::temp_dir().join(format!("remem-migrate-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("old.db");
+    let _ = std::fs::remove_file(&path);
+    let legacy_id;
+    {
+        let store = Store::open(path.to_str().unwrap()).unwrap();
+        legacy_id = store.insert(&item("legacy row")).unwrap();
+        store
+            .connection()
+            .execute_batch("ALTER TABLE memories DROP COLUMN occurred_at")
+            .unwrap();
+    }
+    let store = Store::open(path.to_str().unwrap()).unwrap();
+    assert_eq!(store.get(&legacy_id).unwrap().occurred_at, None);
+    let mut m = item("backfilled row");
+    m.occurred_at = Some(42);
+    let id = store.insert(&m).unwrap();
+    assert_eq!(store.get(&id).unwrap().occurred_at, Some(42));
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(format!("{}{}", path.display(), suffix));
+    }
 }
