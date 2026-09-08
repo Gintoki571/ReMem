@@ -123,22 +123,42 @@ fn parse_time(s: &str) -> Result<i64> {
             .map_err(|_| anyhow!(format!("invalid date '{s}'")))
     };
     let (y, m, d) = (parse(y)?, parse(m)?, parse(d)?);
-    if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
+    if !(1..=9999).contains(&y) || !(1..=12).contains(&m) || !(1..=days_in_month(y, m)).contains(&d)
+    {
         return Err(anyhow!("invalid date '{s}'"));
     }
-    Ok(days_from_civil(y, m, d) * 86_400)
+    let days = days_from_civil(y, m, d).ok_or_else(|| anyhow!("date out of range '{s}'"))?;
+    days.checked_mul(86_400)
+        .ok_or_else(|| anyhow!("date out of range '{s}'"))
+}
+
+fn days_in_month(y: i64, m: i64) -> i64 {
+    let leap = y % 4 == 0 && (y % 100 != 0 || y % 400 == 0);
+    match m {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap => 29,
+        _ => 28,
+    }
 }
 
 /// Days since the unix epoch for a proleptic Gregorian date (Howard Hinnant's
-/// `days_from_civil`), so YYYY-MM-DD needs no date crate.
-fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
-    let y = if m <= 2 { y - 1 } else { y };
-    let era = if y >= 0 { y } else { y - 399 } / 400;
-    let yoe = y - era * 400;
+/// `days_from_civil`), so YYYY-MM-DD needs no date crate. Checked: `i64`
+/// extremes yield `None` instead of panicking or wrapping.
+fn days_from_civil(y: i64, m: i64, d: i64) -> Option<i64> {
+    let y = if m <= 2 { y.checked_sub(1)? } else { y };
+    let era = if y >= 0 { y } else { y.checked_sub(399)? } / 400;
+    let yoe = y.checked_sub(era.checked_mul(400)?)?;
     let mp = if m > 2 { m - 3 } else { m + 9 };
     let doy = (153 * mp + 2) / 5 + d - 1;
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    era * 146_097 + doe - 719_468
+    let doe = yoe
+        .checked_mul(365)?
+        .checked_add(yoe / 4)?
+        .checked_sub(yoe / 100)?
+        .checked_add(doy)?;
+    era.checked_mul(146_097)?
+        .checked_add(doe)?
+        .checked_sub(719_468)
 }
 
 fn expand(path: &str) -> PathBuf {
@@ -358,4 +378,57 @@ fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod time_tests {
+    use super::{days_from_civil, parse_time};
+
+    #[test]
+    fn unix_epoch_seconds_and_days() {
+        assert_eq!(parse_time("0").unwrap(), 0);
+        assert_eq!(parse_time("1700000000").unwrap(), 1_700_000_000);
+        assert_eq!(days_from_civil(1970, 1, 1), Some(0));
+        assert_eq!(parse_time("1970-01-01").unwrap(), 0);
+    }
+
+    #[test]
+    fn leap_day_ok_and_non_leap_rejected() {
+        assert_eq!(parse_time("2020-02-29").unwrap(), 1_582_934_400);
+        assert!(parse_time("2019-02-29").is_err());
+        assert!(parse_time("2100-02-29").is_err());
+        assert!(parse_time("2000-02-29").is_ok());
+    }
+
+    #[test]
+    fn year_out_of_range_rejected() {
+        assert!(parse_time("0000-01-01").is_err());
+        assert!(parse_time("10000-01-01").is_err());
+        assert!(parse_time("9999-12-31").is_ok());
+        assert!(parse_time("0001-01-01").is_ok());
+    }
+
+    #[test]
+    fn extreme_input_does_not_panic() {
+        assert_eq!(parse_time(&i64::MAX.to_string()).unwrap(), i64::MAX);
+        assert_eq!(parse_time(&i64::MIN.to_string()).unwrap(), i64::MIN);
+        assert!(days_from_civil(i64::MAX, 1, 1).is_none());
+        assert!(days_from_civil(i64::MIN, 12, 31).is_none());
+        assert!(days_from_civil(0, 3, 1).unwrap() < days_from_civil(1, 3, 1).unwrap());
+    }
+
+    #[test]
+    fn malformed_rejected() {
+        for s in [
+            "2020-13-01",
+            "2020-00-10",
+            "2020-04-31",
+            "2020-01-0",
+            "2020-01-01-01",
+            "abc",
+            "-1-1-1",
+        ] {
+            assert!(parse_time(s).is_err(), "expected error for {s:?}");
+        }
+    }
 }

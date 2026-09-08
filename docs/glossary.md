@@ -1,0 +1,15 @@
+# ReMem v3 glossary
+- **RRF**: rank fusion in `remem-recall/src/rank.rs` that sums `1/(60 + rank + 1)` across the FTS, vector, and graph lists.
+- **FTS5**: SQLite keyword index (`memories_fts`, porter unicode61 tokenizer) kept in sync by insert/update/delete triggers.
+- **vec0**: sqlite-vec table (`mem_vec`, 768 floats) holding L2-normalized embeddings for nearest-neighbor search.
+- **Cypher**: graph query language run through `Graph::cypher` (graphqlite extension), with JSON params and JSON row results.
+- **hub node**: `Agent` (`agent:<id>`) or `Session` (`session:<id>`) node a memory links to; plain `neighbors` hides hubs.
+- **occurred_at / event time**: optional when-it-happened timestamp; `event_time` is `occurred_at` else `created_at`, and `since`/`until` filter on it.
+- **min-score floor**: `apply_floor` drops hits below `min_score` and may return empty; `0.0` (the default) turns it off.
+- **token-budget packing**: `pack_by_budget` fits hits into a `max_chars` content budget in rank order, skipping oversize hits but always keeping the top one.
+- **content_hash dedup**: SHA-256 of kind plus lowercased whitespace-folded content; `insert` returns the existing id on a match, including soft-deleted rows.
+- **near-dup similar[]**: `remember` returns up to 3 stored memories within L2 distance 0.48 of the new embedding; exact copies dedup silently via `content_hash`.
+- **soft delete vs purge**: `delete` sets `deleted = 1` so the row is hidden but kept; `purge` removes the row plus its FTS and vector entries.
+- **busy_timeout**: 5-second SQLite lock wait set on both store and graph connections so the two writers on one file retry instead of failing busy (with WAL mode).
+- **MCP stdio**: hand-rolled newline JSON-RPC 2.0 server over stdin/stdout (no rmcp crate) exposing tools like remember, recall, delete, and purge.
+- **stub embedder**: hashed word/char-trigram 768-dim L2-normalized lexical fallback used when the local BERT model is unavailable.
