@@ -4,8 +4,10 @@ Runs the core loop against a scratch db (default `REMEM_DB=/tmp/remem-demo.db`,
 override with `REMEM_DB=/tmp/custom.db scripts/demo.sh`):
 `scripts/demo.sh`. It builds the debug `remem` + `remem-mcp` binaries, stores
 one fact, one decision and one mistake (each with tags and an agent id), then
-exercises recall, link, validate, stats, purge and an MCP-vs-CLI parity check
-(`tools/list` over stdio must report 11 tools). Any step failing exits nonzero.
+exercises recall, link, validate, stats, purge, an MCP-vs-CLI parity check
+(`tools/list` over stdio must report 11 tools), forget (soft-delete), an
+explicit `related` check, a 3-chain `central`/`path` check, and a
+`recall --json` agent/session spot-check. Any step failing exits nonzero.
 
 Note: the `remem` CLI mirrors the graph tools: `forget` (soft delete),
 `related`, `central`, `path`, plus `purge` (hard delete: row, FTS entry,
@@ -66,8 +68,9 @@ echo "=== 7. stats ==="
 $BIN stats
 
 echo "=== 8. purge the mistake, prove it is gone ==="
-# NOTE: purge is the hard delete (row, FTS entry, embedding, graph forget).
-# `remem forget <id>` is the soft equivalent; related/central/path also exist.
+# NOTE: the CLI exposes purge (hard delete: row, FTS entry, embedding, plus
+# graph forget). The same engine ops are also available as the MCP
+# `forget` / `related` tools (see crates/remem-mcp).
 $BIN purge "$MISTAKE_ID"
 if $BIN list | grep -q "$MISTAKE_ID"; then echo "FAIL: purged id still listed" >&2; exit 1; fi
 $BIN validate
@@ -76,6 +79,35 @@ echo "=== 9. MCP-vs-CLI parity (tools/list shows 11 tools) ==="
 MCP_COUNT="$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | "$MCP_BIN" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["result"]["tools"]))')"
 echo "mcp tools: $MCP_COUNT"
 if [ "$MCP_COUNT" != "11" ]; then echo "FAIL: MCP tools/list returned $MCP_COUNT tools, expected 11" >&2; exit 1; fi
+
+echo "=== 10. forget (soft-delete: gone from list/recall, validate clean) ==="
+TEMP_ID="$($BIN remember note "Temporary scratch note for the forget check" --tags demo,forget --agent demo-agent)"
+$BIN forget "$TEMP_ID"
+if $BIN list | grep -q "$TEMP_ID"; then echo "FAIL: forgotten id still listed" >&2; exit 1; fi
+if $BIN recall "Temporary scratch note forget check" --k 5 | grep -q "$TEMP_ID"; then echo "FAIL: forgotten id still recalled" >&2; exit 1; fi
+$BIN validate
+
+echo "=== 11. 3-chain A->B->C: related, central, path ==="
+CHAIN_A="$($BIN remember fact "Lighthouse keepers log foghorn tests every dawn" --tags demo,chain --agent demo-agent)"
+CHAIN_B="$($BIN remember fact "Quantum error correction thresholds for surface codes" --tags demo,chain --agent demo-agent)"
+CHAIN_C="$($BIN remember fact "Sourdough starter hydration ratios for high altitude" --tags demo,chain --agent demo-agent)"
+$BIN link "$CHAIN_A" "$CHAIN_B" --rel relates-to
+$BIN link "$CHAIN_B" "$CHAIN_C" --rel relates-to
+RELATED_B="$($BIN related "$CHAIN_B")"
+echo "$RELATED_B"
+if ! echo "$RELATED_B" | grep -q "$CHAIN_A"; then echo "FAIL: related missing chain A" >&2; exit 1; fi
+if ! echo "$RELATED_B" | grep -q "$CHAIN_C"; then echo "FAIL: related missing chain C" >&2; exit 1; fi
+CENTRAL_OUT="$($BIN central --limit 10)"
+echo "$CENTRAL_OUT"
+if ! echo "$CENTRAL_OUT" | grep -q "$CHAIN_B"; then echo "FAIL: central missing chain B" >&2; exit 1; fi
+PATH_OUT="$($BIN path "$CHAIN_A" "$CHAIN_C")"
+echo "$PATH_OUT"
+if [ "$(printf '%s\n' "$PATH_OUT" | wc -l | tr -d ' ')" != "3" ]; then echo "FAIL: path A->C is not 3 lines" >&2; exit 1; fi
+
+echo "=== 12. recall --json spot-check (agent/session fields) ==="
+JSON_ID="$($BIN remember fact "JSON spot-check memory with agent and session" --tags demo,json --agent demo-agent --session demo-session)"
+$BIN recall "JSON spot-check memory" --k 5 --json | python3 -c 'import json,sys; hits=json.load(sys.stdin); assert hits, "no hits"; assert any("agent" in h and "session" in h and h["agent"]=="demo-agent" and h["session"]=="demo-session" for h in hits), "agent/session missing"'
+echo "json ok: $JSON_ID"
 
 echo "=== demo OK ==="
 ```
@@ -134,3 +166,6 @@ mcp tools: 11
 - `validate` confirms a clean graph and `stats` reports memory and graph counts.
 - `purge` hard-deletes a memory (row, index, graph node) and `list` proves it is gone.
 - MCP-vs-CLI parity: `tools/list` over stdio reports the documented 11 tools, and the script fails loudly otherwise.
+- `forget` soft-deletes: the id vanishes from `list` and `recall` while `validate` stays clean.
+- `related` lists both neighbours of the middle of a 3-chain; `central` ranks it and `path` prints the 3-id chain.
+- `recall --json` carries full fields: the spot-check asserts `agent`/`session` survive the round trip via python3.

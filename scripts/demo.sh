@@ -61,4 +61,33 @@ MCP_COUNT="$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list","param
 echo "mcp tools: $MCP_COUNT"
 if [ "$MCP_COUNT" != "11" ]; then echo "FAIL: MCP tools/list returned $MCP_COUNT tools, expected 11" >&2; exit 1; fi
 
+echo "=== 10. forget (soft-delete: gone from list/recall, validate clean) ==="
+TEMP_ID="$($BIN remember note "Temporary scratch note for the forget check" --tags demo,forget --agent demo-agent)"
+$BIN forget "$TEMP_ID"
+if $BIN list | grep -q "$TEMP_ID"; then echo "FAIL: forgotten id still listed" >&2; exit 1; fi
+if $BIN recall "Temporary scratch note forget check" --k 5 | grep -q "$TEMP_ID"; then echo "FAIL: forgotten id still recalled" >&2; exit 1; fi
+$BIN validate
+
+echo "=== 11. 3-chain A->B->C: related, central, path ==="
+CHAIN_A="$($BIN remember fact "Lighthouse keepers log foghorn tests every dawn" --tags demo,chain --agent demo-agent)"
+CHAIN_B="$($BIN remember fact "Quantum error correction thresholds for surface codes" --tags demo,chain --agent demo-agent)"
+CHAIN_C="$($BIN remember fact "Sourdough starter hydration ratios for high altitude" --tags demo,chain --agent demo-agent)"
+$BIN link "$CHAIN_A" "$CHAIN_B" --rel relates-to
+$BIN link "$CHAIN_B" "$CHAIN_C" --rel relates-to
+RELATED_B="$($BIN related "$CHAIN_B")"
+echo "$RELATED_B"
+if ! echo "$RELATED_B" | grep -q "$CHAIN_A"; then echo "FAIL: related missing chain A" >&2; exit 1; fi
+if ! echo "$RELATED_B" | grep -q "$CHAIN_C"; then echo "FAIL: related missing chain C" >&2; exit 1; fi
+CENTRAL_OUT="$($BIN central --limit 10)"
+echo "$CENTRAL_OUT"
+if ! echo "$CENTRAL_OUT" | grep -q "$CHAIN_B"; then echo "FAIL: central missing chain B" >&2; exit 1; fi
+PATH_OUT="$($BIN path "$CHAIN_A" "$CHAIN_C")"
+echo "$PATH_OUT"
+if [ "$(printf '%s\n' "$PATH_OUT" | wc -l | tr -d ' ')" != "3" ]; then echo "FAIL: path A->C is not 3 lines" >&2; exit 1; fi
+
+echo "=== 12. recall --json spot-check (agent/session fields) ==="
+JSON_ID="$($BIN remember fact "JSON spot-check memory with agent and session" --tags demo,json --agent demo-agent --session demo-session)"
+$BIN recall "JSON spot-check memory" --k 5 --json | python3 -c 'import json,sys; hits=json.load(sys.stdin); assert hits, "no hits"; assert any("agent" in h and "session" in h and h["agent"]=="demo-agent" and h["session"]=="demo-session" for h in hits), "agent/session missing"'
+echo "json ok: $JSON_ID"
+
 echo "=== demo OK ==="
