@@ -142,6 +142,22 @@ pub fn tokens(text: &str) -> Vec<String> {
         .collect()
 }
 
+// ponytail: local copy of remem-store's private STOPWORDS (not importable),
+// plus "thing" (adversarial-battery #9: "what is the thing" is content-free).
+// Keep in sync with crates/remem-store/src/lib.rs STOPWORDS by eye.
+const STOPWORDS: &[&str] = &[
+    "a", "an", "and", "are", "as", "at", "be", "but", "by", "did", "do", "does", "for", "from",
+    "had", "has", "have", "how", "i", "in", "is", "it", "no", "not", "of", "on", "or", "that",
+    "the", "thing", "this", "to", "was", "what", "when", "where", "which", "who", "will", "with",
+];
+
+/// True when no content-bearing token remains after stopword removal.
+/// Empty input counts as content-free.
+pub fn is_content_free(query: &str) -> bool {
+    let toks = tokens(query);
+    toks.is_empty() || toks.iter().all(|t| STOPWORDS.contains(&t.as_str()))
+}
+
 /// Lexical overlap between query words and hit tags.
 ///
 /// One `(id, factor)` per input hit, in input order: `TAG_MATCH_BOOST` when
@@ -440,5 +456,13 @@ mod tests {
         let dual = final_score(2.0 / 61.0, 0.0, 0.0);
         let solo = final_score(1.0 / 61.0, 1.0, 1.0);
         assert!(dual > solo, "multipliers must not override fusion");
+    }
+
+    #[test]
+    fn content_free_stopword_only_and_thing() {
+        assert!(is_content_free("what is the thing"));
+        assert!(is_content_free("the"));
+        assert!(is_content_free("   "));
+        assert!(!is_content_free("redis sharding"));
     }
 }

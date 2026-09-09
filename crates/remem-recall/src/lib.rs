@@ -5,8 +5,8 @@ pub mod rank;
 pub mod stub;
 
 pub use rank::{
-    apply_floor, final_score, fuse, pack_by_budget, recency_score, rrf, tag_boost, tokens, Fused,
-    Ranking, DEFAULT_HALF_LIFE_DAYS, DEFAULT_RRF_K,
+    apply_floor, final_score, fuse, is_content_free, pack_by_budget, recency_score, rrf, tag_boost,
+    tokens, Fused, Ranking, DEFAULT_HALF_LIFE_DAYS, DEFAULT_RRF_K,
 };
 pub use stub::StubEmbedder;
 
@@ -226,6 +226,11 @@ impl RecallEngine {
         }
         let text = query.text.trim();
         if text.is_empty() {
+            return Ok(Vec::new());
+        }
+        // reason: query-empty. No FTS/vector calls: content-free queries have
+        // no lexical anchor, so any hit would be arbitrary (adversarial-battery #4).
+        if is_content_free(text) {
             return Ok(Vec::new());
         }
         let k = query.k;

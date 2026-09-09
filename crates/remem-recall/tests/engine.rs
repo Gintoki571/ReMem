@@ -725,3 +725,15 @@ fn exact_duplicate_dedups_and_reports_no_similar() {
     assert_eq!(e.stats().unwrap()["memories"], 1);
     cleanup(&path);
 }
+
+#[test]
+fn content_free_queries_abstain_and_content_searches() {
+    let (e, path) = engine("content-free", FakeEmbedder::new(&[]));
+    e.remember(&item("redis sharding routes keys by hash slot")).unwrap();
+    assert!(e.recall(&q("what is the thing", 5)).unwrap().is_empty());
+    assert!(e.recall(&q("the", 5)).unwrap().is_empty());
+    let hits = e.recall(&q("redis sharding", 5)).unwrap();
+    assert!(!hits.is_empty());
+    assert!(hits[0].item.content.contains("redis sharding"));
+    cleanup(&path);
+}
