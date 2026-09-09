@@ -45,3 +45,7 @@ models/config.json
 
 # Rust v3
 target/
+target-head/
+*.db
+*.db-wal
+*.db-shm
