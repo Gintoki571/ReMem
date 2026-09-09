@@ -276,3 +276,34 @@ adversarial) and no regression landed with the CLI/date/MCP work. The single-sig
 success criterion is NOT met: fused 31/37 < vector-alone 34/37. Next lever, per the
 counterfactuals: gate the tag boost to low-score ties (recovers 2) and flatten the
 importance band to a pure tie-breaker (recovers 1 more, reaching 34/37 = the criterion).
+
+## Learned-weights outcome (2026-09-09, landed at `aebe0c2`)
+
+Landed config = `docs/weight-spike.md` row 1 (spec `docs/landing-weights.md`): RRF k=30,
+weights FTS 1.0 / vector 0.5 / graph 1.0, importance out of `final_score` (stored attribute
+and `important` reason only), recency kept narrow 0.9+0.1x, tag boost capped 1.05x. Same
+40-fixture corpus (37 answerable + 3 adversarial), debug build, fresh db, Cpu 768d. Numbers
+as reported by the implementer.
+
+- Floored (`scripts/eval.sh`, `--k 5 --min-score 0.017`): recall@1 33/37 (89%),
+  recall@5 35/37, adversarial 3/3 pass.
+- Unfloored (`--min-score 0`): recall@1 34/37 (92%), recall@5 37/37.
+- Single-signal arms on the same corpus: FTS-alone 33/37 @1, vector-alone 34/37 @1. Unfloored
+  fused 34/37 ties the best single arm, so the criterion that failed in the post-merge and
+  final-verification runs (fused 31/37 < vector-alone 34/37) is now met. Baseline to baseline:
+  @1 31 -> 34, floored @5 unchanged at 35/37.
+- Remaining @1 misses: Q7 (rate limiter throttling legitimate users) and Q12 (billing metrics
+  port) - the tag boost still overvotes a dual `fts#1 + vector#1` agreement on those two.
+  Matches the spike: all 36 winning configs have tag off and the best tag-on config there is
+  33/37, so keeping 1.05x costs the 35/37 prediction one hit.
+
+### Floor recalibrated 0.02 -> 0.017
+
+k=30 roughly doubles the fused score scale (top RRF term 1/31 vs 1/61), so 0.02 no longer sits
+where it was calibrated. Re-measured at the landed weights: adversarial junk tops out at
+0.0161-0.0169 and the lowest answerable top-1 is 0.0438, giving a usable band 0.017..0.043.
+`scripts/eval.sh` now floors at 0.017, the band edge rather than its midpoint. Caveat from
+`docs/floor-decision.md` stands: 0.017 clears the observed junk ceiling by 0.0001 on this
+corpus, and `DEFAULT_MIN_SCORE` stays 0.0 (off) because a floor that is wrong for one corpus
+silently returns [].
+
