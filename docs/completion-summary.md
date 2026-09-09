@@ -10,8 +10,8 @@
 ## Final numbers (verified)
 - Tests: 163 passed, 0 failed, 2 ignored across 21 suites (`cargo test --workspace`).
 - Recall fusion criterion MET: fused 35/37 @1 >= vector-alone 34/37 (40 fixtures, 37 answerable + 3 adversarial, floored k=5, min-score 0.017).
-- Recall @5: 36/37.
-- Adversarial: 2/3 pass (gated 2.0x tag boost lifts one junk hit over the floor; context under #6).
+- Recall @5: 35/37 (floor drops Q27 by design).
+- Adversarial: 3/3 pass (floor-first ordering).
 - CI: success on v3.
 - Issues: #1-#4 closed; #5 (GPU/candle-kernels vs CUDA 13.3 on sm_75) and #6 (tag-anchor Q27/Q28 supervision) open.
 - Live DB (`~/.remem/remem.db`, the real store -- `data/remem.db` in the repo is empty): 34+ memories.
@@ -25,7 +25,7 @@
 - Dogfood loop: the agent used remem itself (34+ live memories); misses became fixtures (Q27/Q28, junk queries).
 
 ## What remains (for the human)
-- Adversarial 2/3: floor re-measurement at gated weights or a narrower gate (context under #6).
+- Adversarial 3/3 held via floor-first; Q28 tokenizer gap remains under #6.
 - #5 upstream: candle-kernels vs CUDA 13.3 on sm_75 blocks the GPU build; CPU is the supported path.
 - #6 supervision: Q27/Q28 tag-only anchors need real supervision signal beyond the 1.05x/2.0x gate.
 - Merge decision: v3 -> main is a human call; see `docs/merge-v3-to-main.md`. Gate: 35/37 @1 held (criterion MET), adv 3/3 or accepted 2/3, #5/#6 triaged.
