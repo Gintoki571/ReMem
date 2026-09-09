@@ -58,7 +58,9 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 ```
 
-All three green before commit. CI enforces fmt + clippy + test on every push.
+Local gate: `.git/hooks/pre-commit` runs `cargo fmt --check` (not tracked by git; reinstall if hooks dir reset).
+CI enforces fmt + clippy + test on every push.
+Always verify all three green before pushing.
 
 TDD: add/update the failing test first, then the fix; never commit a red workspace.
 
