@@ -26,7 +26,7 @@ Verified against worktree/HEAD before marking done (tags-in-FTS `a6becb3` bm25 1
 | Private perms (dirs 0700, DB 0600) | low | done | remem-store |
 | Architecture doc (`docs/architecture-v3.md`), CLI/MCP parity map (`docs/cli-mcp-parity.md`), runnable end-to-end demo (`docs/demo.md`, `scripts/demo.sh`) | low | done | remem-recall |
 | CLI help text for every flag (`5c5200e`: remember kind/tags/agent/session/importance/occurred-at; recall query/k/json/agent/session/since/until; list json/limit; forget id; purge id; link from/to/rel; related id/rel; central limit; path from/to) | low | done | remem-recall |
-| Tag boost for tag-only anchors: landed 1.05x, single application, case-folded, char-safe prefix (`e844cd4`) | medium | done | remem-recall |
+| Tag boost for tag-only anchors: gated 2.0x on FTS-absent hits only (`b073557`); floored 35/37 @1, 36/37 @5, adversarial 2/3 (regressed from 3/3, one junk clears floor via 2.0x - known cost) | medium | done | remem-recall |
 | Post-RRF multiplier rebalance: narrowed bands `0.9 + 0.1*` landed (`e844cd4`); learned-weights adoption IN-FLIGHT (Weights default fts 1.0 / vec 0.5, importance out of formula, in working tree uncommitted — code sibling owns, do not retune here) | medium | in-flight (code sibling owns) | remem-recall |
 | Weight spike (`docs/weight-spike.md`, `acfa7f4`): 729-config offline grid, winner k=30 / FTS 1.0 / vec 0.5 / multis off predicts 35/37 (+4 over 31/37 baseline; fixes Q7/Q12/Q22/Q36; Q27/Q28 still miss; 36-way tie, overfit caution, needs time-varied second set) | high | in-flight (prediction only; implementation running with code sibling) | remem-recall |
 | Temporal verdict (`docs/temporal-eval.md`, `ae5bb78`): recency stays as-is (narrow band, max 11% swing, 0.49% old-vs-old); `--since/--until` windows for time-anchored queries; future-date clamp (clamps to 1.0) flagged as open design question | medium | done (docs verdict; clamp flag open) | remem-recall |
@@ -50,7 +50,7 @@ Verified against worktree/HEAD before marking done (tags-in-FTS `a6becb3` bm25 1
 
 ## Notes
 
-- Where fused stands: answerable 31/37 @1, 35/37 @5 floored, 37/37 @5 unfloored; adversarial 6/10 with the abstention guard (was 4/10). Single signals unchanged: FTS-alone 33/37 @1, vector-alone 34/37 @1, pure 1:1 RRF 34/37 @1.
+- Where fused stands (gated `b073557`): answerable 35/37 @1, 36/37 @5 floored; adversarial 2/3 on the 3-query eval set (regressed from 3/3, one junk clears the 0.017 floor via 2.0x - known cost); battery 6/10 with the abstention guard unchanged.
 - Abstention guard: stopword-only and content-free queries return `[]` with reason `query-empty` (`b95af36`); battery re-run `2350334` flipped #4/#9 to Y, other eight top-1 ids unchanged.
 - Multiplier question IN-FLIGHT: weight-spike winner (k=30, FTS 1.0, vec 0.5, multis off) predicts 35/37; code sibling is implementing in the working tree (uncommitted lib.rs/rank.rs + cli/engine tests). Docs do not retune constants meanwhile.
 - Temporal verdict: keep the narrowed recency band; use `--since/--until` windows when the caller knows the date; future-date clamp to 1.0 is a flagged design question, not a measurement artifact.
@@ -95,6 +95,6 @@ Verified against worktree/HEAD before marking done (tags-in-FTS `a6becb3` bm25 1
 - Fetch check: `git fetch origin` shows local v3 in sync with `origin/v3`; no merge needed.
 - Dirty-tree guard: sibling weight-impl files left untouched; only this roadmap file written.
 - Line budget: this file is kept at 100 lines, no emojis, docs-only change.
-- Scores snapshot: fused 31/37 @1; spike winner predicts 35/37; bar for learned is >= 34/37.
+- Scores snapshot: gated fused 35/37 @1, 36/37 @5 floored, adversarial 2/3 (was learned-weights 33/37 @1, 35/37 @5, 3/3); spike 35/37 prediction met.
 - Open design flag: future-date clamp to 1.0 stays a question, not a measurement artifact.
 - Custodian: refresh verified each claim above against HEAD/worktree before marking done.

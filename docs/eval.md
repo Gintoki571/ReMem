@@ -307,3 +307,19 @@ where it was calibrated. Re-measured at the landed weights: adversarial junk top
 corpus, and `DEFAULT_MIN_SCORE` stays 0.0 (off) because a floor that is wrong for one corpus
 silently returns [].
 
+## Gated tag-boost outcome (2026-09-09, landed at `b073557`)
+
+Gate per `docs/tag-supervision.md`: `tag_boost` pays 2.0x only on FTS-absent hits
+(`has_fts` derived from `fts#N` in reasons at the call site), 1.0x otherwise. 2.0x is the
+single-vs-dual RRF compensation (1/61 vs 2/61), not a tuned constant. Same 40-fixture
+corpus (37 answerable + 3 adversarial), floored `--k 5 --min-score 0.017`. Numbers as
+reported by the implementer.
+
+- Floored: recall@1 35/37 (95%), +2 over the 33/37 learned-weights baseline (gained
+  Q7/Q36, the dual-agreement overvotes the gate switches off).
+- Floored recall@5 36/37, +1 over the 35/37 baseline.
+- Adversarial: 2/3 pass, REGRESSED from 3/3 at the learned-weights baseline. One junk hit
+  now clears the 0.017 floor via the 2.0x boost. Query unidentified - re-run to name it.
+- Known cost: the gate trades answerable recall (+2 @1, +1 @5) for adversarial
+  strictness (-1). Follow-up is a floor re-measurement at the gated weights or a narrower
+  gate, tracked under #6 context.
