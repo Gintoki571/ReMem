@@ -534,7 +534,7 @@ fn tag_q27_store(tag: &str) -> (RecallEngine, PathBuf) {
     let (e, path) = engine(
         "tagboost",
         FakeEmbedder::new(&[
-            ("what did we decide about spending", 0),
+            ("what did the work cost", 0),
             ("infra agent retried the flaky sync job", 0),
             ("the load test reached nine thousand requests", 0),
             ("quarterly numbers are reviewed by finance", 1),
@@ -559,19 +559,20 @@ fn tag_q27_store(tag: &str) -> (RecallEngine, PathBuf) {
     (e, path)
 }
 
-/// Q27 from docs/eval.md: "decide" appears in no content, only in the tag
-/// `decision`, so the tag channel is the only signal that can move the target.
-/// Per docs/tag-supervision.md the gated 2.0x pays only on FTS-absent hits;
-/// every hit here is FTS-absent and single-list, so the target doubles past
-/// all vector-only rivals to the top. (On the real Q27 dual fts+vector rivals
-/// cap the lift at rank 3-4.)
+/// Q27-shaped (docs/eval.md): the anchor "work" appears in no content, only in
+/// the tag `worker`, so the tag channel is the only signal that can move the
+/// target. The 4-letter query word takes no prefix arm and its porter stem
+/// (`work`) misses the tag stem (`worker`), so the target is FTS-absent and
+/// the gated 2.0x fires: the target doubles past all vector-only rivals to
+/// the top. (The old decide/`decision` wording died with the hybrid arms:
+/// `deci*` matches the tag text, so the target carries FTS presence and the
+/// gate correctly stays shut. On the real Q27 dual fts+vector rivals cap the
+/// lift at rank 3-4.)
 /// no_tag_overlap_... is the control: same store, tag renamed, no move.
 #[test]
 fn tag_word_in_query_lifts_tagged_target_one_place() {
-    let (e, path) = tag_q27_store("decision");
-    let hits = e
-        .recall(&q("what did we decide about spending", 5))
-        .unwrap();
+    let (e, path) = tag_q27_store("worker");
+    let hits = e.recall(&q("what did the work cost", 5)).unwrap();
     let order: Vec<&str> = hits.iter().map(|h| h.item.content.as_str()).collect();
     let rank = order
         .iter()
@@ -594,11 +595,9 @@ fn tag_word_in_query_lifts_tagged_target_one_place() {
 /// floor-then-boost.
 #[test]
 fn floor_applies_before_the_tag_boost() {
-    let (e, path) = tag_q27_store("decision");
+    let (e, path) = tag_q27_store("worker");
     let e = e.with_min_score(0.0);
-    let unfloored = e
-        .recall(&q("what did we decide about spending", 5))
-        .unwrap();
+    let unfloored = e.recall(&q("what did the work cost", 5)).unwrap();
     let (idx, boosted) = unfloored
         .iter()
         .enumerate()
@@ -613,9 +612,7 @@ fn floor_applies_before_the_tag_boost() {
 
     // Floor above the target's unboosted score, below the boosted one.
     let e = e.with_min_score((pre + boosted.score) / 2.0);
-    let hits = e
-        .recall(&q("what did we decide about spending", 5))
-        .unwrap();
+    let hits = e.recall(&q("what did the work cost", 5)).unwrap();
     assert!(
         !hits
             .iter()
@@ -637,11 +634,9 @@ fn floor_applies_before_the_tag_boost() {
 /// boost) still gets its gated lift and still moves to the top.
 #[test]
 fn floor_below_the_real_hit_leaves_the_boost_working() {
-    let (e, path) = tag_q27_store("decision");
+    let (e, path) = tag_q27_store("worker");
     let e = e.with_min_score(0.0);
-    let unfloored = e
-        .recall(&q("what did we decide about spending", 5))
-        .unwrap();
+    let unfloored = e.recall(&q("what did the work cost", 5)).unwrap();
     let target = unfloored
         .iter()
         .find(|h| h.reasons.iter().any(|r| r == "tag"))
@@ -649,9 +644,7 @@ fn floor_below_the_real_hit_leaves_the_boost_working() {
     let pre = target.score / rank::TAG_MATCH_BOOST;
 
     let e = e.with_min_score(pre * 0.5);
-    let hits = e
-        .recall(&q("what did we decide about spending", 5))
-        .unwrap();
+    let hits = e.recall(&q("what did the work cost", 5)).unwrap();
     assert_eq!(
         hits[0].item.content, target.item.content,
         "an above-floor hit must still be boosted to the top"
@@ -664,9 +657,7 @@ fn floor_below_the_real_hit_leaves_the_boost_working() {
 #[test]
 fn no_tag_overlap_leaves_ranking_unchanged() {
     let (e, path) = tag_q27_store("finance");
-    let hits = e
-        .recall(&q("what did we decide about spending", 5))
-        .unwrap();
+    let hits = e.recall(&q("what did the work cost", 5)).unwrap();
     let order: Vec<&str> = hits.iter().map(|h| h.item.content.as_str()).collect();
     assert_ne!(
         order[0], "quarterly numbers are reviewed by finance",
