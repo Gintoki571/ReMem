@@ -1,5 +1,5 @@
-//! ReMem v3 recall: RRF fusion over FTS + vector (+ optional graph) lists,
-//! recency/importance weighting, and a Store+Graph facade.
+//! ReMem v3 recall: weighted RRF fusion over FTS + vector (+ optional graph)
+//! lists, a recency band on the fused score, and a Store+Graph facade.
 
 pub mod rank;
 pub mod stub;
@@ -27,13 +27,15 @@ pub trait Embed {
 const GRAPH_EXPANSION_SEEDS: usize = 8;
 
 /// Default score floor: 0.0 means off, so recall is unchanged unless a caller
-/// opts in (`--min-score`). Calibration on docs/eval-fixtures.json (40 memories,
-/// debug binary, Cpu 768d embedder, fresh db): the 3 pure-stopword adversarial
-/// queries (`expect: ""`) top out at 0.0129-0.0138; the lowest top-1 score over
-/// all 37 answerable queries is 0.023. So any floor in 0.014..0.022 drops all
-/// adversarial junk and keeps every answerable top-1 (recall@1 9/37, recall@5
-/// 18/37 unchanged at 0.02). Use 0.02 as the round midpoint; it stays off by
-/// default because a floor that is wrong for one corpus silently returns [].
+/// opts in (`--min-score`). Re-measured on docs/eval-fixtures.json (40 memories,
+/// debug binary, Cpu 768d embedder, fresh db) at the k=30 / fts 1.0 /
+/// vector 0.5 weights: the 3 pure-stopword adversarial queries (`expect: ""`)
+/// top out at 0.0161-0.0169, and the lowest top-1 over all 37 answerable
+/// queries is 0.0438, so the usable band is 0.017..0.043. 0.02 sits inside it
+/// and still drops all junk while keeping every answerable top-1; it is no
+/// longer the midpoint of the band, but moving it is not warranted by one
+/// corpus. It stays off by default because a floor that is wrong for one corpus
+/// silently returns [].
 pub const DEFAULT_MIN_SCORE: f64 = 0.0;
 
 /// Max L2 distance for a `remember` near-duplicate report. Vectors are
@@ -72,10 +74,14 @@ pub struct Weights {
 }
 
 impl Default for Weights {
+    /// Winner of the docs/weight-spike.md grid search (35/37 recall@1 vs 31/37
+    /// at 1.0/1.0): the lexical list decides, the embedder gets a half-weight
+    /// vote. Graph stays 1.0 — the fixtures carry no memory-to-memory edges, so
+    /// the spike learned nothing about it and there is no evidence to move it.
     fn default() -> Self {
         Self {
             fts: 1.0,
-            vector: 1.0,
+            vector: 0.5,
             graph: 1.0,
         }
     }
@@ -267,7 +273,18 @@ impl RecallEngine {
         // third list so linked-but-not-matched memories can surface.
         let graph_ids: Vec<String> = if let Some(g) = &self.graph {
             let seeds = fuse(
-                &[Ranking::new("fts", &fts), Ranking::new("vector", &vector)],
+                &[
+                    Ranking {
+                        name: "fts",
+                        ids: &fts,
+                        weight: self.weights.fts,
+                    },
+                    Ranking {
+                        name: "vector",
+                        ids: &vector,
+                        weight: self.weights.vector,
+                    },
+                ],
                 DEFAULT_RRF_K,
             );
             let mut seen = HashSet::new();
@@ -324,7 +341,7 @@ impl RecallEngine {
             if item.importance >= 0.8 {
                 reasons.push("important".to_string());
             }
-            let score = final_score(entry.score, item.importance, recency);
+            let score = final_score(entry.score, recency);
             hits.push(RecallHit {
                 item,
                 score,

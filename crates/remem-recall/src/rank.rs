@@ -5,8 +5,10 @@ use std::collections::HashMap;
 
 use remem_types::RecallHit;
 
-/// Reciprocal rank fusion constant (Cormack et al.), same as v2.
-pub const DEFAULT_RRF_K: usize = 60;
+/// Reciprocal rank fusion constant. 30 (not the textbook 60) per
+/// docs/weight-spike.md: a lower k widens the gap between adjacent ranks, so
+/// agreement across lists outvotes a single-list top hit.
+pub const DEFAULT_RRF_K: usize = 30;
 /// Recency half-life in days, same as v2.
 pub const DEFAULT_HALF_LIFE_DAYS: f64 = 30.0;
 
@@ -101,18 +103,19 @@ pub fn pack_by_budget(hits: Vec<RecallHit>, max_chars: usize) -> Vec<RecallHit> 
     out
 }
 
-/// Final ranking score: fused * (0.9 + 0.1 * importance) * (0.9 + 0.1 * recency).
+/// Final ranking score: `fused * (0.9 + 0.1 * recency)`.
 ///
-/// Both bands are deliberately narrow (docs/multiplier-proposal.md,
-/// docs/ranking-study.md). RRF inputs are strong on their own (FTS-alone 33/37
-/// and vector-alone 34/37 recall@1 on the eval fixtures) while the fused rank
-/// trailed both, because a wide multiplier outvotes a dual `fts#1 + vector#1`
-/// agreement. At 0.5..1.0 x 0.7..1.0 the worst case swung a score by 2.14x, far
-/// more than the ~10% gap between adjacent ranks, so importance and recency
-/// decided the order. Each band now caps its swing at 11%, keeping both signals
-/// as tie-breakers that can never override the fusion.
-pub fn final_score(fused: f64, importance: f32, recency: f64) -> f64 {
-    fused * (0.9 + 0.1 * importance as f64) * (0.9 + 0.1 * recency)
+/// Importance is out of the formula (docs/weight-spike.md, 35/37 with it off):
+/// a writer-supplied 0.8 outvoted a dual `fts#1 + vector#1` agreement on Q7,
+/// Q12, Q22 and Q36, and the 36-way grid tie says the band carried no signal
+/// worth its damage. It stays a stored attribute and an `important` reason.
+///
+/// Recency keeps its narrow 0.9..1.0 band (max swing 11%, so it can never
+/// override the fusion) because docs/temporal-eval.md measured it against real
+/// backdated event times: flat at 1, moved to rank 3 by a 178-day-old row it
+/// should not beat. The spike's "recency off" reflected timeless fixtures.
+pub fn final_score(fused: f64, recency: f64) -> f64 {
+    fused * (0.9 + 0.1 * recency)
 }
 
 /// Multiplier for a hit whose tags share a word with the query: a tie-breaker,
@@ -447,15 +450,24 @@ mod tests {
 
     #[test]
     fn final_score_formula() {
-        let s = final_score(1.0, 0.5, 1.0);
-        assert!((s - 0.95 * 1.0).abs() < 1e-12);
-        let s = final_score(1.0, 0.9, 0.0);
-        assert!((s - 0.99 * 0.9).abs() < 1e-6); // importance goes through f32
-                                                // A dual fts#1+vector#1 (2/61) must beat an importance-1.0 single-list
-                                                // hit (1/61): the old 0.5..1.0 band inverted exactly this.
-        let dual = final_score(2.0 / 61.0, 0.0, 0.0);
-        let solo = final_score(1.0 / 61.0, 1.0, 1.0);
-        assert!(dual > solo, "multipliers must not override fusion");
+        // importance is out of the formula; recency keeps its narrow 0.9..1.0 band.
+        assert!((final_score(1.0, 1.0) - 1.0).abs() < 1e-12);
+        assert!((final_score(1.0, 0.0) - 0.9).abs() < 1e-12);
+        assert!((final_score(1.0, 0.5) - 0.95).abs() < 1e-12);
+        // A dual fts#1+vector#1 must beat a single-list hit at any recency.
+        let dual = final_score(1.0 / 31.0 + 0.5 / 31.0, 0.0);
+        let solo = final_score(1.0 / 31.0, 1.0);
+        assert!(dual > solo, "recency must not override fusion");
+    }
+
+    #[test]
+    fn default_rrf_k_is_the_spike_winner() {
+        // docs/weight-spike.md row 1: k=30 (with fts 1.0 / vector 0.5) scored 35/37.
+        assert_eq!(DEFAULT_RRF_K, 30);
+        let a = ids(&["x", "y"]);
+        let out = fuse(&[Ranking::new("fts", &a)], DEFAULT_RRF_K);
+        assert!((out[0].score - 1.0 / 31.0).abs() < 1e-12);
+        assert!((out[1].score - 1.0 / 32.0).abs() < 1e-12);
     }
 
     #[test]

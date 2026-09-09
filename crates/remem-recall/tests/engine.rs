@@ -146,12 +146,24 @@ fn appearing_in_both_lists_outranks_single_list() {
     cleanup(&path);
 }
 
+/// The shipped defaults are docs/weight-spike.md row 1: k=30, fts 1.0 /
+/// vector 0.5 / graph 1.0.
 #[test]
-fn importance_breaks_ties() {
+fn default_weights_are_the_spike_winner() {
+    assert_eq!(rank::DEFAULT_RRF_K, 30);
+    let w = Weights::default();
+    assert_eq!((w.fts, w.vector, w.graph), (1.0, 0.5, 1.0));
+}
+
+/// Importance is stored and reported (kind, `important` reason) but no longer
+/// feeds the score: docs/weight-spike.md scored 35/37 with the term dropped, and
+/// a writer-set 0.8 was outvoting dual `fts#1 + vector#1` agreement on Q7/Q12.
+#[test]
+fn importance_no_longer_moves_rank() {
     let (e, path) = engine("imp", FakeEmbedder::new(&[]));
     // Content must differ or the store's content-hash dedup collapses them.
-    // The differing token is outside the query, so both stay equal candidates
-    // and importance alone decides.
+    // The differing token is outside the query, so fusion ranks both the same
+    // and list order (first-seen) decides.
     let mut low = item("same content text low");
     low.importance = 0.1;
     let mut high = item("same content text high");
@@ -160,9 +172,12 @@ fn importance_breaks_ties() {
     e.remember(&high).unwrap();
     let hits = e.recall(&q("same content text", 5)).unwrap();
     assert_eq!(hits.len(), 2);
-    assert_eq!(hits[0].item.importance, 0.9);
-    assert!(hits[0].reasons.contains(&"important".to_string()));
-    assert!(hits[0].score > hits[1].score);
+    // BM25 puts the low-importance row at fts#1; the fused lexical rank
+    // decides, where the old 0.9 importance multiplier used to flip it.
+    assert_eq!(hits[0].item.importance, 0.1, "importance must not reorder");
+    assert!(hits[0].reasons.iter().any(|r| r == "fts#1"));
+    // The signal is still reported to callers, just not scored.
+    assert!(hits[1].reasons.contains(&"important".to_string()));
     cleanup(&path);
 }
 
@@ -545,22 +560,24 @@ fn tag_q27_store(tag: &str) -> (RecallEngine, PathBuf) {
 }
 
 /// Q27 from docs/eval.md: "decide" appears in no content, only in the tag
-/// `decision`. FTS is dead, the embedder ties the target with two decoys, and
-/// the tag boost is what puts it first. no_tag_overlap_... is the control: same
-/// store, tag renamed, target drops back below the decoys.
+/// `decision`, so the tag channel is the only signal that can move the target.
+/// With k=30 the gap between adjacent vector ranks is ~3-6% per step, so the
+/// 1.05x factor crosses exactly one place: the target lifts off the bottom and
+/// above the hit fused immediately above it, but not over `vector#1`.
+/// no_tag_overlap_... is the control: same store, tag renamed, no move.
 #[test]
-fn tag_word_in_query_lifts_tagged_target_to_first() {
+fn tag_word_in_query_lifts_tagged_target_one_place() {
     let (e, path) = tag_q27_store("decision");
     let hits = e
         .recall(&q("what did we decide about spending", 5))
         .unwrap();
     let order: Vec<&str> = hits.iter().map(|h| h.item.content.as_str()).collect();
-    assert_eq!(
-        order[0], "quarterly numbers are reviewed by finance",
-        "tag-anchored target must rank first: {order:?}"
-    );
-    assert!(hits[0].reasons.iter().any(|r| r == "tag"));
-    // Without the shared tag word the same store ranks it below the decoys.
+    let rank = order
+        .iter()
+        .position(|c| *c == "quarterly numbers are reviewed by finance")
+        .expect("target present");
+    assert_eq!(rank, 1, "tag must lift the target one place: {order:?}");
+    assert!(hits[rank].reasons.iter().any(|r| r == "tag"));
     drop(e);
     cleanup(&path);
 }
@@ -729,7 +746,8 @@ fn exact_duplicate_dedups_and_reports_no_similar() {
 #[test]
 fn content_free_queries_abstain_and_content_searches() {
     let (e, path) = engine("content-free", FakeEmbedder::new(&[]));
-    e.remember(&item("redis sharding routes keys by hash slot")).unwrap();
+    e.remember(&item("redis sharding routes keys by hash slot"))
+        .unwrap();
     assert!(e.recall(&q("what is the thing", 5)).unwrap().is_empty());
     assert!(e.recall(&q("the", 5)).unwrap().is_empty());
     let hits = e.recall(&q("redis sharding", 5)).unwrap();

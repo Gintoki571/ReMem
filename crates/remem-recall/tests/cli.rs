@@ -242,8 +242,9 @@ fn cli_occurred_at_and_date_filters() {
 fn cli_recall_max_chars() {
     let db = std::env::temp_dir().join(format!("remem-cli-maxchars-{}.db", std::process::id()));
     let _ = std::fs::remove_file(&db);
-    // importance keeps the short memory top-ranked, so the long one is the
-    // candidate that must be skipped rather than the always-kept top hit.
+    // The query names the short memory exactly, so fusion keeps it top-ranked
+    // and the long one is the candidate that must be skipped rather than the
+    // always-kept top hit. Importance no longer moves rank (docs/weight-spike.md).
     let long = remem(
         &db,
         &[
@@ -275,7 +276,15 @@ fn cli_recall_max_chars() {
 
     let hits = remem(
         &db,
-        &["recall", "budget", "keyword", "--max-chars", "64", "--json"],
+        &[
+            "recall",
+            "budget",
+            "keyword",
+            "short",
+            "--max-chars",
+            "64",
+            "--json",
+        ],
     );
     assert!(!hits.contains(&long), "over-budget hit leaked: {hits}");
     assert!(hits.contains(&short), "fitting hit lost: {hits}");
@@ -283,7 +292,15 @@ fn cli_recall_max_chars() {
     // Nothing fits: the top hit still comes back whole.
     let hits = remem(
         &db,
-        &["recall", "budget", "keyword", "--max-chars", "1", "--json"],
+        &[
+            "recall",
+            "budget",
+            "keyword",
+            "short",
+            "--max-chars",
+            "1",
+            "--json",
+        ],
     );
     assert!(hits.contains(&short), "top hit missing: {hits}");
 
