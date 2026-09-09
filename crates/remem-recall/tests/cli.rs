@@ -519,16 +519,35 @@ fn cli_recall_k_zero_returns_empty() {
     let db = std::env::temp_dir().join(format!("remem-cli-k0-{}.db", std::process::id()));
     let _ = std::fs::remove_file(&db);
     let out = Command::new(env!("CARGO_BIN_EXE_remem"))
-        .args(["--db", db.to_str().unwrap(), "remember", "fact", "k zero keyword fact"])
+        .args([
+            "--db",
+            db.to_str().unwrap(),
+            "remember",
+            "fact",
+            "k zero keyword fact",
+        ])
         .output()
         .expect("run remem");
     assert!(out.status.success());
     let out = Command::new(env!("CARGO_BIN_EXE_remem"))
-        .args(["--db", db.to_str().unwrap(), "recall", "k", "zero", "keyword", "--k", "0"])
+        .args([
+            "--db",
+            db.to_str().unwrap(),
+            "recall",
+            "k",
+            "zero",
+            "keyword",
+            "--k",
+            "0",
+        ])
         .output()
         .expect("run remem");
     assert!(out.status.success(), "exit 0 expected");
-    assert_eq!(String::from_utf8_lossy(&out.stdout), "", "k=0 must print nothing");
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        "",
+        "k=0 must print nothing"
+    );
     for suffix in ["", "-wal", "-shm"] {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
@@ -546,12 +565,25 @@ fn cli_list_limit_truncates_newest_first() {
 
     let limited = remem(&db, &["list", "--limit", "2"]);
     assert_eq!(limited.lines().count(), 2, "limited: {limited}");
-    assert!(limited.contains("limit gamma three"), "newest missing: {limited}");
-    assert!(limited.contains("limit beta two"), "second newest missing: {limited}");
-    assert!(!limited.contains("limit alpha one"), "oldest leaked: {limited}");
+    assert!(
+        limited.contains("limit gamma three"),
+        "newest missing: {limited}"
+    );
+    assert!(
+        limited.contains("limit beta two"),
+        "second newest missing: {limited}"
+    );
+    assert!(
+        !limited.contains("limit alpha one"),
+        "oldest leaked: {limited}"
+    );
 
     let full = remem(&db, &["list"]);
-    assert_eq!(full.lines().count(), 3, "default list must stay unbounded: {full}");
+    assert_eq!(
+        full.lines().count(),
+        3,
+        "default list must stay unbounded: {full}"
+    );
 
     for suffix in ["", "-wal", "-shm"] {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
@@ -588,8 +620,15 @@ fn cli_recall_json_includes_agent_session_occurred_at_importance() {
     assert_eq!(hit["agent"], "alice", "hit: {hit}");
     assert_eq!(hit["session"], "s1", "hit: {hit}");
     assert_eq!(hit["occurred_at"], 1709251200, "hit: {hit}");
-    assert!((hit["importance"].as_f64().unwrap() - 0.9).abs() < 1e-6, "hit: {hit}");
+    assert!(
+        (hit["importance"].as_f64().unwrap() - 0.9).abs() < 1e-6,
+        "hit: {hit}"
+    );
     for suffix in ["", "-wal", "-shm"] {
-        let _ = std::fs::remove_file(std::path::PathBuf::from(format!("{}{}", db.display(), suffix)));
+        let _ = std::fs::remove_file(std::path::PathBuf::from(format!(
+            "{}{}",
+            db.display(),
+            suffix
+        )));
     }
 }
