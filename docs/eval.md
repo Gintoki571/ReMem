@@ -217,3 +217,62 @@ vec#1 (four of them also fts#1): the narrowed 0.9+0.1 importance/recency bands p
 boost still outvote a dual fts#1+vector#1 on Q7/Q12/Q36 and outrank vec#1 on Q22/Q27/Q28.
 Fusion itself is not the residual loser (its inputs are 33-34/37); the post-RRF multipliers
 still are, and Q27/Q28 remain the only recall@5 losses under the floor.
+
+
+## Final verification (2026-09-08, post-landing, independent)
+
+Commit under test `aed76fb` (head of the landing series: tag boost 1.05x + narrowed
+0.9+0.1 bands at `e844cd4`, `similar[]`, CLI graph cmds forget/related/central/path,
+year-bound `parse_time`, MCP since/until). Debug build green first try, binary
+sha256 `4dc85089299155fb26af3a6abb1fbb571b3195462713645be2eaadd094bce270`. Siblings
+committed `list --limit` and the `k=0` fix during this run; `git diff` confirms
+`rank.rs` unchanged since `e844cd4` and the only `remem-store` change is the earlier
+workspace `fmt`, so the numbers are pinned to the landed ranking code.
+
+### 1. Floor-calibrated runner (scripts/eval.sh, `--min-score 0.02`, k=5)
+
+Two fresh scratch DBs, identical results: `/tmp/remem-final-eval.db` and
+`/tmp/remem-final-eval2.db` (40 memories loaded via `remem remember`, Cpu 768d).
+
+- Answerable (37): recall@1 31/37 (84%), recall@5 35/37 (95%).
+- Adversarial (3): 3/3 pass (each returns `[]` at the 0.02 floor). Unfloored they
+  return 40 junk hits with top scores 0.0154-0.0164, so the floor stays load-bearing.
+- Both recall@5 losses are floor drops, not ranking losses: Q27 ranks 5 (score
+  0.01652) and Q28 ranks 4 (0.01590) unfloored, both below 0.02. Same trade as the
+  post-merge run; no regression from the CLI/date work.
+
+### 2. Single-signal comparison (ranking-study method: `--k 40`, reasons, `--min-score 0`)
+
+n=37 answerable. k=40 returns all 40 memories every time, so `fts#N`/`vector#N` are
+exact full-list ranks.
+
+| signal | recall@1 | recall@5 | notes |
+|--------|----------|----------|-------|
+| FTS-alone | 33/37 (89%) | 35/37 | no-match 2: Q27, Q28 (tag-only anchors) |
+| Vector-alone | 34/37 (92%) | 37/37 | no-match 0 |
+| Fused (landed) | 31/37 (84%) | 37/37 | unfloored k=40 |
+
+**Criterion fused >= 34/37: NOT MET (31/37, three short of vector-alone).** Fusion
+inputs are unchanged and excellent; the gap is still the post-RRF multipliers. The 6
+non-@1 queries: Q7, Q12, Q36 (target at fts#1 AND vector#1 -> #2), Q22 (fts#1/vector#2
+-> #2 by a 2.8e-8 margin, an exact tie broken against the target), and the two FTS
+no-match anchors Q27 (#5), Q28 (#4).
+
+Counterfactual re-ranking of the same hits separates the causes:
+
+- Remove only the 1.05x tag boost: recall@1 33/37 (Q7, Q36 -> #1). The boost, not the
+  bands, costs those two.
+- Remove all post-RRF multipliers (pure 1:1 RRF): recall@1 34/37, exactly matching
+  vector-alone, non-@1 only at Q22 (#2), Q27 (#5), Q28 (#4). So the criterion is
+  reachable inside the current fusion by dropping the multipliers to pure tie-breakers.
+- Dual-agreement check: fts#1 and vector#1 agree on 30/37; fused keeps #1 on only 27
+  of those (loses Q7, Q12, Q36) and gains its other 4 from single-signal queries
+  (Q8, Q26, Q29, Q33). 27 + 4 = 31.
+
+### Verdict
+
+Recall quality is stable at the post-merge level (31/37 @1, 35/37 @5 floored, 3/3
+adversarial) and no regression landed with the CLI/date/MCP work. The single-signal
+success criterion is NOT met: fused 31/37 < vector-alone 34/37. Next lever, per the
+counterfactuals: gate the tag boost to low-score ties (recovers 2) and flatten the
+importance band to a pure tie-breaker (recovers 1 more, reaching 34/37 = the criterion).
