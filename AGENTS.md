@@ -51,6 +51,9 @@ Save: non-obvious bug fixes (mistake), design rationale (decision), environment 
 
 Branches: `main` = legacy v1 (do not modify). `v2` = TypeScript engine. `v3` = Rust engine (active).
 Docs: `docs/architecture-v3.md` (design), `docs/ops.md` (build/run). Read both before changing code.
+### Skills
+- Memory protocol: `skills/remem/SKILL.md` — dogfood remember/recall.
+- Worker contract: `skills/tdd-worker/SKILL.md` — failing test first, then fix.
 
 ```bash
 cargo test --workspace
