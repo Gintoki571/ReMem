@@ -187,7 +187,7 @@ impl Store {
         limit: usize,
     ) -> rusqlite::Result<Vec<(MemoryItem, f32)>> {
         let mut stmt = self.conn.prepare(
-            "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, rank, m.rowid AS m_rowid
+            "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, bm25(memories_fts, 1.0, 2.0) AS rank, m.rowid AS m_rowid
              FROM memories_fts f
              JOIN memories m ON m.rowid = f.rowid
              WHERE memories_fts MATCH ?2 AND m.deleted = 0
@@ -272,6 +272,35 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash)",
     )?;
+    // FTS tags migration: old DBs have a 1-column memories_fts(content).
+    // Rebuild as 2-column (content, tags) and repopulate from memories.tags.
+    // (open_path already ran SCHEMA, which installs the new triggers on the
+    // old 1-column table; drop them before the rebuild, recreate after.)
+    let has_tags: Option<i64> = conn
+        .prepare("SELECT 1 FROM pragma_table_info('memories_fts') WHERE name = 'tags'")?
+        .query_row([], |r| r.get(0))
+        .optional()?;
+    if has_tags.is_none() {
+        conn.execute_batch(
+            "DROP TRIGGER IF EXISTS memories_ai;
+             DROP TRIGGER IF EXISTS memories_ad;
+             DROP TRIGGER IF EXISTS memories_au;
+             DROP TABLE IF EXISTS memories_fts;
+             CREATE VIRTUAL TABLE memories_fts USING fts5(content, tags, content='memories', content_rowid='rowid', tokenize='porter unicode61');
+             INSERT INTO memories_fts(rowid, content, tags)
+               SELECT rowid, content, CASE WHEN json_valid(memories.tags) THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(memories.tags)), '') ELSE '' END FROM memories;
+             CREATE TRIGGER memories_ai AFTER INSERT ON memories BEGIN
+               INSERT INTO memories_fts(rowid, content, tags) VALUES (new.rowid, new.content, CASE WHEN json_valid(new.tags) THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(new.tags)), '') ELSE '' END);
+             END;
+             CREATE TRIGGER memories_ad AFTER DELETE ON memories BEGIN
+               INSERT INTO memories_fts(memories_fts, rowid, content, tags) VALUES ('delete', old.rowid, old.content, CASE WHEN json_valid(old.tags) THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(old.tags)), '') ELSE '' END);
+             END;
+             CREATE TRIGGER memories_au AFTER UPDATE OF content, tags ON memories BEGIN
+               INSERT INTO memories_fts(memories_fts, rowid, content, tags) VALUES ('delete', old.rowid, old.content, CASE WHEN json_valid(old.tags) THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(old.tags)), '') ELSE '' END);
+               INSERT INTO memories_fts(rowid, content, tags) VALUES (new.rowid, new.content, CASE WHEN json_valid(new.tags) THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(new.tags)), '') ELSE '' END);
+             END;",
+        )?;
+    }
     Ok(())
 }
 

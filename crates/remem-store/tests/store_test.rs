@@ -261,6 +261,23 @@ fn second_writer_blocks_then_succeeds_under_contention() {
 }
 
 #[test]
+fn fts_matches_tag_word_absent_from_content() {
+    let store = Store::open(":memory:").unwrap();
+    let mut m = item("plain content with no special words");
+    m.tags = vec!["zirconium".into()];
+    let id = store.insert(&m).unwrap();
+    let hits = store.fts_search("zirconium", 5).unwrap();
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].0.id, id);
+    // tag index stays in sync on update
+    let mut u = store.get(&id).unwrap().unwrap();
+    u.tags = vec!["quartz".into()];
+    store.update(&u).unwrap();
+    assert!(store.fts_search("zirconium", 5).unwrap().is_empty());
+    assert_eq!(store.fts_search("quartz", 5).unwrap()[0].0.id, id);
+}
+
+#[test]
 fn fts_search_limit_saturates_at_1000() {
     let store = Store::open(":memory:").unwrap();
     for i in 0..1005 {

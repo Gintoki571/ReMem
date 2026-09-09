@@ -15,17 +15,25 @@ CREATE TABLE IF NOT EXISTS memories (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash);
 
-CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(content, content='memories', content_rowid='rowid', tokenize='porter unicode61');
+-- CHOICE: separate `tags` column (not concatenated content+tags) so tag words
+-- match with a higher bm25 column weight (content 1.0, tags 2.0 in fts_search).
+-- Porter tokenizes each column independently, so weights work with stemming.
+-- Tags are extracted in-SQL from memories.tags JSON via json_each/group_concat
+-- (no extra memories column, no Rust sync code); NULL/empty tags -> ''.
+CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(content, tags, content='memories', content_rowid='rowid', tokenize='porter unicode61');
 
-CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
-  INSERT INTO memories_fts(rowid, content) VALUES (new.rowid, new.content);
+DROP TRIGGER IF EXISTS memories_ai;
+CREATE TRIGGER memories_ai AFTER INSERT ON memories BEGIN
+  INSERT INTO memories_fts(rowid, content, tags) VALUES (new.rowid, new.content, CASE WHEN json_valid(new.tags) THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(new.tags)), '') ELSE '' END);
 END;
-CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
-  INSERT INTO memories_fts(memories_fts, rowid, content) VALUES ('delete', old.rowid, old.content);
+DROP TRIGGER IF EXISTS memories_ad;
+CREATE TRIGGER memories_ad AFTER DELETE ON memories BEGIN
+  INSERT INTO memories_fts(memories_fts, rowid, content, tags) VALUES ('delete', old.rowid, old.content, CASE WHEN json_valid(old.tags) THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(old.tags)), '') ELSE '' END);
 END;
-CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE OF content ON memories BEGIN
-  INSERT INTO memories_fts(memories_fts, rowid, content) VALUES ('delete', old.rowid, old.content);
-  INSERT INTO memories_fts(rowid, content) VALUES (new.rowid, new.content);
+DROP TRIGGER IF EXISTS memories_au;
+CREATE TRIGGER memories_au AFTER UPDATE OF content, tags ON memories BEGIN
+  INSERT INTO memories_fts(memories_fts, rowid, content, tags) VALUES ('delete', old.rowid, old.content, CASE WHEN json_valid(old.tags) THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(old.tags)), '') ELSE '' END);
+  INSERT INTO memories_fts(rowid, content, tags) VALUES (new.rowid, new.content, CASE WHEN json_valid(new.tags) THEN COALESCE((SELECT group_concat(value, ' ') FROM json_each(new.tags)), '') ELSE '' END);
 END;
 
 CREATE VIRTUAL TABLE IF NOT EXISTS mem_vec USING vec0(embedding FLOAT[768]);
