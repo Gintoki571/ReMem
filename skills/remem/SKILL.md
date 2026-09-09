@@ -47,3 +47,11 @@ Persistent agents: use MCP tools, not the CLI. Registration: `docs/prime-agent-i
 - `related(id, rel?)` / `central(limit?)` / `path(from, to)`
 
 Near-duplicate save returns `similar: [id dist, ...]` (L2 < 0.48): link ids worth keeping, or purge the new id. Recall floor off by default; opt in `minScore: 0.02` only to suppress junk (see `docs/floor-decision.md`).
+
+## Troubleshooting
+
+- `Error: open store ... disk I/O error (code 778)`: /tmp full/over quota. Fix: `REMEM_DB=/home/$USER/.remem/remem.db` or `TMPDIR=~/.remem/tmp`.
+- `embedder: Cpu (768d)` on stderr is normal; stdout stays clean JSON.
+- `recall --agent/--session` keeps exact matches only (hard filter, no ranking boost).
+- `--json` hits include `score` (higher = closer) and `reasons` (recent/important/tag).
+- If `./target/debug/remem` runs, skip `cargo build`.
