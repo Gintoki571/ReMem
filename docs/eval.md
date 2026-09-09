@@ -323,3 +323,29 @@ reported by the implementer.
 - Known cost: the gate trades answerable recall (+2 @1, +1 @5) for adversarial
   strictness (-1). Follow-up is a floor re-measurement at the gated weights or a narrower
   gate, tracked under #6 context.
+
+## FINAL (2026-09-09, definitive release eval)
+
+HEAD `862c943`. Debug build (`cargo build`, no-op clean: binary current; the only crates/
+commit since is `fa9ac79`, a test file not linked into `remem`). Two fresh scratch DBs
+(`/tmp/remem-final-eval.db`, `/tmp/remem-final-eval2.db`), 40 memories loaded via
+`scripts/eval.sh`, embedder Cpu 768d. Ranking config as landed: RRF k=30, FTS 1.0 /
+vector 0.5, post-RRF multipliers off except narrow recency (0.9+0.1x) and the gated tag
+boost (2.0x, FTS-absent hits only), floor `--min-score 0.017`, abstention on (content-free
+queries return `[]` rather than junk).
+
+Both runs gave identical results.
+
+- Answerable (37): recall@1 35/37 (95%), recall@5 36/37 (97%).
+- Adversarial (3): 2/3 pass.
+- The two @1 non-hits: Q27 ("wait what did we decide at the start of the year about
+  spending") ranks 5, and Q28 ("did the auditors ever get back to us about that winter
+  check") is the only true miss, so also the single recall@5 loss.
+- Adversarial failure named (open question from the gated tag-boost section): Q39 "how does
+  this work with that" returns 2 junk hits above the floor, 0.0323 (`vector#1 + recent + tag`)
+  and 0.0244 (`vector#11 + recent + tag`). Both clear 0.017 via the gated 2.0x tag boost. The
+  other two content-free queries abstain.
+
+Delta vs the very first run in this file (4/25 = 16% recall@1, 16/25 = 64% recall@5):
+recall@1 16% -> 95% and recall@5 64% -> 97%, with the denominator changed from 25 to 37
+once adversarial queries were separated out and scored on their own line.
