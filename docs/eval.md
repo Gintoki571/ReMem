@@ -349,3 +349,54 @@ Both runs gave identical results.
 Delta vs the very first run in this file (4/25 = 16% recall@1, 16/25 = 64% recall@5):
 recall@1 16% -> 95% and recall@5 64% -> 97%, with the denominator changed from 25 to 37
 once adversarial queries were separated out and scored on their own line.
+
+
+## Post-floor-first final (2026-09-09, commit 5733447)
+
+HEAD `5733447` (floor before tag boost). Debug build, fresh scratch DB
+`/tmp/remem-floorfirst-eval.db`, 40 memories loaded via `scripts/eval.sh`,
+embedder Cpu 768d, floor `--min-score 0.017`.
+
+### Full eval (scripts/eval.sh)
+
+- Answerable (37): recall@1 35/37 (95%), recall@5 35/37 (95%).
+- Adversarial (3): 3/3 pass (all return [] at floor 0.017).
+- Q27 ("wait what did we decide at the start of the year about spending") and
+  Q28 ("did the auditors ever get back to us about that winter check") are the
+  two misses at both @1 and @5.
+- The floor-first change fixed the adversarial regression: Q39 junk hits
+  (previously boosted above floor by the 2.0x tag multiplier) are now floored
+  before any multiplier, restoring 3/3 adversarial.
+
+### Single-signal comparison (k=40 reasons method, ms=0)
+
+n=37 answerable, k=40 returned all 40 memories every query, so `fts#N`/`vector#N`
+reasons are complete.
+
+| Signal | recall@1 | Notes |
+|--------|----------|-------|
+| FTS-alone | 33/37 (89%) | no-match 4: Q26, Q27, Q28, Q29 |
+| Vector-alone | 34/37 (92%) | no-match 3: Q8, Q22, Q34 |
+| Fused (landed) | 35/37 (95%) | no-match 2: Q27, Q28 |
+
+### Criterion: fused >= best-single
+
+**MET.** Fused 35/37 >= vector-alone 34/37. The floor-before-boost change
+gained Q7 and Q36 back (dual-agreement hits that the gate previously switched
+off), moving fused from 31/37 (pre-floor-first) to 35/37. The criterion that
+was NOT met in the previous section (31/37 < 34/37) is now satisfied.
+
+### Summary vs previous FINAL section
+
+| Metric | Previous FINAL (862c943) | Post-floor-first (5733447) | Delta |
+|--------|--------------------------|---------------------------|-------|
+| recall@1 | 35/37 | 35/37 | 0 |
+| recall@5 | 36/37 | 35/37 | -1 |
+| Adversarial | 2/3 | 3/3 | +1 |
+| Fused vs best-single | NOT MET (31 < 34) | MET (35 >= 34) | fixed |
+
+The recall@5 cost (-1) is Q27 dropping from rank 5 to a full miss under the
+new floor ordering; Q27's vector-only score lands below 0.017 without the
+tag boost it previously received post-floor. This is the accepted tradeoff
+documented in the floor-first commit: adversarial strictness over one
+borderline answerable hit.
