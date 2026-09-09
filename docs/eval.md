@@ -414,3 +414,26 @@ Applied floor BEFORE tag boost in `apply_floor` pipeline (remem-recall/src/rank.
 Accepted tradeoff: Q27 drops from recall@5 because its tag-only anchor scores below
 the floor before any multiplier applies. This is intentional — the floor gates
 relevance before boost amplifies it.
+
+
+## Hybrid prefix arms outcome (2026-09-09, landed at `e3f1da9`)
+
+Implemented the `docs/stemmer-analysis.md` recommendation in `fts_quote` (crates/remem-store):
+each surviving (non-stopword) query token of at least 5 chars also gets a 4-char prefix arm,
+`"auditors" OR "audi"*`. Query-side only: no schema change, no index rebuild, the all-stopword
+fallback path is never expanded. Same 40-fixture corpus (37 answerable + 3 adversarial),
+debug build, fresh db, Cpu 768d, floor `--min-score 0.017`, `scripts/eval.sh`.
+
+- Answerable (37): recall@1 35/37 (95%), recall@5 37/37 (100%).
+- Adversarial (3): 3/3 pass.
+- Q28 ("did the auditors ever get back to us about that winter check") FIXED: full miss ->
+  rank 2. Its `auditors`/`audit` stem divergence is now a lexical match.
+- Q27 ("wait what did we decide at the start of the year about spending") rank 3: above the
+  floor at @5, still not @1. Its remaining gap is supervision, not lexical.
+- Gate: >=5-char surviving tokens only. Measured live, ungated expansion on stopword-dropped
+  tokens matches 9 junk docs (Q39 alone matches 6 via `"work"*` hitting the worker/workflow
+  stems); gated, 0. The 4-char arm length spans the stem-group gaps (`audi*` -> audit,
+  `deci*` -> decid/decis) without the junk a 3-char arm attracts.
+- Delta vs the floor-first run (35/37 @1, 35/37 @5, 3/3 adv): recall@5 35 -> 37, both
+  floor-dropped stem-gap anchors recovered, @1 and adversarial unchanged. The two @1 non-hits
+  are now Q27 (rank 3) and Q28 (rank 2).

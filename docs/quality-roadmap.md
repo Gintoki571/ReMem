@@ -43,29 +43,29 @@ Verified against worktree/HEAD before marking done (stemmer analysis `b62f02f` d
 | CLI/store path hardening (HOME-unset + tilde errors name HOME, `cc27818`) | medium | done | remem-recall |
 | Abstention guard + adversarial battery: content-free queries return `[]` (reason `query-empty`; `b95af36`); battery 4/10 -> 6/10 (`docs/adversarial-battery.md` post-guard re-run `2350334`; #4/#9 flipped, other eight top-1 ids unchanged) | medium | done | remem-recall |
 | Token-lean skill (`skills/remem/SKILL.md`, 2849 chars / 596 tokens, troubleshooting section `fbdf06c`: disk-IO-778 fix, Cpu-stderr note, agent/session hard filter, `--json` score/reasons, skip rebuild if `./target/debug/remem` runs) | low | done | remem-recall |
-| Tag-anchor ranking (Q27/Q28 supervision): stemmer root cause mapped (`docs/stemmer-analysis.md`); gated 2.0x tag boost + floor-first hold the line until the hybrid lands | medium | open (tracker #6; hybrid in flight, next row) | remem-recall |
+| Tag-anchor ranking (Q27/Q28 supervision): stemmer root cause mapped (`docs/stemmer-analysis.md`), hybrid prefix arm LANDED (`e3f1da9`) — Q28 fixed (full miss -> rank 2), @5 back to 37/37 | medium | open (tracker #6; remaining: Q27 @1, rank 3 — supervision, not lexical) | remem-recall |
 | MCP nits: case-sensitive `Content-Length` header, `related` vs `link` unknown-id consistency | low | open | remem-mcp |
 | CI green at HEAD (run 34326311715 stemmer-analysis docs + 4 recent doc commits: all success on v3; earlier fmt-red pair 34301206759/34300862327 long superseded) | low | done | remem-recall |
 | Release checks (`docs/release-check-2.md` all green on release binaries; check 3 in flight) | low | in-flight (release sibling owns; this file does not duplicate it) | remem-recall |
 | Stemmer analysis (`docs/stemmer-analysis.md`, `b62f02f` docs-only +115): porter divergences mapped (auditor/audit = Q28, decid/decis = Q27, plus 4 latent pairs); drop-porter (32/37 @1, breaks Q8) and trigram (31/37 @1, Q39 junk) rejected; hybrid recommendation (keep porter, query-side 4-char prefix arm, gate len>=5) | high | done | remem-recall |
-| Hybrid prefix arm in `fts_quote` (query text only, no schema/index rebuild; predicts fused 35/37 @1, 37/37 @5, adv 3/3) | high | in-flight (store sibling owns; do not duplicate here) | remem-store |
+| Hybrid prefix arm in `fts_quote` (query text only, no schema/index rebuild; surviving tokens len>=5 get a 4-char prefix arm) | high | done (`e3f1da9`; prediction met: 35/37 @1, 37/37 @5, adv 3/3 — see `docs/eval.md` hybrid section) | remem-store |
 | Store tests pass without REMEM_DB redirect (`env -u REMEM_DB cargo test -p remem-store`: 22 passed) | low | done | remem-store |
 | Janitor disk reclaim (1.4G reported by store sibling; not re-measured in this refresh) | low | in-flight (store sibling owns) | remem-store |
 
 ## Notes
 
-- Where fused stands (floor-first `5733447`, verifier GO): answerable 35/37 @1, 35/37 @5 floored, adversarial 3/3 on the 3-query set; Q27 is floor-dropped by design (the @5 cost of judging unboosted scores); battery 6/10 unchanged.
+- Where fused stands (hybrid `e3f1da9`, floor `--min-score 0.017`): answerable 35/37 @1, 37/37 @5, adversarial 3/3; the floor-first @5 cost (Q27/Q28 floor-dropped) is gone via the prefix arm; battery 6/10 unchanged.
 - Abstention guard: stopword-only and content-free queries return `[]` with reason `query-empty` (`b95af36`); battery re-run `2350334` flipped #4/#9 to Y, other eight top-1 ids unchanged.
 - Multiplier question LANDED (`aebe0c2`): RRF k=30, FTS 1.0 / vec 0.5 / graph 1.0, importance out of the formula (stored attribute only), recency 0.9+0.1x, tag gate 2.0x. Docs do not retune constants.
 - Temporal verdict: keep the narrowed recency band; use `--since/--until` windows when the caller knows the date; future-date clamp to 1.0 is a flagged design question, not a measurement artifact.
 - Tags now score in FTS: 2-column fts5 (content 1.0, tags 2.0) with old-DB migration; tag-only anchors get lexical matches plus the 1.05x boost — but 1.05x vs 1.2x measure the same recall, the constant is not the lever, the bands are.
-- Stemmer verdict (`docs/stemmer-analysis.md`): keep porter, add query-side 4-char prefix arm (len>=5); predicts the two floor-dropped stem-gap anchors back above the floor, fused 37/37 @5 with adv unchanged.
+- Stemmer verdict (`docs/stemmer-analysis.md`): keep porter, add query-side 4-char prefix arm (len>=5); LANDED, recovered both floor-dropped stem-gap anchors, fused 37/37 @5 with adv unchanged.
 - Importance validation: `clamp_importance` (0..1, NaN -> 0.5) enforced on insert/get/update; MCP `importance` strings error loudly. Learned-weights build takes importance out of the scoring formula.
 - Small-query fixes landed: `k=0` returns `[]` (`5ab9995`); `list --limit` bounds newest-first output (`aed76fb`); year-bound dates reject out-of-range years (`66b712e`); CLI graph cmds forget/related/central/path close the MCP gap (`f40b529`, #3 closed).
 - CLI help: every flag now has doc text (`5c5200e`); skill `skills/remem/SKILL.md` is 2849 chars with troubleshooting (`fbdf06c`), still token-lean.
 - MCP surface: 11 tools over stdio; release check 2 all green on release binaries (`docs/release-check-2.md`, release sibling owns). Live db `~/.remem/remem.db`: 36 memories, 41 nodes, 47 edges.
 - CI: run 34326311715 (stemmer-analysis docs) plus 4 recent doc commits all success on v3. Earlier fmt-red pair superseded.
-- Issues: #1 (floor 0.02 opt-in) / #2 (near-dup 0.48) / #3 (CLI graph cmds) / #4 (MCP occurredAt) closed; only #5 (CUDA upstream) and #6 (tag-anchor supervision, hybrid path in flight) open; the open rows above reference them.
+- Issues: #1 (floor 0.02 opt-in) / #2 (near-dup 0.48) / #3 (CLI graph cmds) / #4 (MCP occurredAt) closed; only #5 (CUDA upstream) and #6 (tag-anchor supervision — hybrid landed, Q27 @1 remains) open; the open rows above reference them.
 - Discarded per inspiration.md: cross-encoder rerank, LLM entity extraction, dual-level keyword modes.
 
 ## Verification (this refresh)
@@ -83,8 +83,8 @@ Verified against worktree/HEAD before marking done (stemmer analysis `b62f02f` d
 - Stemmer: `b62f02f` is docs-only (+115 `docs/stemmer-analysis.md`); replays all 40 fixtures in scratch FTS5 with the real `fts_quote` logic; baseline reproduces 35/37 @1, 35/37 @5 exactly.
 - Stemmer divergences: auditor/audit (Q28) and decid/decis (Q27) in fixtures, 4 latent pairs (deploy/deployment, store/storage, prioritize/priority, index/indices); migrate/token families do NOT diverge.
 - Stemmer rejections: drop-porter 32/37 @1 (breaks Q8), trigram 31/37 @1 + Q39 junk + short terms (`db`, `v3`, `ip`) unmatchable; porter min_length and porter+trigram tokenizer both dead ends.
-- Hybrid: keep porter, query-side 4-char prefix arm for words len>=5 (`"auditors" OR "audi"*`); predicts fused 35/37 @1, 37/37 @5, adv 3/3 (Q27 rank 3, Q28 rank 2, both ~0.045, above floor).
-- Hybrid state: in flight with store sibling (owns `fts_quote` in `crates/remem-store`); `git status` clean, no crates/ touched by this refresh.
+- Hybrid: keep porter, query-side 4-char prefix arm for words len>=5 (`"auditors" OR "audi"*`); measured fused 35/37 @1, 37/37 @5, adv 3/3 (Q27 rank 3, Q28 rank 2), matching the prediction.
+- Hybrid state: landed `e3f1da9` (store sibling, `fts_quote` + `PREFIX_MIN_LEN`/`PREFIX_LEN` + 3 new unit tests); this refresh touched docs only.
 - Store tests: `env -u REMEM_DB cargo test -p remem-store` green, 22 passed, 0 failed; no redirect needed.
 - Janitor: 1.4G reclaim is sibling-reported, not re-measured here (local `target/` still ~15G); row marked in-flight, store sibling owns.
 - CI: `gh run list` head run 34326311715 (stemmer-analysis docs) success; next 4 doc commits all success on v3.
@@ -95,6 +95,6 @@ Verified against worktree/HEAD before marking done (stemmer analysis `b62f02f` d
 - Fetch check: `git pull --rebase` already up to date; local v3 in sync with `origin/v3`, no merge needed.
 - Dirty-tree guard: sibling weight-impl files left untouched; only this roadmap file written.
 - Line budget: this file is kept at 100 lines, no emojis, docs-only change.
-- Scores snapshot: verifier GO 35/37 @1, 35/37 @5 floored, adversarial 3/3 (was gated 35/37 @1, 36/37 @5, 2/3; learned-weights 33/37 @1, 35/37 @5, 3/3); Q27 floor-drop is the @5 delta by design.
+- Scores snapshot: hybrid `e3f1da9` 35/37 @1, 37/37 @5 floored, adversarial 3/3 (was floor-first 35/37 @5; gated 36/37 @5 2/3; learned-weights 33/37 @1); no @5 floor-drop left.
 - Open design flag: future-date clamp to 1.0 stays a question, not a measurement artifact.
 - Custodian: refresh verified each claim above against HEAD/worktree before marking done.
