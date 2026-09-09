@@ -35,6 +35,12 @@ pub struct Store {
 
 impl Store {
     pub fn open(path: &str) -> rusqlite::Result<Self> {
+        Self::open_path(Path::new(path))
+    }
+
+    /// Open with an explicit path (not ":memory:"). Takes `&Path` so
+    /// non-UTF8 paths pass through to SQLite with no `to_str` loss.
+    pub fn open_path(path: &Path) -> rusqlite::Result<Self> {
         register_vec_extension();
         let conn = Connection::open(path)?;
         // Same file as the graph connection; wait out its write transactions
@@ -60,11 +66,6 @@ impl Store {
         conn.execute_batch(SCHEMA)?;
         migrate(&conn)?;
         Ok(Self { conn })
-    }
-
-    /// Open with an explicit path (not ":memory:").
-    pub fn open_path(path: &Path) -> rusqlite::Result<Self> {
-        Self::open(path.to_str().unwrap_or_default())
     }
 
     /// Existing id for this content hash, if any (includes soft-deleted rows).

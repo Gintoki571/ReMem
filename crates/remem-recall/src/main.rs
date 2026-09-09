@@ -1,6 +1,6 @@
 //! remem: ReMem v3 long-term memory CLI.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
@@ -21,7 +21,7 @@ struct Cli {
         default_value = "~/.remem/remem.db",
         global = true
     )]
-    db: String,
+    db: PathBuf,
 
     #[command(subcommand)]
     cmd: Cmd,
@@ -166,13 +166,25 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> Option<i64> {
         .checked_sub(719_468)
 }
 
-fn expand(path: &str) -> PathBuf {
-    if let Some(rest) = path.strip_prefix("~/") {
-        if let Ok(home) = std::env::var("HOME") {
-            return PathBuf::from(home).join(rest);
+fn expand(path: &Path) -> Result<PathBuf> {
+    let bytes = path.as_os_str().as_encoded_bytes();
+    if let Some(rest) = bytes.strip_prefix(b"~/") {
+        let home = std::env::var_os("HOME").filter(|h| !h.is_empty()).ok_or_else(|| {
+            anyhow!("REMEM_DB uses ~/ but HOME is unset or empty; set HOME or REMEM_DB to an absolute path")
+        })?;
+        let mut p = PathBuf::from(home);
+        #[cfg(unix)]
+        {
+            use std::os::unix::ffi::OsStrExt;
+            p.push(std::ffi::OsStr::from_bytes(rest));
         }
+        #[cfg(not(unix))]
+        {
+            p.push(String::from_utf8_lossy(rest).as_ref());
+        }
+        return Ok(p);
     }
-    PathBuf::from(path)
+    Ok(path.to_path_buf())
 }
 
 /// Adapter: real local embedder behind recall's minimal Embed trait.
@@ -184,10 +196,13 @@ impl remem_recall::Embed for RealEmbedder {
     }
 }
 
-fn engine(db: &str) -> Result<RecallEngine> {
-    let path = expand(db);
+fn engine(db: &Path) -> Result<RecallEngine> {
+    let path = expand(db)?;
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).ok();
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("create db parent dir {}", parent.display()))?;
+        }
     }
     let store = Store::open_path(&path).context("open store")?;
     // Graph projection needs a real file so both connections see the same db.
@@ -317,7 +332,7 @@ fn main() -> Result<()> {
             }
         }
         Cmd::Purge { id } => {
-            let path = expand(&cli.db);
+            let path = expand(&cli.db)?;
             let store = Store::open_path(&path).context("open store")?;
             if !store.purge(&id).context("purge")? {
                 return Err(anyhow!("unknown id '{id}'"));
@@ -442,5 +457,94 @@ mod time_tests {
         ] {
             assert!(parse_time(s).is_err(), "expected error for {s:?}");
         }
+    }
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::{engine, expand};
+    use std::path::PathBuf;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static L: OnceLock<Mutex<()>> = OnceLock::new();
+        L.get_or_init(|| Mutex::new(()))
+    }
+
+    struct EnvGuard {
+        _g: std::sync::MutexGuard<'static, ()>,
+        old_home: Option<std::ffi::OsString>,
+    }
+
+    impl EnvGuard {
+        fn lock() -> Self {
+            let g = env_lock().lock().unwrap();
+            Self { _g: g, old_home: std::env::var_os("HOME") }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            match &self.old_home {
+                Some(v) => std::env::set_var("HOME", v),
+                None => std::env::remove_var("HOME"),
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn non_utf8_path_is_preserved() {
+        use std::os::unix::ffi::OsStrExt;
+        let raw = std::ffi::OsStr::from_bytes(b"/tmp/remem-nonutf8-\xff.db");
+        let p = expand(PathBuf::from(raw).as_path()).expect("expand keeps non-UTF8");
+        assert_eq!(p.as_os_str().as_bytes(), b"/tmp/remem-nonutf8-\xff.db");
+        assert!(!p.as_os_str().is_empty());
+    }
+
+    #[test]
+    fn home_unset_with_tilde_errors_clearly() {
+        let _env = EnvGuard::lock();
+        std::env::remove_var("HOME");
+        let err = format!("{:?}", expand(PathBuf::from("~/.remem/remem.db").as_path()).unwrap_err());
+        assert!(err.contains("HOME"), "error must name HOME: {err}");
+        let eng_err = format!(
+            "{:?}",
+            engine(PathBuf::from("~/.remem/remem.db").as_path()).err().expect("engine must fail")
+        );
+        assert!(eng_err.contains("HOME"), "engine must propagate: {eng_err}");
+    }
+
+    #[test]
+    fn create_dir_errors_propagate_with_context() {
+        let dir = std::env::temp_dir().join(format!(
+            "remem-recall-blocker-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let blocker = dir.join("blocker");
+        std::fs::write(&blocker, b"x").unwrap();
+        let db = blocker.join("remem.db");
+        let err = format!("{:#}", engine(&db).err().expect("engine must fail"));
+        assert!(err.contains("create db parent dir"), "must carry context: {err}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn tilde_expands_under_home() {
+        let _env = EnvGuard::lock();
+        let home = std::env::temp_dir().join(format!(
+            "remem-recall-home-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        std::fs::create_dir_all(&home).unwrap();
+        std::env::set_var("HOME", &home);
+        let p = expand(PathBuf::from("~/.remem/remem.db").as_path()).expect("tilde expands");
+        assert_eq!(p, home.join(".remem/remem.db"));
+        assert!(!p.to_string_lossy().starts_with('~'));
+        let _ = std::fs::remove_dir_all(&home);
     }
 }
