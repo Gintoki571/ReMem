@@ -586,6 +586,81 @@ fn tag_word_in_query_lifts_tagged_target_one_place() {
     cleanup(&path);
 }
 
+/// Q39 regression: the score floor must run BEFORE the gated tag boost, so a
+/// hit that is junk on its own merits can never be multiplied into passing.
+/// Uses the Q27-shaped store, whose tag-only target is FTS-absent and gets the
+/// 2.0x lift: its pre-boost score is half its reported score, so a floor placed
+/// between the two keeps it under boost-then-floor and drops it under
+/// floor-then-boost.
+#[test]
+fn floor_applies_before_the_tag_boost() {
+    let (e, path) = tag_q27_store("decision");
+    let e = e.with_min_score(0.0);
+    let unfloored = e
+        .recall(&q("what did we decide about spending", 5))
+        .unwrap();
+    let (idx, boosted) = unfloored
+        .iter()
+        .enumerate()
+        .find(|(_, h)| h.reasons.iter().any(|r| r == "tag"))
+        .expect("the tag channel must fire in this fixture");
+    let pre = boosted.score / rank::TAG_MATCH_BOOST;
+    assert!(
+        pre < boosted.score,
+        "boost must lift the target: {pre} vs {}",
+        boosted.score
+    );
+
+    // Floor above the target's unboosted score, below the boosted one.
+    let e = e.with_min_score((pre + boosted.score) / 2.0);
+    let hits = e
+        .recall(&q("what did we decide about spending", 5))
+        .unwrap();
+    assert!(
+        !hits
+            .iter()
+            .any(|h| h.item.content == unfloored[idx].item.content),
+        "sub-floor junk must not be boosted into passing: {:?}",
+        hits.iter()
+            .map(|h| (&h.item.content, h.score))
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        !hits.iter().any(|h| h.reasons.iter().any(|r| r == "tag")),
+        "a dropped hit cannot carry a tag reason: {hits:?}"
+    );
+    drop(e);
+    cleanup(&path);
+}
+
+/// The other side of the reorder: a real hit (above the floor before the
+/// boost) still gets its gated lift and still moves to the top.
+#[test]
+fn floor_below_the_real_hit_leaves_the_boost_working() {
+    let (e, path) = tag_q27_store("decision");
+    let e = e.with_min_score(0.0);
+    let unfloored = e
+        .recall(&q("what did we decide about spending", 5))
+        .unwrap();
+    let target = unfloored
+        .iter()
+        .find(|h| h.reasons.iter().any(|r| r == "tag"))
+        .expect("the tag channel must fire in this fixture");
+    let pre = target.score / rank::TAG_MATCH_BOOST;
+
+    let e = e.with_min_score(pre * 0.5);
+    let hits = e
+        .recall(&q("what did we decide about spending", 5))
+        .unwrap();
+    assert_eq!(
+        hits[0].item.content, target.item.content,
+        "an above-floor hit must still be boosted to the top"
+    );
+    assert!(hits[0].reasons.iter().any(|r| r == "tag"));
+    drop(e);
+    cleanup(&path);
+}
+
 #[test]
 fn no_tag_overlap_leaves_ranking_unchanged() {
     let (e, path) = tag_q27_store("finance");

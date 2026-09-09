@@ -348,6 +348,18 @@ impl RecallEngine {
                 reasons,
             });
         }
+        // Floor first, boost second. The tag boost is a 2.0x multiplier, so a
+        // hit that is junk on its own merits can be multiplied past the floor
+        // (Q39: junk at 0.0161/0.0122 pre-boost passing a 0.017 floor at
+        // 0.0323/0.0244). Flooring the unboosted score means the floor judges
+        // the fusion+recency evidence and the boost can only lift something
+        // already above it. Boosting first would make the floor a statement
+        // about tags, not about relevance. Order: rank -> truncate -> floor ->
+        // boost -> re-sort -> budget pack. Pack stays last because the boost
+        // can change which hit is the top hit it must always keep.
+        hits.sort_by(|a, b| b.score.total_cmp(&a.score));
+        hits.truncate(k);
+        let mut hits = apply_floor(hits, self.min_score);
         // Tag channel: FTS and the embedder both see content only, so when a
         // query's lexical anchor lives in tags ("decide" vs `decision`) nothing
         // else can rank it. See rank::tag_boost for the matching rules.
@@ -371,12 +383,11 @@ impl RecallEngine {
             }
         }
         hits.sort_by(|a, b| b.score.total_cmp(&a.score));
-        hits.truncate(k);
         let hits = match query.max_chars {
             Some(max) => pack_by_budget(hits, max),
             None => hits,
         };
-        Ok(apply_floor(hits, self.min_score))
+        Ok(hits)
     }
 }
 
