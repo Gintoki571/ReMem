@@ -34,6 +34,17 @@ fn hub_id(prefix: &str, id: &str) -> String {
     format!("{prefix}{id}")
 }
 
+/// Reject memory ids that would collide with hub node ids. graphqlite keeps one
+/// id space for all labels, and hubs live at `agent:<aid>` / `session:<sid>`.
+/// Only these two prefixes are reserved (not `:` generally): UUIDs and ids like
+/// `foo:bar` never collide, so rejecting more would break legit ids for nothing.
+fn reject_reserved_memory_id(id: &str) -> Result<()> {
+    if id.starts_with(AGENT_PREFIX) || id.starts_with(SESSION_PREFIX) {
+        return Err(Error::ReservedPrefix(id.to_string()));
+    }
+    Ok(())
+}
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
@@ -44,6 +55,8 @@ pub enum Error {
     Sqlite(rusqlite::Error),
     /// A node referenced by an operation does not exist.
     MissingNode(String),
+    /// A memory id using a reserved hub prefix (`agent:`/`session:`).
+    ReservedPrefix(String),
     /// `params_json` was not a JSON object.
     InvalidParams(String),
 }
@@ -54,6 +67,10 @@ impl fmt::Display for Error {
             Error::Graph(e) => write!(f, "graph error: {e}"),
             Error::Sqlite(e) => write!(f, "sqlite error: {e}"),
             Error::MissingNode(id) => write!(f, "node not found: {id}"),
+            Error::ReservedPrefix(id) => write!(
+                f,
+                "reserved id prefix: {id} (memory ids may not start with `agent:` or `session:`)"
+            ),
             Error::InvalidParams(e) => write!(f, "invalid params: {e}"),
         }
     }
@@ -133,10 +150,15 @@ impl Graph {
 
     /// Insert or update a `Memory` node keyed by memory id.
     ///
+    /// Rejects ids starting with `agent:`/`session:`: they would share a node id
+    /// with an Agent/Session hub in graphqlite's single id space. `attach` inherits
+    /// the rejection through this call.
+    ///
     /// ponytail: one Cypher round-trip per property (~3k ops/s). If a full
     /// rebuild from the store ever gets slow, use
     /// `graphqlite::Graph::insert_nodes_bulk` / `insert_edges_bulk`.
     pub fn upsert_memory(&self, id: &str, kind: MemoryKind) -> Result<()> {
+        reject_reserved_memory_id(id)?;
         self.inner.upsert_node(
             id,
             [
@@ -446,6 +468,9 @@ impl Graph {
     /// anchors many memories also ranks), restricted to `Memory`-labelled nodes
     /// and keyed by `mid`. An empty graph returns an empty vector.
     pub fn central(&self) -> Result<Vec<(String, f64)>> {
+        // INVARIANT: `upsert_memory` rejects `agent:`/`session:` ids, so any
+        // prefixed node id is a hub, never a memory. The prefix filter below is
+        // therefore exact (no silent drop of a real memory).
         Ok(self
             .inner
             .pagerank(0.85, 20)?

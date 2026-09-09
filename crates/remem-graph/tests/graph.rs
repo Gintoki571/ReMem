@@ -429,3 +429,29 @@ fn shortest_path_unknown_ids_are_empty_not_errors() {
     // Existing but disconnected.
     assert!(g.shortest_path("A", "B").unwrap().is_empty());
 }
+
+#[test]
+fn prefixed_memory_ids_are_rejected() {
+    let g = graph();
+    for id in ["agent:x", "session:y"] {
+        let err = g.upsert_memory(id, MemoryKind::Fact).unwrap_err();
+        assert!(err.to_string().contains("reserved id prefix"), "{err}");
+    }
+    // non-reserved colons still work; only the two hub prefixes are reserved
+    g.upsert_memory("foo:bar", MemoryKind::Fact).unwrap();
+    // attach inherits the rejection through upsert_memory
+    let mut item = remem_types::MemoryItem::new(MemoryKind::Fact, "t".into());
+    item.id = "agent:evil".to_string();
+    let err = g.attach(&item).unwrap_err();
+    assert!(err.to_string().contains("reserved id prefix"), "{err}");
+}
+
+#[test]
+fn central_on_hub_only_graph_is_empty() {
+    let g = graph();
+    g.upsert_agent("x").unwrap();
+    g.upsert_session("s").unwrap();
+    // hubs exist but are not memories: central ranks memories only, so empty
+    // (not wrong) is the right answer here.
+    assert!(g.central().unwrap().is_empty());
+}
