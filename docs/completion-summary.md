@@ -14,9 +14,9 @@
 - Adversarial: 3/3 pass (floor-first ordering).
 - CI: success on v3.
 - Issues: #1-#4 closed; #5 (GPU/candle-kernels vs CUDA 13.3 on sm_75) and #6 (tag-anchor Q27/Q28 supervision) open.
-- Live DB (`~/.remem/remem.db`, the real store -- `data/remem.db` in the repo is empty): 34+ memories.
+- Live DB (`~/.remem/remem.db`, the real store -- `data/remem.db` in the repo is empty): 45 memories, 50 nodes, 58 edges.
 - MCP: 11 tools at `tools/list` (remember/recall/list/link/forget/purge/stats/validate/related/central/path).
-- Skill (`skills/remem/SKILL.md`): ~2849 chars.
+- Skill (`skills/remem/SKILL.md`): 2849 chars, blind-tested 2x PASS (skill-only remember/recall @1 on scratch DB, 2026-09-09).
 
 ## How it was built
 - TDD: failing eval/probe first, fix second, full suite + `scripts/eval.sh` re-run to close.
