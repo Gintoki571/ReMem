@@ -1,5 +1,19 @@
 # <img src="docs/images/logo.png" alt="ReMem Logo" width="50" align="center"/> ReMem: Unified Modular Memory Mesh 🧠
 
+## Versions
+
+- `main`: v1 legacy engine.
+- `v2` branch: TypeScript engine.
+- `v3` branch (this branch): active Rust engine. See [README-v3.md](README-v3.md) and [docs/demo.md](docs/demo.md).
+
+Quickstart (v3):
+
+```sh
+cargo build
+./target/debug/remem remember semantic "prefers dark mode"
+./target/debug/remem recall "dark mode"
+```
+
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 ![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue)
 ![MCP](https://img.shields.io/badge/Protocol-MCP-orange)
