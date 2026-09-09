@@ -14,6 +14,18 @@ Note: the `remem` CLI mirrors the graph tools: `forget` (soft delete),
 embedding, graph forget). Related memories also surface through recall
 `graph#` reasons (see `crates/remem-mcp` for the MCP equivalents).
 
+## Step timings (build excluded, scratch db `/tmp/remem-demo-timed.db`)
+
+Measured with `date +%s%N` wrappers in `scripts/demo.sh` (3 slowest steps):
+
+```
+step 10 took 13.2s
+step 11 took 7.5s
+step 12 took 3.4s
+```
+
+Full script exit code: 0.
+
 ## Script source (`scripts/demo.sh`)
 
 ```bash
