@@ -577,7 +577,10 @@ fn tag_word_in_query_lifts_tagged_target_one_place() {
         .iter()
         .position(|c| *c == "quarterly numbers are reviewed by finance")
         .expect("target present");
-    assert_eq!(rank, 0, "gated tag boost must lift the FTS-absent target to the top: {order:?}");
+    assert_eq!(
+        rank, 0,
+        "gated tag boost must lift the FTS-absent target to the top: {order:?}"
+    );
     assert!(hits[rank].reasons.iter().any(|r| r == "tag"));
     drop(e);
     cleanup(&path);

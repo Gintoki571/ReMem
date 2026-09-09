@@ -430,7 +430,8 @@ mod tests {
         // Byte-slicing at 4 would panic mid-codepoint on these: `日本` is 2 chars
         // but 6 bytes, so the old length check passed and a[..4] split a char.
         let (a, b, c) = (tg(&["Überblick"]), tg(&["日本語タグ"]), tg(&["日本"]));
-        let hits: Vec<(&str, &[String], bool)> = vec![("a", &a, false), ("b", &b, false), ("c", &c, false)];
+        let hits: Vec<(&str, &[String], bool)> =
+            vec![("a", &a, false), ("b", &b, false), ("c", &c, false)];
         let out = tag_boost(&hits, &tokens("überblick 日本語タ 日本語"));
         assert_eq!(boost_of(&out, "a"), TAG_MATCH_BOOST); // case-folded, non-ASCII
         assert_eq!(boost_of(&out, "b"), TAG_MATCH_BOOST); // char-based prefix
