@@ -2,7 +2,7 @@
 
 Sources read 2026-09-08: `/home/bindesh/rag/hindsight` (docs `versioned_docs/version-0.9/developer/*`, code `hindsight-api-slim/hindsight_api/engine/*`), `/home/bindesh/rag/lightrag` (`lightrag/operate.py`, `lightrag/prompt.py`, `docs/ProgramingWithCore.md`). `hindsight-api` is empty; the implementation lives in `hindsight-api-slim`.
 
-v3 baseline for comparison: `crates/*/src/*.rs` (about 2.0k lines), one SQLite file, no LLM in the engine, `MemoryItem` with `created_at`/`updated_at` only, three fused lists (fts, vector, graph), `final_score = fused * (0.5 + importance) * (0.7 + 0.3 * recency)`, five MCP tools.
+v3 baseline for comparison: `crates/*/src/*.rs` (about 2.0k lines), one SQLite file, no LLM in the engine, `MemoryItem` with `created_at`/`updated_at` only, three fused lists (fts, vector, graph), `final_score = fused * (0.5 + importance) * (0.7 + 0.3 * recency)`, 11 MCP tools (remember/recall/list/link/forget/purge/stats/validate/related/central/path).
 
 12 ideas. 9 keep, 3 discard.
 
