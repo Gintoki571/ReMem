@@ -72,3 +72,47 @@ Re-measure adversarial junk in the same run (arm discount must not lift
 Q39 `work*`-class hits; gate predicts 0 change, verify live).
 Smallest change if the sweep confirms: one rank-adjustment at the FTS call
 site, no schema/index rebuild, no weight retune.
+
+**STATUS: REJECTED.** Implemented (`ARM_ONLY_FTS_DISCOUNT = 0.5`,
+`exact_fts_match`), measured, reverted. No discount code in `crates/` at HEAD;
+`e3f1da9` (35/37 @1, 37/37 @5, adv 3/3) is the standing config.
+
+## Outcome (2026-09-09)
+
+The prediction failed. Live: **32/37 @1** (predicted 37/37; baseline 35/37). The
+discount moved four @1 anchors down to rank 2 to fix one.
+
+Per-query deltas vs the `e3f1da9` baseline (4 @1 lost, 1 gained):
+
+| query | baseline | discounted |
+|-------|----------|------------|
+| Q27 start-of-year spending (target) | rank 3 | **rank 1** |
+| Q28 auditors winter check (target) | rank 2 | rank 3 |
+| Q3 password hashing | rank 1 | rank 2 |
+| Q16 worker stale schema | rank 1 | rank 2 |
+| Q29 late invoices | rank 1 | rank 2 |
+| Q33 worker outdated schema | rank 1 | rank 2 |
+
+recall@5 stayed 37/37 (worst target rank 3) and adversarial 3/3, so the
+proposal bought one anchor and spent four unrelated ones plus a regression on
+the other query it targeted. The sweep predicted "no other movement" because it
+re-fused frozen `--k 40` reasons lists; live recall runs at `--k 5`. An arm
+discount rewrites scores before the k=5 cut, so the live candidate set is not
+the offline candidate set, and any target outside the top 2 depends on neighbors
+the sweep never re-ranked. The "all other 35 targets already win both channels"
+argument was the error: Q3/Q16/Q29/Q33 won @1 through an arm-only FTS hit, not
+through dual-channel agreement.
+
+Side effect measured on the discounted binary (`docs/eval.md` floor
+re-measurement section 4): Q27 target 0.04470 -> 0.03175, Q28 0.04554 ->
+0.03226, both still recalled but pushed toward the floor. The junk ceiling is
+structural at 0.016129 (`0.5/(k+1)`), so the keep-band narrowed from
+0.016129..0.044700 to 0.016129..0.031750 and the floor margin over junk dropped
+from 2.77x to 1.97x. Had the discount landed, the 0.017 floor needed a
+re-measurement before any raise was considered.
+
+Lesson: never trust an offline rerank without a live run. An offline sweep on
+fused score lists is a hypothesis about ordering, not a measurement of recall;
+the only accepted evidence is `scripts/eval.sh` on a fresh DB with the built
+binary, at the k the product uses. Gate the sweep result behind a live run
+BEFORE writing a prediction into a roadmap as "predicted 37/37".

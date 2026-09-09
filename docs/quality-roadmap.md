@@ -43,7 +43,7 @@ Verified against worktree/HEAD before marking done (stemmer analysis `b62f02f` d
 | CLI/store path hardening (HOME-unset + tilde errors name HOME, `cc27818`) | medium | done | remem-recall |
 | Abstention guard + adversarial battery: content-free queries return `[]` (reason `query-empty`; `b95af36`); battery 4/10 -> 6/10 (`docs/adversarial-battery.md` post-guard re-run `2350334`; #4/#9 flipped, other eight top-1 ids unchanged) | medium | done | remem-recall |
 | Token-lean skill (`skills/remem/SKILL.md`, 2849 chars / 596 tokens, troubleshooting section `fbdf06c`: disk-IO-778 fix, Cpu-stderr note, agent/session hard filter, `--json` score/reasons, skip rebuild if `./target/debug/remem` runs) | low | done | remem-recall |
-| Tag-anchor ranking (Q27 supervision): arm-discount in recall IN-FLIGHT (predicted 37/37 @1 per rank1-roadmap; gates @1>=35, @5=37, adv 3/3 or REVERT) | medium | in-flight (tracker #6; recall sibling owns; hybrid `e3f1da9` holds 35/37 @1) | remem-recall |
+| Tag-anchor ranking (Q27 supervision): arm-discount in recall (predicted 37/37 @1 per `docs/rank1-roadmap.md`) | medium | REVERTED (`5f1840f`): live 32/37 @1 vs 35/37 baseline — Q27 rank 3 -> 1, Q28 2 -> 3, Q3/Q16/Q29/Q33 1 -> 2; @5 37/37, adv 3/3 held. Tracker #6 stays open (Q27 @1 unsupervised); hybrid `e3f1da9` 35/37 @1 is the standing config | remem-recall |
 | MCP nits: case-sensitive `Content-Length` header, `related` vs `link` unknown-id consistency | low | open | remem-mcp |
 | CI green at HEAD (run 34326311715 stemmer-analysis docs + 4 recent doc commits: all success on v3; earlier fmt-red pair 34301206759/34300862327 long superseded) | low | done | remem-recall |
 | Release checks (`docs/release-check-2.md` all green on release binaries; check 3 in flight) | low | in-flight (release sibling owns; this file does not duplicate it) | remem-recall |
@@ -54,7 +54,7 @@ Verified against worktree/HEAD before marking done (stemmer analysis `b62f02f` d
 
 ## Notes
 
-- NOW: arm-discount in-flight in recall (predicted 37/37 @1 per rank1-roadmap; gates @1>=35, @5=37, adv 3/3 or REVERT). Holds: hybrid `e3f1da9` 35/37 @1, 37/37 @5, adv 3/3; battery 6/10.
+- NOW: arm-discount REVERTED (`5f1840f`), no discount code in `crates/` at HEAD. Post-mortem in `docs/rank1-roadmap.md`: offline rerank on `--k 40` lists did not transfer to live `--k 5`; lesson — always confirm with `scripts/eval.sh` on a fresh DB before writing a prediction. Holds: hybrid `e3f1da9` 35/37 @1, 37/37 @5, adv 3/3; battery 6/10.
 - Abstention guard: stopword-only and content-free queries return `[]` with reason `query-empty` (`b95af36`); battery re-run `2350334` flipped #4/#9 to Y, other eight top-1 ids unchanged.
 - Multiplier question LANDED (`aebe0c2`): RRF k=30, FTS 1.0 / vec 0.5 / graph 1.0, importance out of the formula (stored attribute only), recency 0.9+0.1x, tag gate 2.0x. Docs do not retune constants.
 - Temporal verdict: keep the narrowed recency band; use `--since/--until` windows when the caller knows the date; future-date clamp to 1.0 is a flagged design question, not a measurement artifact.
