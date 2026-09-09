@@ -437,3 +437,92 @@ debug build, fresh db, Cpu 768d, floor `--min-score 0.017`, `scripts/eval.sh`.
 - Delta vs the floor-first run (35/37 @1, 35/37 @5, 3/3 adv): recall@5 35 -> 37, both
   floor-dropped stem-gap anchors recovered, @1 and adversarial unchanged. The two @1 non-hits
   are now Q27 (rank 3) and Q28 (rank 2).
+
+
+## Floor re-measurement post-hybrid (2026-09-09)
+
+Floor calibrated at 0.017 under the pre-hybrid score scale (k=30 learned weights, before the
+hybrid prefix arms landed at `e3f1da9`). Re-measured against the landed hybrid config.
+Provenance: worktree clean at the start of this run (`git status --short` empty at HEAD
+`bcc0a14`) and `cargo build` was a no-op, so the measured binary is the landed ranking code
+(`e3f1da9`, last `crates/` commit). Fresh scratch db `/tmp/remem-floor-remeasure.db`, 40
+fixtures loaded via `remem remember`, embedder Cpu 768d. Every query below at `--min-score 0`
+(unfloored), `--k 5` unless a rank beyond 5 needed the `--k 40` list.
+
+Scores are the reported (post-tag-boost) `score` field. The floor compares values BEFORE the
+gated 2.0x tag boost (`apply_floor` runs ahead of `tag_boost` since `5733447`), so a hit's
+floor-relevant value is `score/2` when its reasons carry `tag`. Both columns are given for
+the adversarial rows.
+
+### 1. Required queries: top-1 score and rank at --min-score 0
+
+| Q | query (abbrev) | top-1 score | target rank | target score | target reasons |
+|---|----------------|-------------|-------------|--------------|----------------|
+| 2 | redis cache sharded | 0.048387 | 1 | 0.048387 | fts#1 + vector#1 + recent |
+| 6 | cdn outage | 0.048387 | 1 | 0.048387 | fts#1 + vector#1 + recent + important |
+| 9 | tests before pushing | 0.048387 | 1 | 0.048387 | fts#1 + vector#1 + recent |
+| 13 | settings mockups | 0.048387 | 1 | 0.048387 | fts#1 + vector#1 + recent |
+| 20 | nightly backups | 0.048387 | 1 | 0.048387 | fts#1 + vector#1 + recent |
+| 26 | march thing | 0.047379 | 1 | 0.047379 | fts#2 + vector#1 + recent + important |
+| 27 | start-of-year spending decision | 0.046147 | 3 | 0.044700 | fts#5 + vector#1 + recent |
+| 28 | auditors winter check | 0.045772 | 2 | 0.045541 | fts#4 + vector#1 + recent |
+| 29 | invoices late | 0.048387 | 1 | 0.048387 | fts#1 + vector#1 + recent + important |
+| 38 | what is the thing about stuff (junk) | 0.016129 | - | - | vector#1 + recent |
+| 39 | how does this work with that (junk) | 0.032258 reported / 0.016129 pre-boost | - | - | vector#1 + recent + tag |
+| 40 | tell me about the thing thing (junk) | 0.016129 | - | - | vector#1 + recent |
+
+### 2. Bands: junk vs answerable
+
+- Junk ceiling (floor-relevant, pre-boost): 0.016129 on all three adversarial queries. This is
+  structural, not corpus luck: it is exactly the vector-only RRF arm at the landed weights,
+  `0.5/(k=30+1)` = 0.016129. A junk hit has no FTS match, so vector#1 is its best possible arm.
+- Answerable top-1 floor: 0.045772 (Q28). Common value 0.048387 = `1.5/31`, the dual
+  `fts#1 + vector#1` agreement.
+- Weakest answerable hit that is still worth recalling: 0.044700 (Q27 target, rank 3,
+  `fts#5 + vector#1`). Full sweep of all 37 answerable queries at `--k 40`: every target was
+  found, minimum target score 0.044700 (Q27), then 0.045541 (Q28), 0.046960, and 0.047379 up.
+- Band: **0.016129 (junk, structural) .. 0.044700 (weakest answerable target)**. 0.017 sits
+  5.4% above the junk ceiling and at 38% of the answerable floor, so 2.6x of headroom below
+  the weakest hit worth keeping.
+
+### 3. Verdict: KEEP 0.017
+
+The bands moved, but in the safe direction. 0.017 remains the right value.
+
+- Against the pre-hybrid calibration the junk ceiling is unchanged (0.016129, the vector-only
+  arm does not depend on the prefix arms) while the answerable band rose: the pre-hybrid
+  floor-first run had Q27 at 0.01652 and Q28 at 0.01590, both BELOW the floor; the hybrid arms
+  lifted the same two targets to 0.04470 and 0.04554, both ABOVE it. The margin over junk
+  widened from 0.0001 to 0.00087.
+- Recall check at 0.017 (`scripts/eval.sh`, fresh `/tmp/remem-floor-verify.db`): recall@1
+  35/37, recall@5 37/37, adversarial 3/3 pass. Identical to the unfloored numbers, so the
+  floor is now costing zero answerable hits - unlike the 0.02 floor that dropped Q27/Q28.
+- Offline floor sweep replayed on the same `--k 40` lists (filtering on the pre-boost value,
+  as `apply_floor` does): recall@1 35/37 and recall@5 37/37 hold for every floor from 0.017
+  through 0.0446, and adversarial is 3/3 for the same whole range. So 0.017 is not the
+  binding edge of a fragile window; it is the low end of a 0.017-0.044 plateau. Anything at
+  or above 0.044700 starts dropping Q27's target, and 0.045700 drops Q28's as well.
+- Do NOT raise the floor to silence the 0.032258 Q39 figure from the gated-tag-boost section:
+  that is the post-boost value of a hit the floor already rejected at 0.016129 pre-boost. A
+  floor above 0.032 would buy nothing and would start eating real anchors.
+- `DEFAULT_MIN_SCORE` stays 0.0 (off), per `docs/floor-decision.md`: a floor tuned to one
+  corpus silently returns `[]` on another.
+
+Caveat on the plateau ceiling: the junk arm is `0.5/(k+1)`, so any change to `DEFAULT_RRF_K`
+or the vector weight moves the floor-relevant junk ceiling directly. Re-measure 0.017 if
+either changes. The 0.016129 ceiling is also a fresh-db value; recency (0.9+0.1x) can only
+push an aged junk hit DOWN, so 0.016129 is the worst case for junk and the margin is the
+floor it sits on.
+
+### 4. Uncommitted sibling WIP note
+
+During this run `crates/remem-recall` was rebuilt at 14:27 with an uncommitted arm-only FTS
+discount (`ARM_ONLY_FTS_DISCOUNT = 0.5`, `exact_fts_match`). Re-measured on a separate fresh
+db with a pinned copy of that binary: the two rank-anchor targets fall (Q27 0.04470 -> 0.03175,
+reasons `fts-arm#2 + vector#1`; Q28 0.04554 -> 0.03226, reasons `fts-arm#1 + vector#1`) because
+the discounted arm match no longer carries full FTS weight. Neither carries a `tag` reason, so
+those are already pre-boost values, and both stay above 0.017 (Q27 at rank 5, Q28 at rank 3 of
+the floored k=5 list). The junk ceiling is unchanged at 0.016129 and all three adversarial
+queries still floor to `[]`. That config keeps 0.017 correct, with the band narrowed to
+0.016129..0.031750 and the margin over junk cut from 2.77x to 1.97x. If the arm-only discount
+lands, re-measure the floor again before any raise is considered.
