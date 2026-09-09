@@ -270,6 +270,10 @@ fn main() -> Result<()> {
                             "kind": h.item.kind.as_str(),
                             "content": h.item.content,
                             "tags": h.item.tags,
+                            "agent": h.item.agent_id,
+                            "session": h.item.session_id,
+                            "occurred_at": h.item.occurred_at,
+                            "importance": h.item.importance,
                             "score": h.score,
                             "reasons": h.reasons,
                         })

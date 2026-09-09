@@ -557,3 +557,39 @@ fn cli_list_limit_truncates_newest_first() {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
 }
+
+#[test]
+fn cli_recall_json_includes_agent_session_occurred_at_importance() {
+    let db = std::env::temp_dir().join(format!("remem-cli-recallfields-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let id = remem(
+        &db,
+        &[
+            "remember",
+            "fact",
+            "recall json field coverage probe",
+            "--agent",
+            "alice",
+            "--session",
+            "s1",
+            "--importance",
+            "0.9",
+            "--occurred-at",
+            "2024-03-01",
+        ],
+    )
+    .lines()
+    .next()
+    .unwrap()
+    .to_string();
+    let hits = remem(&db, &["recall", "recall json field coverage", "--json"]);
+    let v: Vec<serde_json::Value> = serde_json::from_str(&hits).unwrap();
+    let hit = v.iter().find(|h| h["id"] == id).expect("hit missing");
+    assert_eq!(hit["agent"], "alice", "hit: {hit}");
+    assert_eq!(hit["session"], "s1", "hit: {hit}");
+    assert_eq!(hit["occurred_at"], 1709251200, "hit: {hit}");
+    assert!((hit["importance"].as_f64().unwrap() - 0.9).abs() < 1e-6, "hit: {hit}");
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(std::path::PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
