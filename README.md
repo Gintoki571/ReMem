@@ -1,198 +1,110 @@
-# <img src="docs/images/logo.png" alt="ReMem Logo" width="50" align="center"/> ReMem: Unified Modular Memory Mesh 🧠
+# ReMem — long-term memory for AI agents
 
-## Versions
-
-- `main`: v1 legacy engine.
-- `v2` branch: TypeScript engine.
-- `v3` branch (this branch): active Rust engine. See [README-v3.md](README-v3.md) and [docs/demo.md](docs/demo.md).
-
-Quickstart (v3):
+ReMem is a local-first memory engine: agents store facts, decisions, mistakes,
+preferences, and events, then recall them by meaning. One SQLite file holds
+everything. No server, no API keys, no network.
 
 ```sh
 cargo build
-./target/debug/remem remember semantic "prefers dark mode"
-./target/debug/remem recall "dark mode"
+./target/debug/remem remember fact "production db runs Postgres 16"
+./target/debug/remem recall "which database is production on"
+# -> production db runs Postgres 16  (score + reasons: fts/vector/recent/...)
 ```
 
-![Status](https://img.shields.io/badge/Status-Active-brightgreen)
-![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue)
-![MCP](https://img.shields.io/badge/Protocol-MCP-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+## How it works
 
-**ReMem** is a local-first, privacy-focused persistent memory engine for AI agents. Built on the **Model Context Protocol (MCP)**, it gives LLMs the ability to "remember" facts, relationships, and context across sessions without tool bloat or context window exhaustion.
+One SQLite file (`~/.remem/remem.db` by default) holds four things at once:
 
----
+- **Tables** — memories with kind, tags, agent, session, timestamps, importance.
+- **FTS5** — keyword index with porter stemming plus prefix arms for stem gaps
+  (`auditors` finds `audit`).
+- **sqlite-vec** — vector index over local 768-dim embeddings; nearest-meaning
+  match by cosine distance.
+- **Graphqlite** — the same rows projected as a graph, queried with Cypher
+  (`related`, `central`, `path`).
 
-## 🌟 What's New (2026 Audit Edition)
+A recall runs keyword search and vector search in parallel, fuses the two
+rankings (RRF + recency/importance), then applies a gated tag boost and a
+score floor that drops junk. Measured on 40 fixtures: **35/37 top-1, 37/37
+top-5**, and 3/3 adversarial queries correctly return nothing.
 
-This version of ReMem represents a complete **Production Hardening** pass, introducing enterprise-grade features for stability, security, and scalability.
+## Install
 
-### Key Highlights
-| Feature | Description |
-| :--- | :--- |
-| 🛡️ **Optimistic Locking** | SQL-enforced concurrency control prevents data races during parallel writes. |
-| 🏛️ **Tiered Context Management** | L1/L2/L3 context tiers ensure optimal token usage for any prompt size. |
-| 🔒 **Security Hardening** | Zod-validated config, API key enforcement, and secret redaction in logs. |
-| ⚡ **Batch Operations** | O(1) batch inserts for graph saves, replacing slow O(N) loops. |
-| 🔄 **Sync Service Resilience** | Automatic retries with exponential backoff for all infrastructure sync. |
-| 🔬 **MCP Protocol Stability** | All logs redirected to `stderr` to ensure clean `stdout` for JSON-RPC. |
+Requires Rust stable. Embeddings run on CPU out of the box.
 
----
-
-## 📊 Architecture Overview
-
-ReMem uses a **Triad Storage Architecture** to provide the best of all worlds:
-
-![Data Flow Diagram](docs/images/data_flow.png)
-
-1.  **Relational (SQLite)**: Structured storage with ACID transactions and complex queries.
-2.  **Vector (LanceDB)**: Semantic search via embeddings for meaning-based retrieval.
-3.  **Graph (JSON)**: Fast in-memory traversal for relationship discovery.
-
-A **Sync Service** ensures all three stores are kept in perfect harmony.
-
----
-
-## 🧠 Context Management Tiers
-
-To prevent context window exhaustion, ReMem uses a tiered priority system:
-
-![Context Tiers](docs/images/context_tiers.png)
-
-| Tier | Contents | Use Case |
-| :--- | :--- | :--- |
-| **L1** | System Prompt & Global Facts | Always included in every call. |
-| **L2** | Session Summary & Goals | Injected when relevant to the query. |
-| **L3** | On-Demand Graph/Vector Results | Fetched dynamically via search tools. |
-
----
-
-## 🔐 Production Hardening Features
-
-### Optimistic Locking for Concurrency
-ReMem prevents race conditions using SQL-based optimistic locking:
-
-![Optimistic Locking](docs/images/optimistic_locking.png)
-
-```sql
--- Example of versioned update
-UPDATE nodes SET metadata = ?, version = version + 1
-WHERE name = ? AND version = ?;
--- If rows affected = 0, a ConcurrencyError is thrown
+```sh
+git clone https://github.com/Gintoki571/ReMem && cd ReMem
+cargo build --release
+export REMEM_DB="$HOME/.remem/remem.db"
+./target/release/remem stats
 ```
 
-### Saga Pattern for Atomic Operations
-When creating nodes with vector embeddings, ReMem uses a "Saga" pattern:
-1.  **Start SQL Transaction**
-2.  **Insert Node into SQLite**
-3.  **Generate & Store Vector**
-4.  **Commit SQL Transaction**
+Embeddings need a BERT model dir (compatible with cadet-embed-base-v1).
+Set `REMEM_EMBED_MODEL_DIR` to it; without one the binaries print a warning
+and run on a stub embedder (keyword search still works, vector arm does not).
 
-If step 3 fails, the SQL changes are **rolled back**, ensuring no orphaned data.
+## CLI
 
-### LLM Retry with Backoff
-All LLM calls (summarization, memory extraction) now include automatic retries with exponential backoff to handle transient API failures.
+Binary: `remem`. Global `--db <path>` / `REMEM_DB` (default `~/.remem/remem.db`).
 
----
+| Command | What it does |
+|---|---|
+| `remember <kind> <text>` | Store a memory (`fact\|decision\|mistake\|preference\|event\|note`), with `--tags`, `--agent`, `--session`, `--importance`, `--occurred-at` |
+| `recall <query>` | Top hits with scores + reasons (`--k`, `--json`, `--min-score`, `--agent/--session/--since/--until` filters) |
+| `list` | Newest first (`--limit`, `--json`) |
+| `link <a> <b>` | Connect two memories (`--rel`) |
+| `forget <id>` | Soft-delete (kept, hidden from recall) |
+| `purge <id>` | Hard-delete |
+| `related \| central \| path` | Graph neighbours / PageRank / shortest path |
+| `stats \| validate` | JSON counts / integrity check (exit 1 on dangling edges) |
 
-## 🛠️ The Master Toolset
+Full tour with expected output: `bash scripts/demo.sh` (12 steps, ~25s).
 
-### Core Memory Tools
-| Tool Name | Capability |
-| :--- | :--- |
-| **`auto_add_memory`** | **The Magic Button.** Extracts facts from any text and saves them to all three stores. |
-| **`hybrid_search`** | **Deep Search.** Combines keyword matching with semantic meaning. |
-| **`query_sql_db`** | **Data Analyst.** Runs real SQL queries for complex filtering. |
-| **`health_check`** | **System Monitor.** Returns health status of DB, Vector Store, and Memory. |
+## MCP server
 
-### Librarian Tools
-| Tool Name | Capability |
-| :--- | :--- |
-| **`librarian_suggest`**| **The Orchestrator.** Recommends which expertise module to load. |
-| **`activate_module`** | **Payload Expert.** Loads specialized tools (e.g., Coding or RPG). |
-| **`list_modules`** | **Catalog.** Shows all available and active expert domains. |
+`remem-mcp` exposes the same 11 commands over newline-delimited JSON-RPC on
+stdio — one-to-one CLI/MCP parity. Point any MCP client at the binary with
+`REMEM_DB` set. Handshake: `initialize` → `notifications/initialized`
+(no reply) → `tools/list`.
 
----
+## Development
 
-## 🏠 Local-First Intelligence (LM Studio)
-
-You can run ReMem entirely offline by using **LM Studio** as your provider.
-
-### 1. LM Studio Setup
-- Download and install [LM Studio](https://lmstudio.ai/).
-- Under the **Local Server** tab, load a Chat model (e.g., `Llama-3`) and an Embedding model (e.g., `nomic-embed-text-v1.5`).
-- Ensure the server is running on `http://localhost:1234`.
-
-### 2. Configure `.env`
-```bash
-OPENAI_BASE_URL=http://localhost:1234/v1
-OPENAI_API_KEY=lm-studio
-LLM_MODEL=model-identifier-from-lm-studio
-EMBEDDING_MODEL=embedding-model-identifier
+```sh
+cargo test --workspace          # all suites green before push
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --check               # enforced by a pre-commit hook
+bash scripts/eval.sh            # 40-fixture recall eval
 ```
 
----
+Details live in `docs/`: `eval.md` (numbers), `demo.md` (tour),
+`architecture.md` + `diagrams/` (design), `merge-execution.md`,
+`stemmer-analysis.md`, `rank1-roadmap.md`.
 
-## 🛠️ Installation & Usage
+## Project layout
 
-### Setup
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/Gintoki571/ReMem.git
-    cd ReMem/ReMem_Engine
-    ```
-2.  **Install & Build:**
-    ```bash
-    npm install
-    npm run build
-    ```
+- `crates/remem-types` — shared domain types.
+- `crates/remem-store` — SQLite + FTS5 + sqlite-vec (`=0.1.9`; never the
+  0.1.10-alpha, it does not compile).
+- `crates/remem-graph` — graphqlite 0.8 graph over the same file.
+- `crates/remem-embed` — local embeddings, CPU (CUDA blocked upstream, see below).
+- `crates/remem-recall` — fusion ranking + `remem` CLI.
+- `crates/remem-mcp` — `remem-mcp` stdio server.
+- `skills/remem/` — agent skill: the store/recall protocol for AI users.
 
-### Configuration
-Update your MCP settings file (e.g., `mcp_config.json`):
+## History
 
-```json
-"ReMem": {
-  "command": "node",
-  "args": ["/absolute/path/to/ReMem/ReMem_Engine/dist/index.js"]
-}
-```
+- **v3 (this branch, Rust)** — active. SQLite + sqlite-vec + graphqlite.
+- **`v2` branch** — older TypeScript engine (LatticeDB + transformers.js).
+  Kept for reference; see `README-v2.md`.
 
----
+## GPU / CUDA
 
-## 📂 Architecture
+CPU-only, by design for now. GPU embeddings via candle are blocked upstream:
+`candle-kernels` does not ship kernels for CUDA 13.x (`sm_75` arch), and the
+upstream fix is unmerged — so enabling the `cuda` feature fails at link time
+on current toolchains. Tracked in issue #5. If you have CUDA ≤ 12.6 the
+feature path may build; otherwise CPU is the supported path.
 
-```
-src/
-├── core/           # Graph, Schema, Context, and Logging
-├── infrastructure/ # SQLite (Drizzle) and Vector (LanceDB) storage
-├── application/    # Business logic (Analyzer, Managers)
-├── integration/    # MCP Server & Tool Handlers
-├── modules/        # Domain-specific experts (RPG, Coding)
-└── tests/          # Comprehensive integration & unit tests
-```
+## License
 
----
-
-## 🧪 Verification Suite
-
-ReMem includes a robust test suite covering:
-- **Concurrency**: Optimistic locking under parallel write load.
-- **Saga Rollback**: Atomic rollback on vector embedding failure.
-- **Context Loop**: Rolling summary compaction.
-- **Graph Traversal**: BFS and path-finding algorithms.
-
-Run tests with:
-```bash
-npm run build
-node dist/tests/integration/test_concurrency.js
-node dist/tests/integration/test_saga_rollback.js
-```
-
----
-
-## 👨‍💻 Author
-**Bindesh Kandel**
-*Software Engineering Student & AI Enthusiast*
-
----
-*Built with ❤️ using TypeScript, SQLite, and the Model Context Protocol.*
+MIT.

@@ -1,8 +1,0 @@
-export const VERSION = "2.0.0";
-
-export * from "./embedder.js";
-export * from "./graph.js";
-export * from "./recall.js";
-export * from "./remem.js";
-export * from "./store.js";
-export * from "./types.js";
