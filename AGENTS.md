@@ -5,7 +5,7 @@ Local-first long-term memory engine for AI agents. TypeScript, Node 22+.
 ## Branches
 
 - `main`: legacy v1 engine (do not modify)
-- `v2`: active development (this branch)
+- `v2`: TypeScript engine
 
 ## Build & Test
 
@@ -77,14 +77,14 @@ TDD: add/update the failing test first, then the fix; never commit a red workspa
 
 - `remember <kind> <text> [--tags t1,t2] [--agent a] [--session s] [--importance f] [--occurred-at secs|YYYY-MM-DD]`
 - `recall <query> [--k n] [--json] [--agent a] [--session s] [--since x] [--until y] [--max-chars n] [--min-score f]`
-- `list [--json]` | `link <from> <to> [--rel r]` | `purge <id>` | `stats` | `validate` (exit 1 if dangling/orphan)
+- `list [--json]` | `link <from> <to> [--rel r]` | `forget <id>` | `purge <id>` | `stats` | `validate` (exit 1 if dangling/orphan) | `related <id>` | `central` | `path <from> <to>`
 
 ### Tests per crate
 
 ```bash
 cargo test -p remem-types -p remem-store -p remem-graph -p remem-recall -p remem-mcp
 cargo test -p remem-embed                  # skips without model dir
-cargo test -p remem-embed --features cuda  # GPU path
+cargo test -p remem-embed --features cuda  # GPU path (needs CUDA 12.x; broken on 13.x, see docs/cuda-unblock.md)
 ```
 
 ### Agent memory protocol (dogfood v3)
