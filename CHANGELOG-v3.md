@@ -8,6 +8,8 @@
 
 ## Engine (store/graph/embed/recall/CLI)
 
+- Open-time backfill: pre-existing rows without `content_hash` get hashed on open, so dedup covers old DBs.
+- FTS tags column: tag words indexed separately with 2x BM25 weight over content.
 - Store `busy_timeout` and limit clamps on read paths.
 - Migration runs old-DB column fixes before schema index creation.
 - Strict row decoding surfaces corruption instead of silent defaults.
@@ -41,10 +43,13 @@
 - `remember` accepts `occurredAt`, matching the CLI `--occurred-at` flag.
 - `remember` matches the committed `String` engine API; MCP coercion errors surfaced.
 - Near-duplicate report on write: `similar` array (`SIMILAR_MAX_DISTANCE` 0.48), floor stays opt-in.
+- MCP hardening: 16 MB frame cap with JSON-RPC error replies on malformed frames, top-k clamped to 1000, DB dirs created 0700 and DB files kept 0600.
 
 ## Quality (eval/validate/fixes)
 
 - Tag boost 1.05x with narrowed multiplier bands (post-tag-boost eval 62% @1, 100% @5).
+- Learned ranking weights: RRF k 60 to 30, vector list half-weighted (0.5), importance dropped from the final score, usable floor band measured at 0.017..0.043 (floor stays off by default).
+- Gated tag boost: 2.0x only for FTS-absent hits with tag/query overlap, 35/37 @1.
 
 - Recall eval harness: 16% @1 / 64% @5 on the probe set, with notes.
 - Release performance numbers published.
