@@ -15,6 +15,7 @@
 - CLI `forget`/`related`/`central`/`path` subcommands (MCP parity).
 - CLI `list --limit` flag for bounded listing.
 - Recall `k=0` returns empty instead of defaulting to 5 hits.
+- Recall `--json` emits full fields (agent, session, occurred_at, importance).
 - Year-bound checked dates on write, glossary terms defined.
 
 - Rust memory engine: SQLite store with vector search, graph links, embeddings, and recall CLI.
@@ -59,6 +60,8 @@
 - Prime-agent MCP registration docs.
 - Provider fallbacks guide.
 - CLI flags and MCP tools refresh.
+- Help text for every CLI flag (`remem --help` covers kind/tags/agent/session/importance/query/k/json/filters).
+- Demo covers graph commands (`link`/`related`/`central`/`path`) in `docs/demo.md` and `scripts/demo.sh`.
 - Security review notes.
 
 ## Docs (catch-up)
