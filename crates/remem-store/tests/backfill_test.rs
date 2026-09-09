@@ -23,7 +23,10 @@ fn seed_old_schema(path: &std::path::Path) {
          );",
     )
     .unwrap();
-    for (id, content) in [("old-1", "the first old memory"), ("old-2", "the second old memory")] {
+    for (id, content) in [
+        ("old-1", "the first old memory"),
+        ("old-2", "the second old memory"),
+    ] {
         conn.execute(
             "INSERT INTO memories (id, kind, content, created_at, updated_at) VALUES (?1, 'note', ?2, 1, 1)",
             params![id, content],
@@ -37,7 +40,10 @@ fn old_schema_rows_get_backfilled() {
     let path = tmp_db("old");
     seed_old_schema(&path);
     let store = Store::open_path(&path).unwrap();
-    for (id, content) in [("old-1", "the first old memory"), ("old-2", "the second old memory")] {
+    for (id, content) in [
+        ("old-1", "the first old memory"),
+        ("old-2", "the second old memory"),
+    ] {
         let hash = content_hash(&MemoryKind::Note, content);
         assert_eq!(store.find_by_hash(&hash).as_deref(), Some(id));
     }
@@ -52,19 +58,27 @@ fn fresh_db_unaffected_and_reopen_idempotent() {
     let m = MemoryItem::new(MemoryKind::Fact, "fresh content here".into());
     let id = store.insert(&m).unwrap();
     assert_eq!(
-        store.find_by_hash(&content_hash(&m.kind, &m.content)).as_deref(),
+        store
+            .find_by_hash(&content_hash(&m.kind, &m.content))
+            .as_deref(),
         Some(id.as_str())
     );
     drop(store);
     // Re-open: backfill must not error or change anything.
     let store2 = Store::open(&s).unwrap();
     assert_eq!(
-        store2.find_by_hash(&content_hash(&m.kind, &m.content)).as_deref(),
+        store2
+            .find_by_hash(&content_hash(&m.kind, &m.content))
+            .as_deref(),
         Some(id.as_str())
     );
     let nulls: i64 = store2
         .connection()
-        .query_row("SELECT COUNT(*) FROM memories WHERE content_hash IS NULL", [], |r| r.get(0))
+        .query_row(
+            "SELECT COUNT(*) FROM memories WHERE content_hash IS NULL",
+            [],
+            |r| r.get(0),
+        )
         .unwrap();
     assert_eq!(nulls, 0);
     let _ = std::fs::remove_file(&path);
