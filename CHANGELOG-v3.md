@@ -17,6 +17,8 @@
 - Recall `k=0` returns empty instead of defaulting to 5 hits.
 - Recall `--json` emits full fields (agent, session, occurred_at, importance).
 - Year-bound checked dates on write, glossary terms defined.
+- Graph rejects reserved `agent:`/`session:` memory ids (hub collision guard).
+- CLI/store path hardening: `~/` without HOME errors, parent-dir failures surfaced.
 
 - Rust memory engine: SQLite store with vector search, graph links, embeddings, and recall CLI.
 - `validate` command: checks store/graph consistency and reports issues.
@@ -75,3 +77,4 @@
 - Rust toolchain via dtolnay action for reliable CI builds.
 - Demo e2e CI job without model; demo script respects `REMEM_DB`.
 - Full-workspace `fmt` pass and clippy `err_expect` fix in MCP test.
+- Unified duplicate deps: tokenizers 0.22, zerocopy 0.8 (dropped 0.23/0.7 splits).

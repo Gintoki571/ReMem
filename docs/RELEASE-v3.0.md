@@ -44,6 +44,11 @@ Status: DRAFT. Branch `v3`, unreleased. Docs only, no API freeze claimed.
 - DB path: `REMEM_DB` (default `~/.remem/remem.db`); demo: `scripts/demo.sh`.
 - MCP registration: see `docs/prime-agent-integration.md` (`prime-agent mcp add local ... remem-mcp`).
 
+## Dependencies
+
+- CVE clean per `docs/dependency-audit.md` (OSV, 17 versioned queries, 0 findings).
+- Duplicates unified: tokenizers 0.22, zerocopy 0.8 (dropped 0.23/0.7 splits).
+
 ## Known gaps
 
 - Post-RRF multipliers still outvote dual fts#1+vector#1: fused 31/37 @1 vs vector-alone
