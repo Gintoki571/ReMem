@@ -127,16 +127,16 @@ embedder: Cpu (768d)
 mistake:  10f5b64c-ef32-462d-8378-018d0a2e510f
 === 4. recall (ranked, with fts/vector reasons) ===
 embedder: Cpu (768d)
-3fdb8b23-054e-4ef4-a4f7-c23548a1ebbf  0.0246  [fact]  Postgres runs on port 5432 in this project  (fts#1,vector#1,recent)
-10f5b64c-ef32-462d-8378-018d0a2e510f  0.0121  [mistake]  Forgot to set REMEM_DB and wrote to the default db once  (vector#2,recent)
-a1f12764-909e-4153-972f-05025d2e3c77  0.0119  [decision]  Use SQLite vec0 for the demo embeddings  (vector#3,recent)
+3fdb8b23-054e-4ef4-a4f7-c23548a1ebbf  0.0484  [fact]  Postgres runs on port 5432 in this project  (fts#1,vector#1,recent)
+10f5b64c-ef32-462d-8378-018d0a2e510f  0.0156  [mistake]  Forgot to set REMEM_DB and wrote to the default db once  (vector#2,recent)
+a1f12764-909e-4153-972f-05025d2e3c77  0.0152  [decision]  Use SQLite vec0 for the demo embeddings  (vector#3,recent)
 === 5. link memories, then recall shows the graph reason (related) ===
 embedder: Cpu (768d)
 embedder: Cpu (768d)
 embedder: Cpu (768d)
-3fdb8b23-054e-4ef4-a4f7-c23548a1ebbf  0.0365  [fact]  Postgres runs on port 5432 in this project  (fts#1,vector#1,graph#3,recent)
-a1f12764-909e-4153-972f-05025d2e3c77  0.0242  [decision]  Use SQLite vec0 for the demo embeddings  (vector#3,graph#1,recent)
-10f5b64c-ef32-462d-8378-018d0a2e510f  0.0242  [mistake]  Forgot to set REMEM_DB and wrote to the default db once  (vector#2,graph#2,recent)
+3fdb8b23-054e-4ef4-a4f7-c23548a1ebbf  0.0787  [fact]  Postgres runs on port 5432 in this project  (fts#1,vector#1,graph#3,recent)
+a1f12764-909e-4153-972f-05025d2e3c77  0.0474  [decision]  Use SQLite vec0 for the demo embeddings  (vector#3,graph#1,recent)
+10f5b64c-ef32-462d-8378-018d0a2e510f  0.0469  [mistake]  Forgot to set REMEM_DB and wrote to the default db once  (vector#2,graph#2,recent)
 === 6. validate (clean graph expected) ===
 embedder: Cpu (768d)
 === 7. stats ===
@@ -155,6 +155,36 @@ embedder: Cpu (768d)
 === 9. MCP-vs-CLI parity (tools/list shows 11 tools) ===
 embedder: Cpu (768d)
 mcp tools: 11
+=== 10. forget (soft-delete: gone from list/recall, validate clean) ===
+embedder: Cpu (768d)
+embedder: Cpu (768d)
+forgot 3c4bbfc2-5cb2-4fb7-9302-a2120481f31d
+embedder: Cpu (768d)
+embedder: Cpu (768d)
+embedder: Cpu (768d)
+=== 11. 3-chain A->B->C: related, central, path ===
+embedder: Cpu (768d)
+embedder: Cpu (768d)
+embedder: Cpu (768d)
+embedder: Cpu (768d)
+embedder: Cpu (768d)
+embedder: Cpu (768d)
+d086a2a5-6b32-42e8-b5e0-5956f9355744  relates_to
+e8cf2339-ceb6-40a6-baa7-902403cc6141  relates_to
+embedder: Cpu (768d)
+d086a2a5-6b32-42e8-b5e0-5956f9355744  0.040141
+a1f12764-909e-4153-972f-05025d2e3c77  0.035625
+b3385a60-3d2d-4d2f-b7ba-f63fb529a6c9  0.035625
+3fdb8b23-054e-4ef4-a4f7-c23548a1ebbf  0.025000
+e8cf2339-ceb6-40a6-baa7-902403cc6141  0.025000
+embedder: Cpu (768d)
+e8cf2339-ceb6-40a6-baa7-902403cc6141
+b3385a60-3d2d-4d2f-b7ba-f63fb529a6c9
+d086a2a5-6b32-42e8-b5e0-5956f9355744
+=== 12. recall --json spot-check (agent/session fields) ===
+embedder: Cpu (768d)
+embedder: Cpu (768d)
+json ok: f82b138e-4bd6-42ec-87c7-81bad15dc2e0
 === demo OK ===
 ```
 
