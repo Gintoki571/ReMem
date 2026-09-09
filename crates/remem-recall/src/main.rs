@@ -479,7 +479,10 @@ mod path_tests {
     impl EnvGuard {
         fn lock() -> Self {
             let g = env_lock().lock().unwrap();
-            Self { _g: g, old_home: std::env::var_os("HOME") }
+            Self {
+                _g: g,
+                old_home: std::env::var_os("HOME"),
+            }
         }
     }
 
@@ -506,11 +509,16 @@ mod path_tests {
     fn home_unset_with_tilde_errors_clearly() {
         let _env = EnvGuard::lock();
         std::env::remove_var("HOME");
-        let err = format!("{:?}", expand(PathBuf::from("~/.remem/remem.db").as_path()).unwrap_err());
+        let err = format!(
+            "{:?}",
+            expand(PathBuf::from("~/.remem/remem.db").as_path()).unwrap_err()
+        );
         assert!(err.contains("HOME"), "error must name HOME: {err}");
         let eng_err = format!(
             "{:?}",
-            engine(PathBuf::from("~/.remem/remem.db").as_path()).err().expect("engine must fail")
+            engine(PathBuf::from("~/.remem/remem.db").as_path())
+                .err()
+                .expect("engine must fail")
         );
         assert!(eng_err.contains("HOME"), "engine must propagate: {eng_err}");
     }
@@ -520,7 +528,10 @@ mod path_tests {
         let dir = std::env::temp_dir().join(format!(
             "remem-recall-blocker-{}-{}",
             std::process::id(),
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
         ));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -528,7 +539,10 @@ mod path_tests {
         std::fs::write(&blocker, b"x").unwrap();
         let db = blocker.join("remem.db");
         let err = format!("{:#}", engine(&db).err().expect("engine must fail"));
-        assert!(err.contains("create db parent dir"), "must carry context: {err}");
+        assert!(
+            err.contains("create db parent dir"),
+            "must carry context: {err}"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -538,7 +552,10 @@ mod path_tests {
         let home = std::env::temp_dir().join(format!(
             "remem-recall-home-{}-{}",
             std::process::id(),
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
         ));
         std::fs::create_dir_all(&home).unwrap();
         std::env::set_var("HOME", &home);
