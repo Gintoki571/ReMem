@@ -13,7 +13,7 @@ dependencies = [
  "once_cell",
  "serde",
  "version_check",
- "zerocopy 0.8.56",
+ "zerocopy",
 ]
 
 [[package]]
@@ -184,9 +184,9 @@ dependencies = [
  "rayon",
  "safetensors 0.8.0",
  "thiserror 2.0.20",
- "tokenizers 0.22.2",
+ "tokenizers",
  "yoke 0.8.3",
- "zerocopy 0.8.56",
+ "zerocopy",
  "zip",
 ]
 
@@ -440,12 +440,6 @@ dependencies = [
  "half",
  "libloading 0.9.0",
 ]
-
-[[package]]
-name = "daachorse"
-version = "3.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5614204febbc33cc07a2806aa6440b904ac012b68eecc37f4493ea4a76455a3d"
 
 [[package]]
 name = "darling"
@@ -997,7 +991,7 @@ dependencies = [
  "num-traits",
  "rand",
  "rand_distr",
- "zerocopy 0.8.56",
+ "zerocopy",
 ]
 
 [[package]]
@@ -1389,7 +1383,7 @@ version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
 dependencies = [
- "zerocopy 0.8.56",
+ "zerocopy",
 ]
 
 [[package]]
@@ -1583,7 +1577,7 @@ dependencies = [
  "candle-transformers",
  "serde",
  "serde_json",
- "tokenizers 0.23.2",
+ "tokenizers",
 ]
 
 [[package]]
@@ -1633,7 +1627,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "sqlite-vec",
- "zerocopy 0.7.35",
+ "zerocopy",
 ]
 
 [[package]]
@@ -1951,39 +1945,6 @@ dependencies = [
  "ahash",
  "aho-corasick",
  "compact_str",
- "dary_heap",
- "derive_builder",
- "esaxx-rs",
- "getrandom 0.3.4",
- "itertools",
- "log",
- "macro_rules_attribute",
- "monostate",
- "onig",
- "paste",
- "rand",
- "rayon",
- "rayon-cond",
- "regex",
- "regex-syntax",
- "serde",
- "serde_json",
- "spm_precompiled",
- "thiserror 2.0.20",
- "unicode-normalization-alignments",
- "unicode-segmentation",
- "unicode_categories",
-]
-
-[[package]]
-name = "tokenizers"
-version = "0.23.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7afbf6e88718afcc138bad01d6ccc3051dbbc3b2ce9793d8b8a3aeb610969cfc"
-dependencies = [
- "ahash",
- "compact_str",
- "daachorse",
  "dary_heap",
  "derive_builder",
  "esaxx-rs",
@@ -2347,32 +2308,11 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.7.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9b4fd18abc82b8136838da5d50bae7bdea537c574d8dc1a34ed098d6c166f0"
-dependencies = [
- "byteorder",
- "zerocopy-derive 0.7.35",
-]
-
-[[package]]
-name = "zerocopy"
 version = "0.8.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "556764e583adb45a9f8d413c2a147fa7e8d821e48e12b14fd560b607998b75eb"
 dependencies = [
- "zerocopy-derive 0.8.56",
-]
-
-[[package]]
-name = "zerocopy-derive"
-version = "0.7.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa4f8080344d4671fb4e831a13ad1e68092748387dfc4f55e356242fae12ce3e"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
+ "zerocopy-derive",
 ]
 
 [[package]]
