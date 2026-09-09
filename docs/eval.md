@@ -400,3 +400,17 @@ new floor ordering; Q27's vector-only score lands below 0.017 without the
 tag boost it previously received post-floor. This is the accepted tradeoff
 documented in the floor-first commit: adversarial strictness over one
 borderline answerable hit.
+
+
+## Floor-first scoring (2026-09-09)
+
+Applied floor BEFORE tag boost in `apply_floor` pipeline (remem-recall/src/rank.rs).
+
+- Fused recall@1: 35/37 (unchanged)
+- Fused recall@5: 35/37 (Q27 floor-dropped by design; was 36/37 pre-floor)
+- Adversarial recall@5: 3/3 restored (was 2/3)
+- Q39 junk query suppressed pre-boost (score 0.017 < floor, never reaches 2.0x tag multiplier)
+
+Accepted tradeoff: Q27 drops from recall@5 because its tag-only anchor scores below
+the floor before any multiplier applies. This is intentional — the floor gates
+relevance before boost amplifies it.
