@@ -1,5 +1,4 @@
 @startuml
-skinparam handwritten false
 title remember flow
 actor Agent
 participant "CLI/MCP" as edge

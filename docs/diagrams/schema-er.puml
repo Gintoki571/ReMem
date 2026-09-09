@@ -8,10 +8,13 @@ entity "memories" as mem {
   * kind : TEXT
   * content : TEXT
   * tags : TEXT
+  * agent_id : TEXT
+  * session_id : TEXT
   * importance : REAL
   * created_at : INT
   * updated_at : INT
   occurred_at : INT (nullable)
+  * deleted : INT
   content_hash : TEXT (nullable)
 }
 
@@ -28,14 +31,14 @@ entity "mem_vec" as vec {
 }
 
 entity "nodes" as nodes {
-  * node_id : TEXT <<PK>>
+  * id : TEXT <<PK>>
   --
   mid : TEXT
   kind : TEXT
 }
 
 entity "edges" as edges {
-  * rowid : INT <<PK>>
+  id : INT <<graphqlite-internal>>
   --
   * source_id : TEXT <<FK>>
   * target_id : TEXT <<FK>>

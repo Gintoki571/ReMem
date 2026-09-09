@@ -1,5 +1,4 @@
 @startuml
-skinparam handwritten false
 title recall flow
 actor Agent
 participant "CLI/MCP" as edge
@@ -8,16 +7,19 @@ participant "store" as store
 participant "graph" as graph
 Agent -> edge: recall(text, k)
 edge -> engine: recall(query)
-engine -> store: list + matches()\nallowed ids
+engine -> store: list\nallowed ids
 engine -> store: fts_search(text)
 store --> engine: fts ids
 engine -> engine: embed query
 engine -> store: knn(qvec)
 store --> engine: vector ids
-engine -> graph: neighbors(seeds)\none hop
+loop per seed mid (top fused fts+vector)
+  engine -> graph: neighbors(mid)
+end
 graph --> engine: graph ids
 engine -> engine: RRF fuse\nfts + vector + graph
 engine -> engine: final_score\nimportance x recency
+engine -> engine: rank::tag_boost
 engine -> engine: pack by budget
 engine -> engine: apply floor
 engine --> edge: hits[]

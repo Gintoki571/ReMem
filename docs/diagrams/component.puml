@@ -1,9 +1,8 @@
 @startuml
-skinparam handwritten false
 title remem v3 components
 left to right direction
 [Agent] as agent
-[remem CLI] as cli
+[remem] as cli
 [remem-mcp] as mcp
 [RecallEngine] as engine
 [remem-store] as store
