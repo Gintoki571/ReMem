@@ -352,9 +352,12 @@ impl RecallEngine {
         // query's lexical anchor lives in tags ("decide" vs `decision`) nothing
         // else can rank it. See rank::tag_boost for the matching rules.
         {
-            let tagged: Vec<(&str, &[String])> = hits
+            let tagged: Vec<(&str, &[String], bool)> = hits
                 .iter()
-                .map(|h| (h.item.id.as_str(), &h.item.tags[..]))
+                .map(|h| {
+                    let has_fts = h.reasons.iter().any(|r| r.starts_with("fts#"));
+                    (h.item.id.as_str(), &h.item.tags[..], has_fts)
+                })
                 .collect();
             let factors: Vec<f64> = tag_boost(&tagged, &tokens(text))
                 .into_iter()

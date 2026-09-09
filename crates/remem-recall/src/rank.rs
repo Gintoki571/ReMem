@@ -118,16 +118,13 @@ pub fn final_score(fused: f64, recency: f64) -> f64 {
     fused * (0.9 + 0.1 * recency)
 }
 
-/// Multiplier for a hit whose tags share a word with the query: a tie-breaker,
-/// not an override, and capped at one factor per hit.
+/// Multiplier for an FTS-absent hit whose tags share a word with the query.
 ///
-/// Small on purpose. With RRF inputs at 89-92% recall@1 alone (docs/ranking-study.md), the
-/// job is to lift a tag-only anchor over the few hits fused immediately above it, not to
-/// reorder the list. 1.05x measured the same recall@1 as 1.2x on the eval fixtures and lost
-/// nothing at recall@5, so there is no reason to go wider. Beware tuning offline: re-ranking
-/// `--k 40` output predicted a different winner than the real k=5 runner, because list depth
-/// is 4k and the candidate set changes with k.
-pub const TAG_MATCH_BOOST: f64 = 1.05;
+/// Gated per docs/tag-supervision.md: 1.0 for any hit with FTS presence (the
+/// boost fired on both sides of Q27 and could not discriminate), TAG_MATCH_BOOST
+/// only for FTS-absent hits with a query-word/tag-word 4-prefix match. 2.0x is the
+/// single-vs-dual RRF compensation (1/61 vs 2/61), not a tuned constant.
+pub const TAG_MATCH_BOOST: f64 = 2.0;
 
 /// Leading characters a query word and a tag must agree on to count as a
 /// match. Measured on docs/eval-fixtures.json: 3 pulls noise (`per`/`perf`,
@@ -161,10 +158,11 @@ pub fn is_content_free(query: &str) -> bool {
     toks.is_empty() || toks.iter().all(|t| STOPWORDS.contains(&t.as_str()))
 }
 
-/// Lexical overlap between query words and hit tags.
+/// Lexical overlap between query words and hit tags, gated on FTS absence.
 ///
 /// One `(id, factor)` per input hit, in input order: `TAG_MATCH_BOOST` when
-/// any of the hit's tags overlaps a query word, else `1.0`.
+/// the hit has no FTS presence (`has_fts == false`) and any of its tags
+/// overlaps a query word, else `1.0`.
 ///
 /// Deliberately not driven by `RecallQuery::tags`: that filter already dropped
 /// non-matching rows, so every surviving hit shares those tags and the filter
@@ -182,16 +180,17 @@ pub fn is_content_free(query: &str) -> bool {
 /// excluded for free. The boost is capped at one factor per hit however many
 /// words match, so a vague query cannot stack it; drift can still over-match
 /// (`worker`/`workflow`), bounded at [`TAG_MATCH_BOOST`].
-pub fn tag_boost(hits: &[(&str, &[String])], query_words: &[String]) -> Vec<(String, f64)> {
+pub fn tag_boost(hits: &[(&str, &[String], bool)], query_words: &[String]) -> Vec<(String, f64)> {
     hits.iter()
-        .map(|(id, tags)| {
-            let shared = query_words.iter().any(|w| {
-                let w = prefix(w);
-                tags.iter().any(|t| {
-                    let t = prefix(t);
-                    t.len() >= TAG_MIN_PREFIX && w.len() >= TAG_MIN_PREFIX && t == w
-                })
-            });
+        .map(|(id, tags, has_fts)| {
+            let shared = !has_fts
+                && query_words.iter().any(|w| {
+                    let w = prefix(w);
+                    tags.iter().any(|t| {
+                        let t = prefix(t);
+                        t.len() >= TAG_MIN_PREFIX && w.len() >= TAG_MIN_PREFIX && t == w
+                    })
+                });
             let factor = if shared { TAG_MATCH_BOOST } else { 1.0 };
             ((*id).to_string(), factor)
         })
@@ -396,7 +395,7 @@ mod tests {
     #[test]
     fn tag_boost_matches_stems_and_case() {
         let (a, b) = (tg(&["decision", "process"]), tg(&["storage"]));
-        let hits: Vec<(&str, &[String])> = vec![("t", &a), ("o", &b)];
+        let hits: Vec<(&str, &[String], bool)> = vec![("t", &a, false), ("o", &b, false)];
         let out = tag_boost(&hits, &tokens("What did we DECIDE about spending"));
         assert_eq!(boost_of(&out, "t"), TAG_MATCH_BOOST); // decide ~ decision
         assert_eq!(boost_of(&out, "o"), 1.0);
@@ -409,7 +408,7 @@ mod tests {
     #[test]
     fn tag_boost_ignores_short_words_and_tags() {
         let (a, b) = (tg(&["api"]), tg(&["decision"]));
-        let hits: Vec<(&str, &[String])> = vec![("a", &a), ("b", &b)];
+        let hits: Vec<(&str, &[String], bool)> = vec![("a", &a, false), ("b", &b, false)];
         // "api" is a 3-char tag and "db"/"ui" 3-char words: no match either way.
         let out = tag_boost(&hits, &tokens("db ui api decide"));
         assert_eq!(boost_of(&out, "a"), 1.0);
@@ -420,7 +419,7 @@ mod tests {
     #[test]
     fn tag_boost_folds_case_on_both_sides() {
         let a = tg(&["Decision"]);
-        let hits: Vec<(&str, &[String])> = vec![("a", &a)];
+        let hits: Vec<(&str, &[String], bool)> = vec![("a", &a, false)];
         // Tag folded too, not just the query word.
         let out = tag_boost(&hits, &tokens("what did we decide"));
         assert_eq!(boost_of(&out, "a"), TAG_MATCH_BOOST);
@@ -431,7 +430,7 @@ mod tests {
         // Byte-slicing at 4 would panic mid-codepoint on these: `日本` is 2 chars
         // but 6 bytes, so the old length check passed and a[..4] split a char.
         let (a, b, c) = (tg(&["Überblick"]), tg(&["日本語タグ"]), tg(&["日本"]));
-        let hits: Vec<(&str, &[String])> = vec![("a", &a), ("b", &b), ("c", &c)];
+        let hits: Vec<(&str, &[String], bool)> = vec![("a", &a, false), ("b", &b, false), ("c", &c, false)];
         let out = tag_boost(&hits, &tokens("überblick 日本語タ 日本語"));
         assert_eq!(boost_of(&out, "a"), TAG_MATCH_BOOST); // case-folded, non-ASCII
         assert_eq!(boost_of(&out, "b"), TAG_MATCH_BOOST); // char-based prefix
@@ -441,11 +440,38 @@ mod tests {
     #[test]
     fn tag_boost_is_bounded_and_capped_per_hit() {
         let a = tg(&["backup", "testing", "deploy"]);
-        let hits: Vec<(&str, &[String])> = vec![("a", &a)];
+        let hits: Vec<(&str, &[String], bool)> = vec![("a", &a, false)];
         // Three matching words still give one factor, not boost^3.
         let out = tag_boost(&hits, &tokens("backups testing deploy now"));
         assert_eq!(boost_of(&out, "a"), TAG_MATCH_BOOST);
-        assert!((1.0..=1.3).contains(&boost_of(&out, "a")), "bounded band");
+        assert!((1.0..=2.0).contains(&boost_of(&out, "a")), "bounded band");
+    }
+
+    #[test]
+    fn tag_boost_gated_off_for_fts_present() {
+        // Dual-agreement hit: tag matches but FTS presence gates the boost off.
+        let a = tg(&["decision"]);
+        let hits: Vec<(&str, &[String], bool)> = vec![("t", &a, true)];
+        let out = tag_boost(&hits, &tokens("what did we decide about spending"));
+        assert_eq!(boost_of(&out, "t"), 1.0);
+    }
+
+    #[test]
+    fn tag_boost_gated_on_for_fts_absent() {
+        // FTS-absent tag-only anchor: gated boost pays at TAG_MATCH_BOOST.
+        assert_eq!(TAG_MATCH_BOOST, 2.0);
+        let a = tg(&["decision"]);
+        let hits: Vec<(&str, &[String], bool)> = vec![("t", &a, false)];
+        let out = tag_boost(&hits, &tokens("what did we decide about spending"));
+        assert_eq!(boost_of(&out, "t"), 2.0);
+    }
+
+    #[test]
+    fn tag_boost_no_tag_untouched_without_fts() {
+        let a = tg(&["storage"]);
+        let hits: Vec<(&str, &[String], bool)> = vec![("o", &a, false)];
+        let out = tag_boost(&hits, &tokens("what did we decide about spending"));
+        assert_eq!(boost_of(&out, "o"), 1.0);
     }
 
     #[test]

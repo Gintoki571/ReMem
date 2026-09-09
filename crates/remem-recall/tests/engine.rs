@@ -561,9 +561,10 @@ fn tag_q27_store(tag: &str) -> (RecallEngine, PathBuf) {
 
 /// Q27 from docs/eval.md: "decide" appears in no content, only in the tag
 /// `decision`, so the tag channel is the only signal that can move the target.
-/// With k=30 the gap between adjacent vector ranks is ~3-6% per step, so the
-/// 1.05x factor crosses exactly one place: the target lifts off the bottom and
-/// above the hit fused immediately above it, but not over `vector#1`.
+/// Per docs/tag-supervision.md the gated 2.0x pays only on FTS-absent hits;
+/// every hit here is FTS-absent and single-list, so the target doubles past
+/// all vector-only rivals to the top. (On the real Q27 dual fts+vector rivals
+/// cap the lift at rank 3-4.)
 /// no_tag_overlap_... is the control: same store, tag renamed, no move.
 #[test]
 fn tag_word_in_query_lifts_tagged_target_one_place() {
@@ -576,7 +577,7 @@ fn tag_word_in_query_lifts_tagged_target_one_place() {
         .iter()
         .position(|c| *c == "quarterly numbers are reviewed by finance")
         .expect("target present");
-    assert_eq!(rank, 1, "tag must lift the target one place: {order:?}");
+    assert_eq!(rank, 0, "gated tag boost must lift the FTS-absent target to the top: {order:?}");
     assert!(hits[rank].reasons.iter().any(|r| r == "tag"));
     drop(e);
     cleanup(&path);
