@@ -751,3 +751,24 @@ fn remember_returns_similar_array_for_paraphrase() {
     );
     assert_eq!(dup["similar"], json!([]), "no double-report: {dup:?}");
 }
+
+#[test]
+fn content_length_header_is_case_insensitive() {
+    for (tag, header) in [("lower", "content-length"), ("mixed", "CoNtEnT-LeNgTh")] {
+        let mut c = Client::spawn(&temp_db(&format!("ci-{tag}")));
+        let body = serde_json::to_string(
+            &json!({"jsonrpc": "2.0", "id": 99, "method": "ping", "params": {}}),
+        )
+        .unwrap();
+        c.send_raw(&format!("{}: {}", header, body.len()));
+        c.send_raw("");
+        c.send_raw(&body);
+        let resp = c.read_resp();
+        assert_eq!(
+            resp["result"],
+            json!({}),
+            "{tag} header framed ping failed: {resp:?}"
+        );
+        assert_eq!(resp["id"], json!(99), "{tag} header id: {resp:?}");
+    }
+}

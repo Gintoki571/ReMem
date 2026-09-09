@@ -294,6 +294,56 @@ fn fts_search_limit_saturates_at_1000() {
     assert_eq!(store.fts_search("bulk memory", 2_000).unwrap().len(), 1000);
 }
 
+// ---- query-side hybrid prefix arm (docs/stemmer-analysis.md sec.5) ----
+
+#[test]
+fn hybrid_fts_matches_stem_gap_auditors_to_audit() {
+    let store = Store::open(":memory:").unwrap();
+    // Q28 fixture line 28: content says "audit", query says "auditors".
+    let mut m = item("The February 20 audit report flagged the invoice reconciliation delay");
+    m.tags = vec!["audit".into()];
+    let id = store.insert(&m).unwrap();
+    // Decoys share the low-IDF filler arms ("about" matches abou*), like the
+    // real corpus, so the assertion tests bm25 ranking, not just presence.
+    for c in [
+        "unrelated kubernetes rollout",
+        "guidelines about commit messages",
+        "this note is about dns and about tls",
+    ] {
+        store.insert(&item(c)).unwrap();
+    }
+    let hits = store
+        .fts_search(
+            "did the auditors ever get back to us about that winter check",
+            5,
+        )
+        .unwrap();
+    assert_eq!(hits[0].0.id, id, "audi* arm must land the lexical hit");
+}
+
+#[test]
+fn hybrid_fts_adversarial_queries_match_no_junk_docs() {
+    let store = Store::open(":memory:").unwrap();
+    // The collision classes the doc names: work* = worker/workflow, etc.
+    for c in [
+        "the worker pod ran the workflow daily",
+        "review the revision notes in the postmortem",
+        "postgres connections and the post office box",
+    ] {
+        store.insert(&item(c)).unwrap();
+    }
+    for q in [
+        "what is the thing about stuff",
+        "how does this work with that",
+        "tell me about the thing thing",
+    ] {
+        assert!(
+            store.fts_search(q, 10).unwrap().is_empty(),
+            "adversarial query {q:?} matched junk"
+        );
+    }
+}
+
 #[test]
 fn knn_limit_saturates_at_1000() {
     let store = Store::open(":memory:").unwrap();

@@ -390,18 +390,41 @@ const STOPWORDS: &[&str] = &[
     "the", "this", "to", "was", "what", "when", "where", "which", "who", "will", "with",
 ];
 
+/// Minimum token length for the hybrid prefix arm (docs/stemmer-analysis.md
+/// sec. 5). Gate at 5: with arms on every surviving token the three
+/// adversarial eval queries match 9 junk docs (Q39 alone matches 6, via
+/// `"work"*` hitting the worker/workflow stems); gated they match 0.
+const PREFIX_MIN_LEN: usize = 5;
+/// Prefix arm length. 4 spans the stem-group gaps (audi* -> audit, deci* ->
+/// decid/decis) without the junk a 3-char arm would attract.
+const PREFIX_LEN: usize = 4;
+
 /// Escape a user query into a safe FTS5 one: drop English stopwords, then join
 /// the remaining quoted terms with OR so filler words cannot kill the match on
 /// natural-language queries. Prevents FTS5 syntax errors and column filters
 /// from raw input like "foo-bar" or embedded quotes. All-stopword queries
 /// fall back to the raw (still-quoted) tokens so they do not match everything.
+///
+/// Hybrid arm: a surviving (non-stopword) term of at least `PREFIX_MIN_LEN`
+/// chars also gets a `PREFIX_LEN`-char prefix query, `"auditors" OR "audi"*`,
+/// so a stem-group mismatch (auditors vs audit) still lands a lexical hit.
+/// Query-side only: no schema change, no index rebuild. The fallback path is
+/// never expanded.
 fn fts_quote(query: &str) -> String {
     let quoted = |t: &str| format!("\"{}\"", t.replace('"', "\"\"\""));
+    let hybrid = |t: &str| {
+        let exact = quoted(t);
+        if t.chars().count() < PREFIX_MIN_LEN {
+            return exact;
+        }
+        let prefix: String = t.chars().take(PREFIX_LEN).collect();
+        format!("{exact} OR {}*", quoted(&prefix))
+    };
     let tokens: Vec<&str> = query.split_whitespace().collect();
     let kept: Vec<String> = tokens
         .iter()
         .filter(|t| !STOPWORDS.contains(&t.to_ascii_lowercase().as_str()))
-        .map(|t| quoted(t))
+        .map(|t| hybrid(t))
         .collect();
     if kept.is_empty() {
         tokens
@@ -438,10 +461,11 @@ mod fts_quote_tests {
 
     #[test]
     fn drops_stopwords_and_ors_content_tokens() {
-        assert_eq!(fts_quote("what is the parser"), "\"parser\"");
+        // "parser" (6 chars) gets the prefix arm; "work" (4) does not.
+        assert_eq!(fts_quote("what is the parser"), "\"parser\" OR \"pars\"*");
         assert_eq!(
             fts_quote("how do OR queries work"),
-            "\"queries\" OR \"work\""
+            "\"queries\" OR \"quer\"* OR \"work\""
         );
     }
 
@@ -456,5 +480,25 @@ mod fts_quote_tests {
     #[test]
     fn empty_query_is_empty() {
         assert_eq!(fts_quote("   "), "");
+    }
+
+    #[test]
+    fn words_of_five_or_more_get_a_prefix_arm() {
+        assert_eq!(fts_quote("auditors"), "\"auditors\" OR \"audi\"*");
+        // exactly at the gate (5 chars)
+        assert_eq!(fts_quote("audit"), "\"audit\" OR \"audi\"*");
+    }
+
+    #[test]
+    fn shorter_words_are_unchanged() {
+        assert_eq!(fts_quote("run db v3"), "\"run\" OR \"db\" OR \"v3\"");
+    }
+
+    #[test]
+    fn gate_keeps_stopwords_unexpanded() {
+        // Ungated expansion let the adversarial query "how does this work with
+        // that" match 6 junk docs via work* (worker/workflow). The gate is
+        // len>=5 AND non-stopword, so this stays a single bare term.
+        assert_eq!(fts_quote("how does this work with that"), "\"work\"");
     }
 }

@@ -481,35 +481,37 @@ fn read_message(reader: &mut BufReader<std::io::StdinLock<'_>>) -> Result<Option
         if trimmed.is_empty() {
             continue;
         }
-        if let Some(rest) = trimmed.strip_prefix("Content-Length:") {
-            let n: usize = match rest.trim().parse() {
-                Ok(n) => n,
-                Err(_) => {
-                    return Ok(Some(Frame::ParseError("bad Content-Length".to_string())));
+        if let Some((name, rest)) = trimmed.split_once(':') {
+            if name.eq_ignore_ascii_case("content-length") {
+                let n: usize = match rest.trim().parse() {
+                    Ok(n) => n,
+                    Err(_) => {
+                        return Ok(Some(Frame::ParseError("bad Content-Length".to_string())));
+                    }
+                };
+                // Reject before allocating or consuming the body, so a lying
+                // header leaves the next message framed and readable.
+                if n > MAX_BODY_BYTES {
+                    return Ok(Some(Frame::ParseError(format!(
+                        "Content-Length {n} exceeds {MAX_BODY_BYTES} byte cap"
+                    ))));
                 }
-            };
-            // Reject before allocating or consuming the body, so a lying
-            // header leaves the next message framed and readable.
-            if n > MAX_BODY_BYTES {
-                return Ok(Some(Frame::ParseError(format!(
-                    "Content-Length {n} exceeds {MAX_BODY_BYTES} byte cap"
-                ))));
-            }
-            // consume remaining header lines until blank
-            loop {
-                let mut h = String::new();
-                reader.read_line(&mut h)?;
-                if h.trim().is_empty() {
-                    break;
+                // consume remaining header lines until blank
+                loop {
+                    let mut h = String::new();
+                    reader.read_line(&mut h)?;
+                    if h.trim().is_empty() {
+                        break;
+                    }
                 }
-            }
-            let mut buf = vec![0u8; n];
-            if let Err(e) = reader.read_exact(&mut buf) {
-                return Ok(Some(Frame::ParseError(format!("short read: {e}"))));
-            }
-            match serde_json::from_slice(&buf) {
-                Ok(v) => return Ok(Some(Frame::Msg(v))),
-                Err(e) => return Ok(Some(Frame::ParseError(format!("invalid JSON: {e}")))),
+                let mut buf = vec![0u8; n];
+                if let Err(e) = reader.read_exact(&mut buf) {
+                    return Ok(Some(Frame::ParseError(format!("short read: {e}"))));
+                }
+                match serde_json::from_slice(&buf) {
+                    Ok(v) => return Ok(Some(Frame::Msg(v))),
+                    Err(e) => return Ok(Some(Frame::ParseError(format!("invalid JSON: {e}")))),
+                }
             }
         }
         match serde_json::from_str(trimmed) {
