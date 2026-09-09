@@ -50,6 +50,7 @@
 - Tag boost 1.05x with narrowed multiplier bands (post-tag-boost eval 62% @1, 100% @5).
 - Learned ranking weights: RRF k 60 to 30, vector list half-weighted (0.5), importance dropped from the final score, usable floor band measured at 0.017..0.043 (floor stays off by default).
 - Gated tag boost: 2.0x only for FTS-absent hits with tag/query overlap, 35/37 @1.
+- Floor-first ordering: `apply_floor` runs on unboosted scores before the gated tag lift, so junk cannot be multiplied past the floor (verifier GO 35/37 @1, 35/37 @5 floored, adversarial 3/3; Q27 floor-dropped by design).
 
 - Recall eval harness: 16% @1 / 64% @5 on the probe set, with notes.
 - Release performance numbers published.
