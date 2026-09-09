@@ -32,5 +32,5 @@ Siblings uncommitted; this file tracks their inventories only.
 ## Verdicts
 
 - `rank.rs` (qwen floor vs packing baseline): GO — additive `apply_floor`, `pack_by_budget` untouched.
-- `remem-types/lib.rs` + `main.rs` + `recall/lib.rs` (qwen remainder): CAREFUL — `min_score` field, `--min-score` flag, and floor-then-pack wiring order still to land; wire as floor before pack.
-- `remem-graph/src/lib.rs` + `tests/graph.rs` (glm algos): GO — isolated new methods/tests, no overlap with qwen.
+- `crates/remem-types/src/lib.rs` + `crates/remem-recall/src/main.rs` + `crates/remem-recall/src/lib.rs` (qwen remainder): CAREFUL — `min_score` field, `--min-score` flag, and floor-then-pack wiring order still to land; wire as floor before pack.
+- `crates/remem-graph/src/lib.rs` + `crates/remem-graph/tests/graph.rs` (glm algos): GO — isolated new methods/tests, no overlap with qwen.

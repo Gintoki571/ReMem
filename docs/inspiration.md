@@ -42,7 +42,7 @@ v3 baseline for comparison: `crates/*/src/*.rs` (about 2.0k lines), one SQLite f
 
 **What.** Every Hindsight observation records its supporting fact ids with quotes and carries a `proof_count` (how many facts back it), used as a ranking signal: `proof_norm = clamp(0.5 + ln(count)/10, 0, 1)`, a multiplicative boost capped at +5 percent.
 **Verdict.** Keep as a convention, not a feature. v3 already has typed edges, so `remember` a `note`/`decision` and `link(obs, fact, "supports")` gives provenance for free; add the count boost later only if recalled ordering actually shows a problem. No schema change, no new crate.
-**Lands in.** `remem-graph` docs/`SPEC.md` note; the read side would be one line in `remem-recall/rank.rs` when needed.
+**Lands in.** `remem-graph` docs note; the read side would be one line in `crates/remem-recall/src/rank.rs` when needed.
 
 ## 7. Token-budget result packing instead of top-k
 
@@ -54,7 +54,7 @@ v3 baseline for comparison: `crates/*/src/*.rs` (about 2.0k lines), one SQLite f
 
 **What.** Hindsight's final score is `ce * (1 + a*(signal - 0.5))` per signal with `a` at most 0.2, so recency, temporal proximity and proof move a ranking by at most about +27/-23 percent. The stated reason for multiplicative over additive: a small bonus must not let an irrelevant-but-recent memory jump a relevant one.
 **Verdict.** Keep the shape, fix the constants. v3's `(0.5 + importance)` swings 0.5x to 1.5x (a 3x spread) while recency swings only 0.7x to 1.0x, so a mistyped importance currently dominates fused relevance; importance should be the smaller of the two, not the larger.
-**Lands in.** `remem-recall/rank.rs` (`final_score`), plus its unit tests.
+**Lands in.** `crates/remem-recall/src/rank.rs` (`final_score`), plus its unit tests.
 
 ## 9. MCP tool annotations and argument tolerance
 

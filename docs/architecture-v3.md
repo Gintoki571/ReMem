@@ -14,7 +14,7 @@ Six crates under `crates/`, one Cargo workspace. One SQLite file holds relationa
 
 - **remem-embed**: local BERT via candle. `Embedder` trait (`embed(&[&str]) -> Vec<Vec<f32>>`, `dims()`), `LocalEmbedder` (mean-pool over real tokens, L2 norm, max len 512), `load()` / `load_from(dir)`: CUDA if available else CPU; model dir from `REMEM_EMBED_MODEL_DIR`, default `/home/bindesh/rag/cadet-embed-base-v1`. 768 dims.
 
-- **remem-recall**: the engine and pure ranking. `Embed` trait (minimal, local; the real embedder is adapted at the CLI/MCP edges), `StubEmbedder` (hashed n-grams, offline fallback), `RecallEngine` (Store + optional Graph + embedder + Weights + half_life_days + min_score). `rank.rs`: `rrf`, `fuse` (weighted RRF over ranked id lists, stable), `recency_score` (exponential decay, 30d half-life), `final_score` (fused * (0.5 + 0.5*importance) * (0.7 + 0.3*recency)), `pack_by_budget` (skip over-budget hits, top hit always kept), `apply_floor` (may return empty). `src/main.rs`: `remem` CLI (remember/recall/list/forget/purge/link/related/central/path/stats/validate, `--min-score`, `--since`/`--until` as unix seconds or YYYY-MM-DD via `days_from_civil`).
+- **remem-recall**: the engine and pure ranking. `Embed` trait (minimal, local; the real embedder is adapted at the CLI/MCP edges), `StubEmbedder` (hashed n-grams, offline fallback), `RecallEngine` (Store + optional Graph + embedder + Weights + half_life_days + min_score). `rank.rs`: `rrf`, `fuse` (weighted RRF over ranked id lists, stable), `recency_score` (exponential decay, 30d half-life), `final_score` (fused * (0.9 + 0.1*recency); importance is reported as a reason, not scored), `pack_by_budget` (skip over-budget hits, top hit always kept), `apply_floor` (may return empty). `src/main.rs`: `remem` CLI (remember/recall/list/forget/purge/link/related/central/path/stats/validate, `--min-score`, `--since`/`--until` as unix seconds or YYYY-MM-DD via `days_from_civil`).
 
 - **remem-mcp**: MCP stdio server, hand-rolled newline-delimited JSON-RPC 2.0 (also accepts Content-Length frames, 16 MiB cap; per-message parse errors answered with -32700 and the loop continues). Tools: `remember`, `recall` (`minScore` passthrough: reopens an engine with the floor; unfiltered calls reuse the shared engine), `list`, `link`, `forget` (soft), `purge` (hard + graph forget), `related`, `central` (PageRank top-k), `path` (shortest memory-to-memory path), `stats`, `validate`. DB path from `REMEM_DB` (default `~/.remem/remem.db`), parent dirs created 0700, db + WAL sidecars chmod 0600 after open. Same engine wiring as the CLI.
 
@@ -33,8 +33,8 @@ Six crates under `crates/`, one Cargo workspace. One SQLite file holds relationa
 3. `store.fts_search(text, depth)` -> bm25-ranked ids, intersected with allowed.
 4. Embed the query; `store.knn(qvec, depth)` -> distance-ranked ids, intersected with allowed.
 5. Optional graph expansion: RRF-fuse the fts + vector lists, take up to min(k, 8) seeds, collect `graph.neighbors(seed)` ids in the allowed set (one hop).
-6. `fuse` the fts / vector / graph lists (weighted RRF k=60) with reasons like `fts#1`.
-7. For each fused id: `store.get` (skips rows deleted mid-flight), recency on the event clock, `final_score` = fused * importance factor * recency factor; reasons gain `recent` (recency > 0.9) and `important` (importance >= 0.8).
+6. `fuse` the fts / vector / graph lists (weighted RRF k=30, default weights fts 1.0 / vector 0.5 / graph 1.0) with reasons like `fts#1`.
+7. For each fused id: `store.get` (skips rows deleted mid-flight), recency on the event clock, `final_score` = fused * recency factor; reasons gain `recent` (recency > 0.9) and `important` (importance >= 0.8).
 8. Sort desc, truncate to k, `pack_by_budget` if max_chars set, `apply_floor` last (floor may empty the result; default floor 0.0 = off).
 
 ## Schema (crates/remem-store/schema.sql)

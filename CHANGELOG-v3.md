@@ -16,7 +16,6 @@
 - CLI `list --limit` flag for bounded listing.
 - Recall `k=0` returns empty instead of defaulting to 5 hits.
 - Year-bound checked dates on write, glossary terms defined.
-- Guardrails: recall k=0 returns empty; list --limit bounds listing; year-bound checked dates on write.
 
 - Rust memory engine: SQLite store with vector search, graph links, embeddings, and recall CLI.
 - `validate` command: checks store/graph consistency and reports issues.

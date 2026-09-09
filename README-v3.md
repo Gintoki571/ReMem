@@ -14,7 +14,7 @@ Storage is a single SQLite file: relational tables + FTS5 keyword index + sqlite
 - `crates/remem-store` - SQLite storage via rusqlite (bundled) + sqlite-vec `=0.1.9`. Schema lives in `crates/remem-store/schema.sql`. Do not use sqlite-vec 0.1.10-alpha.4 (fails to compile: missing `sqlite-vec-diskann.c`).
 - `crates/remem-graph` - graphqlite 0.8 graph over the same DB file. Hub ids are namespaced (`agent:<name>`, `session:<name>`); `neighbors()` returns memory mids only.
 - `crates/remem-embed` - local BERT embeddings (cadet-embed-base-v1) via candle. Mean-pool + L2 norm, 768 dims. CPU by default, CUDA via feature flag.
-- `crates/remem-recall` - RRF fusion of vector + FTS rankings (plus recency/importance weighting) and the `remem` binary (`src/main.rs`). Uses the real local embedder when the model dir is present, stub embedder fallback otherwise.
+- `crates/remem-recall` - RRF fusion of vector + FTS rankings (plus recency/importance weighting) and the `remem` binary (`crates/remem-recall/src/main.rs`). Uses the real local embedder when the model dir is present, stub embedder fallback otherwise.
 
 ## Build and test
 
@@ -35,7 +35,7 @@ Binary: `./target/debug/remem`. Global flag `--db <path>` (env `REMEM_DB`, defau
 |---|---|
 | `remember` | `remem remember <kind> <text...> [--tags t1,t2] [--agent NAME] [--session NAME] [--importance 0.5] [--occurred-at SECS_OR_YYYY-MM-DD]` |
 | `recall` | `remem recall <query...> [--k 5] [--json] [--agent NAME] [--session NAME] [--since SECS_OR_YYYY-MM-DD] [--until SECS_OR_YYYY-MM-DD]` |
-| `list` | `remem list [--json]` (newest first) |
+| `list` | `remem list [--json] [--limit N]` (newest first) |
 | `link` | `remem link <fromId> <toId> [--rel REL]` |
 | `forget` | `remem forget <id>` (soft-delete: row kept, graph node and edges dropped) |
 | `purge` | `remem purge <id>` (hard-delete row, FTS entry, embedding, graph node) |
@@ -89,6 +89,6 @@ Runtime device selection is `Device::cuda_if_available`, with CPU fallback. The 
 
 ## CI behavior
 
-`.github/workflows/ci.yml` runs two jobs on every push/PR: a Node job (typecheck + lint + vitest) and a Rust job (`cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`).
+`.github/workflows/ci.yml` runs three jobs on every push/PR: a Node job (typecheck + lint + vitest), a Rust job (`cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`), and a demo e2e job.
 
 Embedder tests skip (pass) when the model dir is absent: each test returns early after printing `skip: no local model at ...`. So CI without the model weights stays green. The CLI also never fails for a missing model: `main.rs` prints `embedder: local model unavailable (...), using stub` and recalls with the stub embedder.

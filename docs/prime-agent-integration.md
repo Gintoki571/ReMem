@@ -64,7 +64,7 @@ Notes:
 - Server speaks newline-delimited JSON-RPC 2.0 over stdio (`initialize`,
   `tools/list`, `tools/call`); it needs no `--stdio` flag, so `args` is empty.
   Use `target/debug/remem-mcp` for dev, `target/release/remem-mcp` for daily use.
-- Tools exposed: `remember`, `recall`, `list`, `link`, `stats`, `validate`.
+- Tools exposed (11): `remember`, `recall`, `list`, `link`, `forget`, `purge`, `stats`, `validate`, `related`, `central`, `path`.
 - Name `remem` is not a built-in (`linear`, `notion`, ...) so it is safe to use.
 
 ## APPLY-BY-HUMAN (exact diff — do not apply automatically)
@@ -103,7 +103,7 @@ From inside a prime-agent session (Python kernel):
 ```python
 tools = await mcp.list_tools("remem")
 print([t["name"] for t in tools])
-# expect: ['remember', 'recall', 'list', 'link', 'stats', 'validate']
+# expect: ['remember', 'recall', 'list', 'link', 'forget', 'purge', 'stats', 'validate', 'related', 'central', 'path']
 result = await mcp.call_tool("remem", "stats", {})
 print(result)
 ```

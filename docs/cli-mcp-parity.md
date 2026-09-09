@@ -9,7 +9,7 @@ MCP `REMEM_DB` env only, no flag.
 |---|---|---|---|
 | remember | `remember <kind> <text...>` + `--tags`, `--agent`, `--session`, `--importance` (default 0.5), `--occurred-at` | `remember {kind, content, tags, agent, session, importance, occurredAt}` | Parity. Arg name differs (`text` joined vs `content`). Output differs: CLI prints bare id (+ `similar:` line); MCP returns `{"id", "similar": [{id, distance}]}`. |
 | recall | `recall <query...>` + `--k` (default 5), `--json`, `--agent`, `--session`, `--since`, `--until`, `--max-chars`, `--min-score` (default 0.0 = off) | `recall {query, k, agent, session, maxChars, minScore, since, until}` | Parity on filters. CLI `--json` is formatting only (MCP always JSON). MCP clamps `k` to 1000, CLI does not. MCP JSON hits include `agent`/`session`; CLI `--json` hits omit them. |
-| list | `list [--json]` (newest first) | `list {limit?}` (clamped to 1000) | Each lacks one flag: CLI has no `limit`, MCP has no `--json` (always JSON). |
+| list | `list [--json] [--limit N]` (newest first) | `list {limit?}` (clamped to 1000) | Parity on limit; MCP has no `--json` (always JSON, formatting only). |
 | link | `link <from> <to> [--rel]` (silent) | `link {from, to, rel?}` (returns `{"ok": true}`) | Parity; output differs only. |
 | forget | `forget <id>` (soft delete, row kept, graph node and edges dropped) | `forget {id}` (soft delete, returns `{"forgotten": bool}`) | Parity; output differs only. |
 | purge | `purge <id>` (hard delete, errors on unknown id) | `purge {id}` (returns `{"purged": bool}`) | Parity; output contract differs (exit-error vs boolean). |
@@ -22,12 +22,11 @@ MCP `REMEM_DB` env only, no flag.
 ## Gaps
 
 CLI-missing (MCP-only), 0: `forget`, `related`, `central`, `path` all landed on the CLI (tracker #3 closed).
-MCP-missing (CLI-only), 2: `list --limit` vs `list limit` (functional),
-`--json` (formatting only, no functional gap).
+MCP-missing (CLI-only), 1: `--json` (formatting only, no functional gap).
 
 ## Fill order (smallest first)
 
-1. CLI `list --limit N` (truncate after fetch, mirrors MCP `limit`).
+1. DONE: CLI `list --limit N` landed (mirrors MCP `limit`).
 2. DONE: CLI `forget <id>` landed (tracker #3 closed).
 3. CLI `recall --json` should include `agent`/`session` (match MCP hit shape).
 4. DONE: CLI `related` / `central` / `path` landed (tracker #3 closed).

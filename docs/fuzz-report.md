@@ -1,6 +1,6 @@
 # Fuzz report — `remem` DEBUG binary (v3 branch)
 
-Build: `cargo build -p remem-recall` OK first try (binary is `target/debug/remem`, not `remem-recall`; `remem-mcp` binary is broken at startup — unrelated `no such column: content_hash` schema error, not fuzzed further). No staleness: binary rebuilt 22:04 UTC with siblings' uncommitted edits present. `forget` subcommand does not exist (`purge` is the delete). Env: `REMEM_DB=/tmp/remem-fuzz.db` (fresh). No PANICs, no HANGs in 40 cases; verdicts below are OK (clean exit/error) vs logic bugs (exit 0 but corrupt/ignored data — still "OK" per the panic/hang scale, flagged as BUG).
+Build: `cargo build -p remem-recall` OK first try (binary is `target/debug/remem`, not `remem-recall`; `remem-mcp` binary is broken at startup — unrelated `no such column: content_hash` schema error, not fuzzed further). No staleness: binary rebuilt 22:04 UTC with siblings' uncommitted edits present. `forget` (soft-delete) and `purge` (hard-delete) both exist. Env: `REMEM_DB=/tmp/remem-fuzz.db` (fresh). No PANICs, no HANGs in 40 cases; verdicts below are OK (clean exit/error) vs logic bugs (exit 0 but corrupt/ignored data — still "OK" per the panic/hang scale, flagged as BUG).
 
 ## Results
 
