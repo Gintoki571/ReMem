@@ -31,3 +31,10 @@ HEAD engine API (committed): `RecallEngine::remember(&item) -> (String, Vec<(Str
 - STOP-AND-REVERT (`git revert <sha>`): workspace tests fail on HEAD-mirror too; tuple signature touched; CLI/MCP output contract broken vs parity doc; /tmp/remem-head SHAs diverge.
 - FIX-FORWARD (same commit): fmt/clippy-only failure; flaky single test passing on mirror retry.
 - Top trigger: red workspace tests after either landing = revert first, diagnose second.
+
+## 6. Hard-won lessons
+
+1. fmt first, full workspace: order fmt -> clippy -> test. Scoped `cargo fmt -p` misses files (6aa4efa fixed one file, 1ebcc12 re-fmted the workspace); fmt drift forced repeat fix commits. Always full `cargo fmt`, then `--check` must show zero diff.
+2. Exact-path adds while workers are active: never `git add <crate-dir>`; it swept in-flight sibling work. `git add` exact file paths only, then review `git diff --cached` before every commit.
+3. Engine + callers land together: tuple skew (6a4fd33 fixed MCP against the committed String engine API) broke the contract. Run this checklist per coupled change, never land callers on a stale engine assumption.
+4. Stash discipline: never stash while siblings are mid-edit; recovery cost a full turn. Checkpoint your own files first and coordinate before any stash/pop.
