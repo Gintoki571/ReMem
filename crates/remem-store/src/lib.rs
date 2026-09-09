@@ -272,6 +272,27 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash)",
     )?;
+    // Backfill content_hash for pre-existing rows (docs/migrate-gap.md):
+    // old DBs predate the column, so those rows are NULL and invisible to
+    // find_by_hash dedup (SQLite unique indexes permit multiple NULLs).
+    // Rust-side loop reusing content_hash(); corrupt-kind rows are skipped.
+    let nulls: Vec<(String, String, String)> = conn
+        .prepare("SELECT id, kind, content FROM memories WHERE content_hash IS NULL")?
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+    for (id, kind_str, content) in &nulls {
+        if let Some(kind) = MemoryKind::parse(kind_str) {
+            let hash = content_hash(&kind, content);
+            match conn.execute(
+                "UPDATE memories SET content_hash = ?1 WHERE id = ?2",
+                params![hash, id],
+            ) {
+                Ok(_) => {}
+                Err(e) if e.to_string().contains("UNIQUE constraint") => {}
+                Err(e) => return Err(e),
+            }
+        }
+    }
     // FTS tags migration: old DBs have a 1-column memories_fts(content).
     // Rebuild as 2-column (content, tags) and repopulate from memories.tags.
     // (open_path already ran SCHEMA, which installs the new triggers on the
