@@ -31,16 +31,21 @@ struct Cli {
 enum Cmd {
     /// Store a memory
     Remember {
+        /// Memory kind: fact|decision|mistake|preference|event|note
         kind: String,
         /// memory content (joined with spaces)
         #[arg(required = true)]
         text: Vec<String>,
+        /// Comma-separated tags to attach
         #[arg(long, value_delimiter = ',')]
         tags: Vec<String>,
+        /// Agent id that owns the memory
         #[arg(long, default_value = "")]
         agent: String,
+        /// Session id that owns the memory
         #[arg(long, default_value = "")]
         session: String,
+        /// Importance weight (default: 0.5)
         #[arg(long, default_value_t = 0.5)]
         importance: f32,
         /// When it happened: unix seconds or YYYY-MM-DD (default: storage time)
@@ -49,14 +54,19 @@ enum Cmd {
     },
     /// Ranked recall for a query
     Recall {
+        /// Search text (joined with spaces)
         #[arg(required = true)]
         query: Vec<String>,
+        /// Max hits to return (default: 5)
         #[arg(long, default_value_t = 5)]
         k: usize,
+        /// Print results as pretty JSON
         #[arg(long)]
         json: bool,
+        /// Only memories from this agent
         #[arg(long)]
         agent: Option<String>,
+        /// Only memories from this session
         #[arg(long)]
         session: Option<String>,
         /// Only memories whose event time is >= this (unix seconds or YYYY-MM-DD)
@@ -74,6 +84,7 @@ enum Cmd {
     },
     /// List stored memories (newest first)
     List {
+        /// Print memories as pretty JSON
         #[arg(long)]
         json: bool,
         /// Max memories to show (newest first, unbounded by default).
@@ -83,18 +94,28 @@ enum Cmd {
         limit: Option<usize>,
     },
     /// Soft-delete a memory (row kept, graph node and edges dropped)
-    Forget { id: String },
+    Forget {
+        /// Id of the memory to forget
+        id: String,
+    },
     /// Hard-delete a memory (row, FTS entry, embedding, graph node)
-    Purge { id: String },
+    Purge {
+        /// Id of the memory to purge
+        id: String,
+    },
     /// Link two memories in the graph
     Link {
+        /// Id of the source memory
         from: String,
+        /// Id of the target memory
         to: String,
+        /// Relation label (default: RELATES_TO)
         #[arg(long)]
         rel: Option<String>,
     },
     /// Graph neighbours of a memory as `id  rel` lines (Memory nodes only)
     Related {
+        /// Id of the memory to show neighbours for
         id: String,
         /// Only edges of this type
         #[arg(long)]
@@ -102,11 +123,17 @@ enum Cmd {
     },
     /// Top memories by graph PageRank as `id  score` lines
     Central {
+        /// Max memories to show (default: 10)
         #[arg(long, default_value_t = 10)]
         limit: usize,
     },
     /// Shortest memory-to-memory path as `from` .. `to` lines (empty if unreachable)
-    Path { from: String, to: String },
+    Path {
+        /// Id of the start memory
+        from: String,
+        /// Id of the end memory
+        to: String,
+    },
     /// Database and graph counts
     Stats,
     /// Report dangling graph edges and orphan memories (exit 1 if any)
