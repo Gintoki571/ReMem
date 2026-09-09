@@ -110,6 +110,10 @@ fn initialize_and_list_tools() {
     assert_eq!(resp["result"]["serverInfo"]["name"], json!("remem-mcp"));
     assert!(resp["result"]["capabilities"]["tools"].is_object());
 
+    // Real clients send notifications/initialized, which gets NO reply;
+    // the server must swallow it and stay in sync for the next request.
+    c.send_raw(r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#);
+
     let resp = c.request("tools/list", json!({}));
     let tools = resp["result"]["tools"].as_array().unwrap();
     let names: Vec<_> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
