@@ -1,0 +1,564 @@
+{
+  "memories": [
+    {
+      "kind": "fact",
+      "content": "Staging Postgres runs on port 5432 behind the pgbouncer pool",
+      "tags": [
+        "infra",
+        "db"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "fact",
+      "content": "The production Redis cluster has 3 shards with 2 replicas each",
+      "tags": [
+        "infra",
+        "cache"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "fact",
+      "content": "User passwords are hashed with Argon2id at 64 MiB memory cost",
+      "tags": [
+        "security",
+        "auth"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "decision",
+      "content": "We chose SQLite over Postgres for the local cache because it needs zero setup",
+      "tags": [
+        "decision",
+        "storage"
+      ],
+      "agent": "main",
+      "importance": 0.6
+    },
+    {
+      "kind": "decision",
+      "content": "Deployments to production are frozen during the Friday demo window",
+      "tags": [
+        "deploy",
+        "process"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "mistake",
+      "content": "Pointing the CDN at the origin IP instead of the load balancer caused an outage",
+      "tags": [
+        "deploy",
+        "bug"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "mistake",
+      "content": "The rate limiter counted retries as new requests and throttled legit users",
+      "tags": [
+        "api",
+        "bug"
+      ],
+      "agent": "web-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "preference",
+      "content": "Prefer terse answers with no filler text when replying",
+      "tags": [
+        "style"
+      ],
+      "agent": "main",
+      "importance": 0.5
+    },
+    {
+      "kind": "preference",
+      "content": "Always run the full test suite before pushing to main",
+      "tags": [
+        "testing",
+        "workflow"
+      ],
+      "agent": "ci-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "event",
+      "content": "Migrated the sessions table to the new schema on March 12 without downtime",
+      "tags": [
+        "db",
+        "migration"
+      ],
+      "agent": "db-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "event",
+      "content": "Rotated the API signing keys after the audit finding on April 2",
+      "tags": [
+        "security",
+        "api"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "note",
+      "content": "The billing service exposes Prometheus metrics on port 9102",
+      "tags": [
+        "api",
+        "monitoring"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.5
+    },
+    {
+      "kind": "note",
+      "content": "The design mockups for the settings page live in Figma under Settings v3",
+      "tags": [
+        "ui",
+        "design"
+      ],
+      "agent": "web-agent",
+      "importance": 0.4
+    },
+    {
+      "kind": "fact",
+      "content": "The GraphQL gateway rate limit is 100 requests per minute per token",
+      "tags": [
+        "api",
+        "limits"
+      ],
+      "agent": "web-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "decision",
+      "content": "Adopted Feature Flag X for gradual rollout of the new checkout flow",
+      "tags": [
+        "release",
+        "ui"
+      ],
+      "agent": "main",
+      "importance": 0.6
+    },
+    {
+      "kind": "mistake",
+      "content": "Forgot to bump the migration revision, so the worker ran against a stale schema",
+      "tags": [
+        "db",
+        "bug"
+      ],
+      "agent": "db-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "preference",
+      "content": "Commit messages must reference the ticket number in the first line",
+      "tags": [
+        "style",
+        "workflow"
+      ],
+      "agent": "main",
+      "importance": 0.5
+    },
+    {
+      "kind": "event",
+      "content": "Load test on May 3 peaked at 1200 requests per second with p95 latency of 180 ms",
+      "tags": [
+        "perf",
+        "testing"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.5
+    },
+    {
+      "kind": "note",
+      "content": "Onboarding docs live in the wiki under the Getting Started space",
+      "tags": [
+        "docs",
+        "onboarding"
+      ],
+      "agent": "main",
+      "importance": 0.4
+    },
+    {
+      "kind": "fact",
+      "content": "Nightly backups run at 02:00 UTC and are retained for 30 days",
+      "tags": [
+        "ops",
+        "backup"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "decision",
+      "content": "We use Rust for the ingest pipeline because it needs low GC pause times",
+      "tags": [
+        "perf",
+        "pipeline"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "mistake",
+      "content": "Hardcoded the staging database password in a config file and had to rotate it",
+      "tags": [
+        "security",
+        "bug"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "preference",
+      "content": "Code reviews should focus on correctness first and style second",
+      "tags": [
+        "workflow"
+      ],
+      "agent": "main",
+      "importance": 0.5
+    },
+    {
+      "kind": "event",
+      "content": "Shipped version 2.4 of the mobile app to the beta channel on June 1",
+      "tags": [
+        "release",
+        "mobile"
+      ],
+      "agent": "web-agent",
+      "importance": 0.5
+    },
+    {
+      "kind": "note",
+      "content": "The office VPN requires the YubiKey token to be plugged in before connecting",
+      "tags": [
+        "infra",
+        "security"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.4
+    },
+    {
+      "kind": "event",
+      "content": "The March outage was traced to a misconfigured pgbouncer pool that dropped idle connections",
+      "tags": [
+        "incident",
+        "db"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.9
+    },
+    {
+      "kind": "decision",
+      "content": "The Q1 decision was to freeze new infra purchases until the cost review closes",
+      "tags": [
+        "decision",
+        "process"
+      ],
+      "agent": "main",
+      "importance": 0.6
+    },
+    {
+      "kind": "event",
+      "content": "Quarterly security audit wrapped on February 20 with no critical findings",
+      "tags": [
+        "security",
+        "process"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "event",
+      "content": "The billing service had a payment webhook backlog incident on April 15 that delayed invoices by a day",
+      "tags": [
+        "incident",
+        "billing"
+      ],
+      "agent": "ops-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "decision",
+      "content": "Q2 decision: migrate the analytics warehouse from Redshift to BigQuery",
+      "tags": [
+        "decision",
+        "analytics"
+      ],
+      "agent": "db-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "event",
+      "content": "The July maintenance window on August 3 took the ingest pipeline offline for two hours",
+      "tags": [
+        "incident",
+        "pipeline"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.6
+    },
+    {
+      "kind": "event",
+      "content": "Deprecation notice: the v1 public API is scheduled for shutdown on December 31",
+      "tags": [
+        "api",
+        "release"
+      ],
+      "agent": "web-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "mistake",
+      "content": "Missing a migration revision bump made the worker read an outdated schema",
+      "tags": [
+        "bug",
+        "migration"
+      ],
+      "agent": "db-agent",
+      "importance": 0.7
+    },
+    {
+      "kind": "preference",
+      "content": "When pushing to main, the complete test suite must pass first",
+      "tags": [
+        "testing",
+        "workflow"
+      ],
+      "agent": "ci-agent",
+      "importance": 0.5
+    },
+    {
+      "kind": "mistake",
+      "content": "Keeping the staging DB credential inside a checked-in config file forced an emergency rotation",
+      "tags": [
+        "security",
+        "bug"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.8
+    },
+    {
+      "kind": "preference",
+      "content": "Reviews should weigh correctness before any style nitpicks",
+      "tags": [
+        "style",
+        "process"
+      ],
+      "agent": "main",
+      "importance": 0.4
+    },
+    {
+      "kind": "event",
+      "content": "Completed the SOC 2 evidence collection sprint on May 30",
+      "tags": [
+        "process",
+        "security"
+      ],
+      "agent": "sec-agent",
+      "importance": 0.5
+    },
+    {
+      "kind": "fact",
+      "content": "The internal artifact registry mirrors are hosted at mirror.internal.example.com",
+      "tags": [
+        "infra",
+        "ops"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.4
+    },
+    {
+      "kind": "note",
+      "content": "Postmortems go into the wiki under Incident Reports within one week of an incident",
+      "tags": [
+        "docs",
+        "process"
+      ],
+      "agent": "main",
+      "importance": 0.5
+    },
+    {
+      "kind": "decision",
+      "content": "Agreed to standardize on OpenTelemetry for all new services starting next quarter",
+      "tags": [
+        "monitoring",
+        "decision"
+      ],
+      "agent": "infra-agent",
+      "importance": 0.6
+    }
+  ],
+  "queries": [
+    {
+      "query": "what port does the staging postgres database listen on",
+      "expect": "port 5432"
+    },
+    {
+      "query": "how is the production redis cache sharded",
+      "expect": "Redis cluster has 3 shards"
+    },
+    {
+      "query": "how are user passwords stored and hashed",
+      "expect": "Argon2id"
+    },
+    {
+      "query": "why did we pick sqlite for the local cache",
+      "expect": "chose SQLite over Postgres"
+    },
+    {
+      "query": "can we deploy to production on friday",
+      "expect": "frozen during the Friday demo"
+    },
+    {
+      "query": "what caused the outage with the cdn",
+      "expect": "CDN at the origin IP"
+    },
+    {
+      "query": "why were legitimate users being throttled by the rate limiter",
+      "expect": "counted retries"
+    },
+    {
+      "query": "how should the assistant phrase its replies",
+      "expect": "terse answers with no filler"
+    },
+    {
+      "query": "should I run tests before pushing",
+      "expect": "full test suite before pushing"
+    },
+    {
+      "query": "when was the sessions table migrated",
+      "expect": "sessions table to the new schema"
+    },
+    {
+      "query": "did we rotate the api signing keys",
+      "expect": "Rotated the API signing keys"
+    },
+    {
+      "query": "what port do the billing metrics listen on",
+      "expect": "port 9102"
+    },
+    {
+      "query": "where are the settings page design mockups",
+      "expect": "Settings v3"
+    },
+    {
+      "query": "what is the rate limit on the graphql gateway",
+      "expect": "100 requests per minute"
+    },
+    {
+      "query": "how do we roll out the new checkout flow",
+      "expect": "gradual rollout of the new checkout"
+    },
+    {
+      "query": "why did the worker use a stale schema",
+      "expect": "bump the migration revision"
+    },
+    {
+      "query": "what must a commit message contain",
+      "expect": "reference the ticket number"
+    },
+    {
+      "query": "how many requests per second did the load test reach",
+      "expect": "1200 requests per second"
+    },
+    {
+      "query": "where do I find the onboarding docs",
+      "expect": "Getting Started space"
+    },
+    {
+      "query": "when do nightly backups run and how long are they kept",
+      "expect": "02:00 UTC"
+    },
+    {
+      "query": "why is the ingest pipeline written in rust",
+      "expect": "low GC pause"
+    },
+    {
+      "query": "was there ever a leaked database credential",
+      "expect": "staging database password"
+    },
+    {
+      "query": "what should code reviews prioritize",
+      "expect": "correctness first"
+    },
+    {
+      "query": "when did the mobile app beta launch",
+      "expect": "beta channel on June 1"
+    },
+    {
+      "query": "what do I need before connecting to the office vpn",
+      "expect": "YubiKey"
+    },
+    {
+      "query": "hey so remember when things went down earlier in the year, like that whole march thing",
+      "expect": "March outage"
+    },
+    {
+      "query": "wait what did we decide at the start of the year about spending",
+      "expect": "Q1 decision"
+    },
+    {
+      "query": "did the auditors ever get back to us about that winter check",
+      "expect": "February 20"
+    },
+    {
+      "query": "there was something with invoices being late a while back, when was that",
+      "expect": "April 15"
+    },
+    {
+      "query": "what was the plan again for moving analytics somewhere else",
+      "expect": "BigQuery"
+    },
+    {
+      "query": "how long was the pipeline down during that summer maintenance thing",
+      "expect": "two hours"
+    },
+    {
+      "query": "when does the old public api go away exactly",
+      "expect": "December 31"
+    },
+    {
+      "query": "why did the worker end up with an outdated schema",
+      "expect": "Missing a migration revision bump"
+    },
+    {
+      "query": "didn't we have a credential sitting in a config file once",
+      "expect": "Keeping the staging DB credential"
+    },
+    {
+      "query": "so um i was wondering like where exactly do those mirrors live or whatever",
+      "expect": "mirror.internal.example.com"
+    },
+    {
+      "query": "ok so basically where do the writeups about incidents go and stuff",
+      "expect": "Incident Reports"
+    },
+    {
+      "query": "hmm what was that whole thing about tracing and standards for new services",
+      "expect": "OpenTelemetry"
+    },
+    {
+      "query": "what is the thing about stuff",
+      "expect": ""
+    },
+    {
+      "query": "how does this work with that",
+      "expect": ""
+    },
+    {
+      "query": "tell me about the thing thing",
+      "expect": ""
+    }
+  ]
+}

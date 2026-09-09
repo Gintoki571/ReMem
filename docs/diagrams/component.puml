@@ -1,0 +1,21 @@
+@startuml
+title remem v3 components
+left to right direction
+[Agent] as agent
+[remem] as cli
+[remem-mcp] as mcp
+[RecallEngine] as engine
+[remem-store] as store
+[remem-graph] as graph
+[remem-embed] as embed
+database "remem.db\n(one SQLite file)" as db
+agent --> cli
+agent --> mcp
+cli --> engine
+mcp --> engine
+engine --> store
+engine --> graph
+engine --> embed
+store --> db
+graph --> db
+@enduml

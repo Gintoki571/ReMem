@@ -1,35 +1,40 @@
 {
-    "name": "remem-unified",
-    "version": "1.0.0",
-    "description": "Unified Modular Memory Mesh - One brain for any domain (RPG, Coding, and more).",
-    "type": "module",
-    "main": "dist/index.js",
-    "scripts": {
-        "build": "tsc && tsc-alias && shx chmod +x dist/*.js",
-        "watch": "tsc --watch",
-        "start": "ts-node --esm src/index.ts",
-        "start:prod": "node dist/index.js"
-    },
-    "dependencies": {
-        "@ai-sdk/openai": "^1.0.0",
-        "@lancedb/lancedb": "^0.22.3",
-        "@modelcontextprotocol/sdk": "^0.5.0",
-        "ai": "^4.0.0",
-        "async-mutex": "^0.5.0",
-        "better-sqlite3": "^11.6.0",
-        "dotenv": "^16.4.5",
-        "drizzle-orm": "^0.38.2",
-        "js-tiktoken": "^1.0.21",
-        "zod": "^3.25.76"
-    },
-    "devDependencies": {
-        "@types/better-sqlite3": "^7.6.11",
-        "@types/node": "^20.11.24",
-        "copyfiles": "^2.4.1",
-        "drizzle-kit": "^0.30.1",
-        "shx": "^0.3.4",
-        "ts-node": "^10.9.2",
-        "tsc-alias": "^1.8.8",
-        "typescript": "^5.3.3"
-    }
+  "name": "remem",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.8.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@hajewski/latticedb": "^0.15.0",
+    "@huggingface/transformers": "^4.2.0",
+    "onnxruntime-node": "^1.29.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.23.1",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true,
+    "esbuild@0.28.2": true,
+    "onnxruntime-node@1.29.0": true,
+    "@huggingface/transformers@4.2.0": true,
+    "onnxruntime-node@1.24.3": true,
+    "@hajewski/latticedb@0.15.0": true
+  },
+  "bin": {
+    "remem": "./dist/cli/cli.js"
+  }
 }

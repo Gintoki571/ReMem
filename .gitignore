@@ -29,3 +29,23 @@ lancedb/
 # OS
 .DS_Store
 Thumbs.db
+
+# v2
+node_modules/
+dist/
+.remem-data/
+.agent-notes/
+models/onnx/
+models/tokenizer.json
+models/tokenizer_config.json
+models/special_tokens_map.json
+models/vocab.txt
+models/config.json
+*.tsbuildinfo
+
+# Rust v3
+target/
+target-head/
+*.db
+*.db-wal
+*.db-shm

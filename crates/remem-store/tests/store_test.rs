@@ -1,0 +1,440 @@
+use remem_store::Store;
+use remem_types::{MemoryItem, MemoryKind};
+
+fn item(content: &str) -> MemoryItem {
+    let mut m = MemoryItem::new(MemoryKind::Note, content.to_string());
+    m.tags = vec!["test".into()];
+    m.agent_id = "agent-1".into();
+    m.session_id = "sess-1".into();
+    m.importance = 0.8;
+    m
+}
+
+#[test]
+fn insert_get_roundtrip() {
+    let store = Store::open(":memory:").unwrap();
+    let m = item("rust borrows are checked at compile time");
+    let id = store.insert(&m).unwrap();
+    let got = store.get(&id).unwrap().unwrap();
+    assert_eq!(got.id, id);
+    assert_eq!(got.content, m.content);
+    assert_eq!(got.kind, m.kind);
+    assert_eq!(got.tags, m.tags);
+    assert_eq!(got.agent_id, "agent-1");
+    assert_eq!(got.importance, 0.8);
+    assert!(store.get("no-such-id").unwrap().is_none());
+}
+
+#[test]
+fn insert_with_out_of_range_importance_reads_back_clamped() {
+    let store = Store::open(":memory:").unwrap();
+    for (content, v, want) in [
+        ("clamp high", 999.0f32, 1.0f32),
+        ("clamp low", -5.0, 0.0),
+        ("clamp nan", f32::NAN, 0.5),
+        ("clamp normal", 0.7, 0.7),
+    ] {
+        let mut m = item(content);
+        m.importance = v;
+        let id = store.insert(&m).unwrap();
+        let got = store.get(&id).unwrap().unwrap().importance;
+        assert_eq!(got, want, "content={content} v={v}");
+    }
+}
+
+#[test]
+fn fts_finds_keywords_and_ranks() {
+    let store = Store::open(":memory:").unwrap();
+    let a = item("the parser walks the token stream");
+    let b = item("database schema migration steps");
+    let ia = store.insert(&a).unwrap();
+    let _ib = store.insert(&b).unwrap();
+    let hits = store.fts_search("parser tokens", 10).unwrap();
+    assert!(!hits.is_empty());
+    assert_eq!(hits[0].0.id, ia);
+    assert!(
+        hits[0].1 <= 0.0,
+        "bm25 rank should be negative-ish, got {}",
+        hits[0].1
+    );
+    assert!(store.fts_search("zzz-no-match", 10).unwrap().is_empty());
+}
+
+#[test]
+fn fts_survives_filler_words_in_nl_query() {
+    let store = Store::open(":memory:").unwrap();
+    let a = item("the parser walks the token stream");
+    let ia = store.insert(&a).unwrap();
+    // Every content token ANDed would match nothing; OR after stopword drop hits.
+    let hits = store.fts_search("what is the parser", 10).unwrap();
+    assert_eq!(hits[0].0.id, ia);
+    let hits = store
+        .fts_search("what is the parser token stream about", 10)
+        .unwrap();
+    assert_eq!(hits[0].0.id, ia);
+}
+
+#[test]
+fn fts_stays_in_sync_on_update_and_delete() {
+    let store = Store::open(":memory:").unwrap();
+    let mut m = item("original text about butterflies");
+    let id = store.insert(&m).unwrap();
+    assert_eq!(store.fts_search("butterflies", 5).unwrap().len(), 1);
+    m.id = id.clone();
+    m.content = "revised text about dragonflies".into();
+    store.update(&m).unwrap();
+    assert!(store.fts_search("butterflies", 5).unwrap().is_empty());
+    assert_eq!(store.fts_search("dragonflies", 5).unwrap()[0].0.id, id);
+    store.delete(&id).unwrap();
+    assert!(store.fts_search("dragonflies", 5).unwrap().is_empty());
+    assert!(
+        store.get(&id).unwrap().is_none(),
+        "soft-deleted rows read as gone"
+    );
+}
+
+#[test]
+fn set_embedding_and_knn_nearest_first() {
+    let store = Store::open(":memory:").unwrap();
+    // hand-made vectors: id-nearest shares direction with query
+    let q = one_hot(0);
+    let near = store.insert(&item("memory near")).unwrap();
+    let far = store.insert(&item("memory far")).unwrap();
+    let off = store.insert(&item("memory off")).unwrap();
+    store.set_embedding(&near, &axis_vec(0, 0.9)).unwrap();
+    store.set_embedding(&far, &axis_vec(3, 0.9)).unwrap();
+    store.set_embedding(&off, &axis_vec(6, 1.0)).unwrap();
+    let hits = store.knn(&q, 2).unwrap();
+    assert_eq!(hits.len(), 2);
+    assert_eq!(hits[0].0, near);
+    assert_eq!(hits[1].0, far);
+    assert!(hits[0].1 < hits[1].1);
+    // third match (off) must be excluded by k=2
+    let all = store.knn(&q, 3).unwrap();
+    assert_eq!(all.len(), 3);
+    assert_eq!(all[2].0, off);
+}
+
+#[test]
+fn knn_skips_memories_without_embedding_and_deleted() {
+    let store = Store::open(":memory:").unwrap();
+    let a = store.insert(&item("alpha")).unwrap();
+    let b = store.insert(&item("beta")).unwrap();
+    store.set_embedding(&a, &axis_vec(1, 1.0)).unwrap();
+    // b has no embedding; soft-delete a separate memory with embedding
+    let c = store.insert(&item("gamma")).unwrap();
+    store.set_embedding(&c, &axis_vec(2, 1.0)).unwrap();
+    store.delete(&c).unwrap();
+    let hits = store.knn(&axis_vec(1, 1.0), 10).unwrap();
+    assert_eq!(hits, vec![(a.clone(), 0.0f32)]);
+    let _ = b;
+}
+
+#[test]
+fn wrong_dimension_embedding_is_rejected() {
+    let store = Store::open(":memory:").unwrap();
+    let id = store.insert(&item("short")).unwrap();
+    assert!(store.set_embedding(&id, &[0.1, 0.2]).is_err());
+    assert!(store.knn(&[0.1, 0.2], 3).is_err());
+}
+
+#[test]
+fn file_store_reopens_with_data() {
+    let dir = std::env::temp_dir().join(format!("remem-store-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("test.db");
+    let _ = std::fs::remove_file(&path);
+    let id = {
+        let store = Store::open(path.to_str().unwrap()).unwrap();
+        store.insert(&item("persist me")).unwrap()
+    };
+    let store = Store::open(path.to_str().unwrap()).unwrap();
+    assert_eq!(store.get(&id).unwrap().unwrap().content, "persist me");
+    assert_eq!(store.fts_search("persist", 5).unwrap().len(), 1);
+    std::fs::remove_file(&path).ok();
+}
+
+#[test]
+fn list_respects_deleted_flag() {
+    let store = Store::open(":memory:").unwrap();
+    let a = store.insert(&item("keep")).unwrap();
+    let b = store.insert(&item("drop")).unwrap();
+    store.delete(&b).unwrap();
+    let live = store.list(false).unwrap();
+    assert!(live.iter().any(|m| m.id == a));
+    assert!(live.iter().all(|m| m.id != b));
+    assert_eq!(store.list(true).unwrap().len(), 2);
+}
+
+#[test]
+fn duplicate_insert_returns_same_id_and_no_new_row() {
+    let store = Store::open(":memory:").unwrap();
+    let id1 = store.insert(&item("the same lesson twice")).unwrap();
+    let id2 = store.insert(&item("the same lesson twice")).unwrap();
+    assert_eq!(id1, id2);
+    assert_eq!(store.list(false).unwrap().len(), 1);
+}
+
+#[test]
+fn near_duplicate_case_and_whitespace_dedups() {
+    let store = Store::open(":memory:").unwrap();
+    let id1 = store.insert(&item("  Spaced   OUT Lesson ")).unwrap();
+    let id2 = store.insert(&item("spaced out lesson")).unwrap();
+    assert_eq!(id1, id2);
+    assert_eq!(store.list(false).unwrap().len(), 1);
+    assert!(store.find_by_hash("nope").is_none());
+    let hash = remem_store::content_hash(&MemoryKind::Note, "SPACED   out LESSON");
+    assert_eq!(store.find_by_hash(&hash).unwrap(), id1);
+}
+
+#[test]
+fn same_text_different_kind_does_not_dedup() {
+    let store = Store::open(":memory:").unwrap();
+    let mut fact = item("shared text here");
+    fact.kind = MemoryKind::Fact;
+    let mut note = item("shared text here");
+    note.kind = MemoryKind::Note;
+    let id1 = store.insert(&fact).unwrap();
+    let id2 = store.insert(&note).unwrap();
+    assert_ne!(id1, id2);
+    assert_eq!(store.list(false).unwrap().len(), 2);
+}
+
+#[test]
+fn purge_removes_row_fts_and_vec() {
+    let store = Store::open(":memory:").unwrap();
+    let id = store.insert(&item("secret tokens live here")).unwrap();
+    store.set_embedding(&id, &axis_vec(0, 1.0)).unwrap();
+    assert_eq!(store.fts_search("secret tokens", 5).unwrap().len(), 1);
+    assert_eq!(store.knn(&axis_vec(0, 1.0), 5).unwrap().len(), 1);
+    assert!(store.purge(&id).unwrap());
+    assert!(store.get(&id).unwrap().is_none());
+    assert!(store.fts_search("secret tokens", 5).unwrap().is_empty());
+    assert!(store.knn(&axis_vec(0, 1.0), 5).unwrap().is_empty());
+    assert!(store.list(true).unwrap().iter().all(|m| m.id != id));
+    assert!(!store.purge(&id).unwrap(), "second purge finds nothing");
+}
+
+#[test]
+fn purge_unknown_returns_false() {
+    let store = Store::open(":memory:").unwrap();
+    assert!(!store.purge("no-such-id").unwrap());
+}
+
+#[test]
+fn second_writer_blocks_then_succeeds_under_contention() {
+    let dir = std::env::temp_dir().join(format!("remem-busy-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("busy.db");
+    let _ = std::fs::remove_file(&path);
+    let path = path.to_str().unwrap().to_string();
+    let a = Store::open(&path).unwrap();
+    let b = Store::open(&path).unwrap();
+    a.connection().execute_batch("BEGIN IMMEDIATE").unwrap();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        tx.send(b.insert(&item("written while another writer holds the lock")))
+            .unwrap();
+    });
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    // The first writer still holds the write txn: the second must be waiting,
+    // not failed with an instant SQLITE_BUSY and not done.
+    assert!(
+        rx.try_recv().is_err(),
+        "second writer returned while the first still held the write txn"
+    );
+    a.connection().execute_batch("COMMIT").unwrap();
+    let res = rx.recv().unwrap();
+    assert!(
+        res.is_ok(),
+        "second writer failed instead of waiting out the lock: {:?}",
+        res.err()
+    );
+    assert!(Store::open(&path)
+        .unwrap()
+        .get(&res.unwrap())
+        .unwrap()
+        .is_some());
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(format!("{}{}", path, suffix));
+    }
+}
+
+#[test]
+fn fts_matches_tag_word_absent_from_content() {
+    let store = Store::open(":memory:").unwrap();
+    let mut m = item("plain content with no special words");
+    m.tags = vec!["zirconium".into()];
+    let id = store.insert(&m).unwrap();
+    let hits = store.fts_search("zirconium", 5).unwrap();
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].0.id, id);
+    // tag index stays in sync on update
+    let mut u = store.get(&id).unwrap().unwrap();
+    u.tags = vec!["quartz".into()];
+    store.update(&u).unwrap();
+    assert!(store.fts_search("zirconium", 5).unwrap().is_empty());
+    assert_eq!(store.fts_search("quartz", 5).unwrap()[0].0.id, id);
+}
+
+#[test]
+fn fts_search_limit_saturates_at_1000() {
+    let store = Store::open(":memory:").unwrap();
+    for i in 0..1005 {
+        store
+            .insert(&item(&format!("bulk memory number {i}")))
+            .unwrap();
+    }
+    // usize::MAX also covers the negative-LIMIT case: a raw cast to i64
+    // would produce -1, which SQLite reads as "no limit".
+    assert_eq!(
+        store.fts_search("bulk memory", usize::MAX).unwrap().len(),
+        1000
+    );
+    assert_eq!(store.fts_search("bulk memory", 2_000).unwrap().len(), 1000);
+}
+
+// ---- query-side hybrid prefix arm (docs/stemmer-analysis.md sec.5) ----
+
+#[test]
+fn hybrid_fts_matches_stem_gap_auditors_to_audit() {
+    let store = Store::open(":memory:").unwrap();
+    // Q28 fixture line 28: content says "audit", query says "auditors".
+    let mut m = item("The February 20 audit report flagged the invoice reconciliation delay");
+    m.tags = vec!["audit".into()];
+    let id = store.insert(&m).unwrap();
+    // Decoys share the low-IDF filler arms ("about" matches abou*), like the
+    // real corpus, so the assertion tests bm25 ranking, not just presence.
+    for c in [
+        "unrelated kubernetes rollout",
+        "guidelines about commit messages",
+        "this note is about dns and about tls",
+    ] {
+        store.insert(&item(c)).unwrap();
+    }
+    let hits = store
+        .fts_search(
+            "did the auditors ever get back to us about that winter check",
+            5,
+        )
+        .unwrap();
+    assert_eq!(hits[0].0.id, id, "audi* arm must land the lexical hit");
+}
+
+#[test]
+fn hybrid_fts_adversarial_queries_match_no_junk_docs() {
+    let store = Store::open(":memory:").unwrap();
+    // The collision classes the doc names: work* = worker/workflow, etc.
+    for c in [
+        "the worker pod ran the workflow daily",
+        "review the revision notes in the postmortem",
+        "postgres connections and the post office box",
+    ] {
+        store.insert(&item(c)).unwrap();
+    }
+    for q in [
+        "what is the thing about stuff",
+        "how does this work with that",
+        "tell me about the thing thing",
+    ] {
+        assert!(
+            store.fts_search(q, 10).unwrap().is_empty(),
+            "adversarial query {q:?} matched junk"
+        );
+    }
+}
+
+#[test]
+fn knn_limit_saturates_at_1000() {
+    let store = Store::open(":memory:").unwrap();
+    for i in 0..3 {
+        let id = store.insert(&item(&format!("vec memory {i}"))).unwrap();
+        store.set_embedding(&id, &axis_vec(i, 1.0)).unwrap();
+    }
+    let hits = store.knn(&one_hot(0), usize::MAX).unwrap();
+    assert_eq!(hits.len(), 3);
+}
+
+fn one_hot(i: usize) -> Vec<f32> {
+    let mut v = vec![0.0f32; 768];
+    v[i] = 1.0;
+    v
+}
+
+fn axis_vec(i: usize, scale: f32) -> Vec<f32> {
+    let mut v = vec![0.0f32; 768];
+    v[i] = scale;
+    v
+}
+
+#[test]
+fn occurred_at_roundtrips_through_insert_get_list_and_fts() {
+    let store = Store::open(":memory:").unwrap();
+    let mut m = item("the march release shipped on the fifteenth");
+    m.occurred_at = Some(1_700_000_000);
+    let id = store.insert(&m).unwrap();
+    assert_eq!(
+        store.get(&id).unwrap().unwrap().occurred_at,
+        Some(1_700_000_000)
+    );
+    assert_eq!(
+        store.list(false).unwrap()[0].occurred_at,
+        Some(1_700_000_000)
+    );
+    let hits = store.fts_search("march release", 5).unwrap();
+    assert_eq!(hits[0].0.occurred_at, Some(1_700_000_000));
+    // absent stays absent
+    let plain = store.insert(&item("no event time")).unwrap();
+    assert_eq!(store.get(&plain).unwrap().unwrap().occurred_at, None);
+}
+
+/// A pre-occurred_at database must gain the column on open, not fail.
+#[test]
+fn open_migrates_a_database_without_the_occurred_at_column() {
+    let dir = std::env::temp_dir().join(format!("remem-migrate-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("old.db");
+    let _ = std::fs::remove_file(&path);
+    let legacy_id;
+    {
+        let store = Store::open(path.to_str().unwrap()).unwrap();
+        legacy_id = store.insert(&item("legacy row")).unwrap();
+        store
+            .connection()
+            .execute_batch("ALTER TABLE memories DROP COLUMN occurred_at")
+            .unwrap();
+    }
+    let store = Store::open(path.to_str().unwrap()).unwrap();
+    assert_eq!(store.get(&legacy_id).unwrap().unwrap().occurred_at, None);
+    let mut m = item("backfilled row");
+    m.occurred_at = Some(42);
+    let id = store.insert(&m).unwrap();
+    assert_eq!(store.get(&id).unwrap().unwrap().occurred_at, Some(42));
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(format!("{}{}", path.display(), suffix));
+    }
+}
+
+#[test]
+fn open_old_db_without_new_columns_migrates() {
+    let dir = std::env::temp_dir().join(format!("remem-old-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&dir);
+    // Simulate a pre-occurred_at/pre-content_hash database.
+    {
+        let conn = rusqlite::Connection::open(&dir).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE memories(id TEXT PRIMARY KEY, kind TEXT, content TEXT, tags TEXT, agent_id TEXT, session_id TEXT, importance REAL, created_at INTEGER, updated_at INTEGER, deleted INTEGER DEFAULT 0)",
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO memories VALUES (?1,'note','legacy row','[]','a','s',0.5,1,1,0)",
+            rusqlite::params!["legacy-id"],
+        )
+        .unwrap();
+    }
+    let store = Store::open(dir.to_str().unwrap()).unwrap();
+    let got = store.get("legacy-id").unwrap().unwrap();
+    assert_eq!(got.content, "legacy row");
+    assert!(got.occurred_at.is_none());
+    let _ = std::fs::remove_file(&dir);
+}

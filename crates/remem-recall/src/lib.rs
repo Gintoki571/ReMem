@@ -1,0 +1,427 @@
+//! ReMem v3 recall: weighted RRF fusion over FTS + vector (+ optional graph)
+//! lists, a recency band on the fused score, and a Store+Graph facade.
+
+pub mod rank;
+pub mod stub;
+
+pub use rank::{
+    apply_floor, final_score, fuse, is_content_free, pack_by_budget, recency_score, rrf, tag_boost,
+    tokens, Fused, Ranking, DEFAULT_HALF_LIFE_DAYS, DEFAULT_RRF_K,
+};
+pub use stub::StubEmbedder;
+
+use anyhow::{anyhow, Context, Result};
+use remem_graph::Graph;
+use remem_store::{content_hash, Store};
+use remem_types::{MemoryItem, RecallHit, RecallQuery};
+use std::collections::HashSet;
+
+/// Minimal local embedding contract so this crate is not blocked by
+/// remem-embed. Vectors must be 768-dim (the store's vec0 width); the real
+/// embedder is wired in at integration.
+pub trait Embed {
+    fn embed(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>>;
+}
+
+/// How many top seeds get one graph hop during expansion.
+const GRAPH_EXPANSION_SEEDS: usize = 8;
+
+/// Default score floor: 0.0 means off, so recall is unchanged unless a caller
+/// opts in (`--min-score`). Re-measured on docs/eval-fixtures.json (40 memories,
+/// debug binary, Cpu 768d embedder, fresh db) at the k=30 / fts 1.0 /
+/// vector 0.5 weights: the 3 pure-stopword adversarial queries (`expect: ""`)
+/// top out at 0.0161-0.0169, and the lowest top-1 over all 37 answerable
+/// queries is 0.0438, so the usable band is 0.017..0.043. 0.02 sits inside it
+/// and still drops all junk while keeping every answerable top-1; it is no
+/// longer the midpoint of the band, but moving it is not warranted by one
+/// corpus. It stays off by default because a floor that is wrong for one corpus
+/// silently returns [].
+pub const DEFAULT_MIN_SCORE: f64 = 0.0;
+
+/// Max L2 distance for a `remember` near-duplicate report. Vectors are
+/// L2-normalized, so d = sqrt(2 - 2 cos): d = 0.48 is cos ~ 0.885.
+///
+/// Calibration (`crates/remem-recall/examples/near-dup-calibrate.rs`, real
+/// Cpu 768d embedder over all 40 docs/eval-fixtures.json memories, 780 pairs):
+/// the 4 deliberate paraphrase pairs measure 0.4176, 0.4313, 0.4331 and
+/// 0.6349; the closest NON-paraphrase pair (two "docs live in the wiki"
+/// notes) measures 0.5183. So no single threshold fires on all four
+/// paraphrases while staying silent on every distinct pair — the 3-against-1
+/// split is what a tight threshold buys. 0.48 sits in the gap: it fires on 3
+/// of 4 paraphrases (misses only 22/35, the loosest rewrite) and stays silent
+/// on all 776 distinct pairs. Below it the signal degrades to noise; a writer
+/// shown near-duplicates on every second save will ignore them. 0.48 is also
+/// the round midpoint of the usable 0.44..0.51 band. Re-check on a new corpus
+/// before moving it: the gap is fixture-specific, not universal.
+pub const SIMILAR_MAX_DISTANCE: f32 = 0.48;
+
+/// How many neighbours the write probe pulls before thresholding. 3 per the
+/// tracker; a 4th near-dup would itself be a re-save worth seeing, but the
+/// writer only needs enough to recognize the duplicate.
+const SIMILAR_PROBE_K: usize = 3;
+
+/// Per-list depth for candidate generation. bm25 and knn both truncate here;
+/// `4 * k` leaves room for fusion to disagree. ponytail: constant depth, no
+/// adaptive recall until ranking quality is measured on real data.
+const LIST_DEPTH_FACTOR: usize = 4;
+
+/// Relative weight of each ranked list in the fusion.
+#[derive(Debug, Clone, Copy)]
+pub struct Weights {
+    pub fts: f64,
+    pub vector: f64,
+    pub graph: f64,
+}
+
+impl Default for Weights {
+    /// Winner of the docs/weight-spike.md grid search (35/37 recall@1 vs 31/37
+    /// at 1.0/1.0): the lexical list decides, the embedder gets a half-weight
+    /// vote. Graph stays 1.0 — the fixtures carry no memory-to-memory edges, so
+    /// the spike learned nothing about it and there is no evidence to move it.
+    fn default() -> Self {
+        Self {
+            fts: 1.0,
+            vector: 0.5,
+            graph: 1.0,
+        }
+    }
+}
+
+/// Store + Graph + embedder, ranked recall on top.
+pub struct RecallEngine {
+    store: Store,
+    graph: Option<Graph>,
+    embed: Box<dyn Embed>,
+    weights: Weights,
+    half_life_days: f64,
+    min_score: f64,
+}
+
+impl RecallEngine {
+    /// Engine over an open store with no graph projection.
+    pub fn new(store: Store, embed: Box<dyn Embed>) -> Self {
+        Self {
+            store,
+            graph: None,
+            embed,
+            weights: Weights::default(),
+            half_life_days: DEFAULT_HALF_LIFE_DAYS,
+            min_score: DEFAULT_MIN_SCORE,
+        }
+    }
+
+    /// Enable graph projection and neighbour expansion on the same db file.
+    pub fn with_graph(mut self, graph: Graph) -> Self {
+        self.graph = Some(graph);
+        self
+    }
+
+    pub fn with_weights(mut self, weights: Weights) -> Self {
+        self.weights = weights;
+        self
+    }
+
+    pub fn with_half_life_days(mut self, days: f64) -> Self {
+        self.half_life_days = days;
+        self
+    }
+
+    /// Drop recall hits scoring below `min_score`. `0.0` disables the floor.
+    pub fn with_min_score(mut self, min_score: f64) -> Self {
+        self.min_score = min_score;
+        self
+    }
+
+    pub fn store(&self) -> &Store {
+        &self.store
+    }
+
+    pub fn graph(&self) -> Option<&Graph> {
+        self.graph.as_ref()
+    }
+
+    /// Embed `texts` in one batch, checking the embedder kept its contract.
+    fn embed_batch(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>> {
+        let out = self.embed.embed(texts)?;
+        if out.len() != texts.len() {
+            return Err(anyhow!(
+                "embedder returned {} vectors for {} texts",
+                out.len(),
+                texts.len()
+            ));
+        }
+        Ok(out)
+    }
+
+    fn embed_one(&self, text: &str) -> Result<Vec<f32>> {
+        let mut v = self.embed_batch(&[text])?;
+        Ok(v.pop().expect("length checked above"))
+    }
+
+    /// Insert, project onto the graph, and index the embedding. Returns the
+    /// id plus near-duplicate neighbours probed (before insert) against the
+    /// already-stored embeddings: up to `SIMILAR_PROBE_K` memories closer than
+    /// [`SIMILAR_MAX_DISTANCE`], as (id, L2 distance). Exact duplicates
+    /// dedup on content_hash and report nothing (the store returns their id).
+    pub fn remember(&self, item: &MemoryItem) -> Result<(String, Vec<(String, f32)>)> {
+        let vec = self.embed_one(&item.content)?;
+        let is_dup = self
+            .store
+            .find_by_hash(&content_hash(&item.kind, &item.content))
+            .is_some();
+        let similar: Vec<(String, f32)> = if is_dup {
+            Vec::new()
+        } else {
+            self.store
+                .knn(&vec, SIMILAR_PROBE_K)?
+                .into_iter()
+                .filter(|(_id, dist)| *dist <= SIMILAR_MAX_DISTANCE)
+                .collect()
+        };
+        let id = self.store.insert(item).context("store insert")?;
+        self.store
+            .set_embedding(&id, &vec)
+            .context("set_embedding")?;
+        if let Some(g) = &self.graph {
+            g.attach(item).map_err(|e| anyhow!("graph attach: {e}"))?;
+        }
+        Ok((id, similar))
+    }
+
+    /// Remove a memory from store and graph.
+    pub fn forget(&self, id: &str) -> Result<()> {
+        self.store.delete(id).context("store delete")?;
+        if let Some(g) = &self.graph {
+            g.forget(id).map_err(|e| anyhow!("graph forget: {e}"))?;
+        }
+        Ok(())
+    }
+
+    /// Directed edge between two memories. Nodes must already be attached.
+    pub fn link(&self, from: &str, to: &str, rel: Option<&str>) -> Result<()> {
+        let g = self
+            .graph
+            .as_ref()
+            .ok_or_else(|| anyhow!("engine has no graph open"))?;
+        let rel = rel.unwrap_or(remem_graph::DEFAULT_REL);
+        g.link(from, to, rel)
+            .map_err(|e| anyhow!("graph link: {e}"))
+    }
+
+    pub fn list(&self) -> Result<Vec<MemoryItem>> {
+        Ok(self.store.list(false)?)
+    }
+
+    /// Combined counts for `remem stats`.
+    pub fn stats(&self) -> Result<serde_json::Value> {
+        let memories = self.store.list(false)?.len();
+        let mut out = serde_json::json!({ "memories": memories });
+        if let Some(g) = &self.graph {
+            let s = g.stats().map_err(|e| anyhow!("graph stats: {e}"))?;
+            out["graph"] = s;
+        }
+        Ok(out)
+    }
+
+    /// Ranked recall over FTS, vector and (optionally) graph expansion.
+    /// `k == 0` means "no results": returns [] before any FTS/vector work.
+    /// (list/central/path limits are separate paths and keep their defaults.)
+    pub fn recall(&self, query: &RecallQuery) -> Result<Vec<RecallHit>> {
+        if query.k == 0 {
+            return Ok(Vec::new());
+        }
+        let text = query.text.trim();
+        if text.is_empty() {
+            return Ok(Vec::new());
+        }
+        // reason: query-empty. No FTS/vector calls: content-free queries have
+        // no lexical anchor, so any hit would be arbitrary (adversarial-battery #4).
+        if is_content_free(text) {
+            return Ok(Vec::new());
+        }
+        let k = query.k;
+        let depth = LIST_DEPTH_FACTOR * k;
+        let now = MemoryItem::now();
+
+        // Filtered id set; an unfiltered list would leak soft-scoped hits.
+        let allowed: HashSet<String> = self
+            .store
+            .list(false)?
+            .into_iter()
+            .filter(|m| matches(m, query))
+            .map(|m| m.id)
+            .collect();
+
+        let fts: Vec<String> = self
+            .store
+            .fts_search(text, depth)?
+            .into_iter()
+            .map(|(m, _bm25)| m.id)
+            .filter(|id| allowed.contains(id))
+            .collect();
+
+        let qvec = self.embed_one(text)?;
+        let vector: Vec<String> = self
+            .store
+            .knn(&qvec, depth)?
+            .into_iter()
+            .map(|(id, _dist)| id)
+            .filter(|id| allowed.contains(id))
+            .collect();
+
+        // Graph expansion: neighbours of the top fts+vector seeds, fused as a
+        // third list so linked-but-not-matched memories can surface.
+        let graph_ids: Vec<String> = if let Some(g) = &self.graph {
+            let seeds = fuse(
+                &[
+                    Ranking {
+                        name: "fts",
+                        ids: &fts,
+                        weight: self.weights.fts,
+                    },
+                    Ranking {
+                        name: "vector",
+                        ids: &vector,
+                        weight: self.weights.vector,
+                    },
+                ],
+                DEFAULT_RRF_K,
+            );
+            let mut seen = HashSet::new();
+            let mut nbrs = Vec::new();
+            for seed in seeds.iter().take(k.min(GRAPH_EXPANSION_SEEDS)) {
+                for (nid, _rel) in g
+                    .neighbors(&seed.id)
+                    .map_err(|e| anyhow!("graph neighbors: {e}"))?
+                {
+                    if allowed.contains(&nid) && seen.insert(nid.clone()) {
+                        nbrs.push(nid);
+                    }
+                }
+            }
+            nbrs
+        } else {
+            Vec::new()
+        };
+
+        let mut lists = vec![
+            Ranking {
+                name: "fts",
+                ids: &fts,
+                weight: self.weights.fts,
+            },
+            Ranking {
+                name: "vector",
+                ids: &vector,
+                weight: self.weights.vector,
+            },
+        ];
+        if !graph_ids.is_empty() {
+            lists.push(Ranking {
+                name: "graph",
+                ids: &graph_ids,
+                weight: self.weights.graph,
+            });
+        }
+
+        let fused = fuse(&lists, DEFAULT_RRF_K);
+        let mut hits: Vec<RecallHit> = Vec::new();
+        for entry in fused {
+            // Strict decode: skip a row that vanished or fails to decode
+            // instead of failing the whole recall.
+            let Ok(Some(item)) = self.store.get(&entry.id) else {
+                continue;
+            };
+            // Two clocks: rank by when it happened, not when it was typed.
+            let recency = recency_score(item.event_time(), self.half_life_days, now);
+            let mut reasons = entry.reasons;
+            if recency > 0.9 {
+                reasons.push("recent".to_string());
+            }
+            if item.importance >= 0.8 {
+                reasons.push("important".to_string());
+            }
+            let score = final_score(entry.score, recency);
+            hits.push(RecallHit {
+                item,
+                score,
+                reasons,
+            });
+        }
+        // Floor first, boost second. The tag boost is a 2.0x multiplier, so a
+        // hit that is junk on its own merits can be multiplied past the floor
+        // (Q39: junk at 0.0161/0.0122 pre-boost passing a 0.017 floor at
+        // 0.0323/0.0244). Flooring the unboosted score means the floor judges
+        // the fusion+recency evidence and the boost can only lift something
+        // already above it. Boosting first would make the floor a statement
+        // about tags, not about relevance. Order: rank -> truncate -> floor ->
+        // boost -> re-sort -> budget pack. Pack stays last because the boost
+        // can change which hit is the top hit it must always keep.
+        hits.sort_by(|a, b| b.score.total_cmp(&a.score));
+        hits.truncate(k);
+        let mut hits = apply_floor(hits, self.min_score);
+        // Tag channel: FTS and the embedder both see content only, so when a
+        // query's lexical anchor lives in tags ("decide" vs `decision`) nothing
+        // else can rank it. See rank::tag_boost for the matching rules.
+        {
+            let tagged: Vec<(&str, &[String], bool)> = hits
+                .iter()
+                .map(|h| {
+                    let has_fts = h.reasons.iter().any(|r| r.starts_with("fts#"));
+                    (h.item.id.as_str(), &h.item.tags[..], has_fts)
+                })
+                .collect();
+            let factors: Vec<f64> = tag_boost(&tagged, &tokens(text))
+                .into_iter()
+                .map(|(_, f)| f)
+                .collect();
+            for (hit, factor) in hits.iter_mut().zip(factors) {
+                if factor > 1.0 {
+                    hit.score *= factor;
+                    hit.reasons.push("tag".to_string());
+                }
+            }
+        }
+        hits.sort_by(|a, b| b.score.total_cmp(&a.score));
+        let hits = match query.max_chars {
+            Some(max) => pack_by_budget(hits, max),
+            None => hits,
+        };
+        Ok(hits)
+    }
+}
+
+fn matches(item: &MemoryItem, query: &RecallQuery) -> bool {
+    if let Some(kinds) = &query.kinds {
+        if !kinds.contains(&item.kind) {
+            return false;
+        }
+    }
+    if let Some(tags) = &query.tags {
+        if !tags.iter().any(|t| item.tags.contains(t)) {
+            return false;
+        }
+    }
+    if let Some(a) = &query.agent_id {
+        if item.agent_id != *a {
+            return false;
+        }
+    }
+    if let Some(sid) = &query.session_id {
+        if item.session_id != *sid {
+            return false;
+        }
+    }
+    let t = item.event_time();
+    if let Some(since) = &query.since {
+        if t < *since {
+            return false;
+        }
+    }
+    if let Some(until) = &query.until {
+        if t > *until {
+            return false;
+        }
+    }
+    true
+}

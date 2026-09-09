@@ -1,0 +1,12 @@
+[package]
+name = "remem-store"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+remem-types = { path = "../remem-types" }
+rusqlite = { version = "0.32", features = ["bundled"] }
+sqlite-vec = "0.1.9"
+zerocopy = "0.8"
+serde_json = "1"
+sha2 = "0.10"

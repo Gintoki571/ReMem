@@ -1,0 +1,31 @@
+# Security review — ReMem v3 Rust workspace
+
+- Rev reviewed: `ecd725aa4127c18e9cb5df3f580710fe9fcfc585` (branch `v3`).
+- Dirty files at review time (content as on disk, not committed): `crates/remem-recall/src/lib.rs`, `crates/remem-recall/src/main.rs`, `crates/remem-recall/src/rank.rs`, `crates/remem-recall/tests/engine.rs`, `crates/remem-types/src/lib.rs`.
+- Scope: `crates/*/src/*.rs` (remem-types, remem-store, remem-graph, remem-embed, remem-recall, remem-mcp) plus `crates/remem-store/schema.sql` for trigger behavior. Method: manual read of every file, focused on injection, path handling, `unsafe`, panic paths on untrusted input, secret handling, FTS5/Cypher construction, file permissions.
+- Headline: no SQL/Cypher injection found (all queries use bound parameters; FTS5 input is quoted; Cypher uses `cypher_builder`/`query_builder` params). No secrets in scope. Findings below are the real residual issues; no filler added.
+
+## Findings
+
+| Severity | Location | Issue | Fix suggestion |
+|---|---|---|---|
+| Medium | `crates/remem-store/src/lib.rs` (`delete`) + `schema.sql` triggers | `forget` is soft-delete only (`deleted = 1`). The row's content stays in `memories_fts` (the `AU` trigger fires only on content change, and no `delete` op is issued) and its embedding stays in `mem_vec` forever. Anyone reading the DB file recovers "forgotten" memories and vectors. | On delete, also run `DELETE FROM mem_vec WHERE rowid = ?`, issue the FTS5 `delete` op for the row (or hard-delete + `VACUUM`), and document that soft-delete is not erasure. |
+| Medium | `crates/remem-mcp/src/main.rs` (`main` loop, `read_message`) | Any framing/parse failure (`bad Content-Length`, invalid JSON, short read) propagates via `?` out of `main`, so one malformed stdin line kills the whole MCP server. | Handle per-message errors inside the loop: reply `-32700` parse error and continue instead of exiting. |
+| Medium | `crates/remem-mcp/src/main.rs` (`read_message`) | `Content-Length: N` does `vec![0u8; n]` with no cap, so a peer can force a multi-GB allocation (OOM/abort). | Cap `N` (e.g. 16 MiB), reject larger with a JSON-RPC error, and consider `take(n)` streaming instead of one allocation. |
+| Medium | `crates/remem-mcp/src/main.rs` (`dispatch` `recall`/`list`), `crates/remem-recall/src/lib.rs` (`recall`), `crates/remem-store/src/lib.rs` (`fts_search`, `knn`) | No upper bound on `k`/`limit`. `k` arrives as `u64` and is cast to `usize`/`i64`: huge values overflow `LIST_DEPTH_FACTOR * k`, and `k as i64` can go negative, where SQLite `LIMIT -1` means "no limit" (full-table read into memory). | Clamp `k`/`limit` to a sane max (e.g. 1000), use checked/saturating math for depth, and reject or clamp negative `i64` limits. |
+| Medium | `crates/remem-store/src/lib.rs` (`Store::open`) vs `crates/remem-graph/src/lib.rs` (`Graph::open`) | The graph connection sets a 5 s `busy_timeout`; the store connection sets none, although both write the same file concurrently (store insert + graph attach). Store writes under contention fail with `SQLITE_BUSY`. | Set the same `busy_timeout` on the store connection. |
+| Low | `crates/remem-recall/src/main.rs` (`engine`), `crates/remem-mcp/src/main.rs` (`engine`) | DB file and parent dirs are created with the process umask; a memory store can end up world-readable and there is no `chmod`/documentation. | Create dirs `0700` / DB `0600` (or document the expectation) so stored memories are private by default. |
+| Low | `crates/remem-store/src/lib.rs` (`get`, `find_by_hash`) | Query errors are swallowed (`.ok().flatten()` → `None`), so corruption surfaces as "not found". The MCP `forget` tool then reports `forgotten: false` for what may be a DB failure. | Return `rusqlite::Result<Option<..>>` (or log) instead of mapping every error to `None`. |
+| Low | `crates/remem-store/src/lib.rs` (`row_to_item`) | Unknown `kind` values silently coerce to `Note`; unparseable `tags` JSON silently becomes `[]`. Corrupt/tampered rows are misread without any signal. | Propagate a decode error (or preserve the raw value) instead of silent defaults. |
+| Low | `crates/remem-recall/src/main.rs` (`parse_time`, `days_from_civil`) | Year is an unbounded `i64` from the CLI; extreme values overflow the civil-date arithmetic and panic (debug) or wrap (release) on a local CLI arg. | Range-check the year (e.g. 0001–9999) and use checked arithmetic. |
+| Low | `crates/remem-store/src/lib.rs` (`register_vec_extension`), `crates/remem-embed/src/lib.rs` (`load_from_with_device`) | Two `unsafe` blocks form the trust boundary: a `transmute` of `sqlite3_vec_init` to a local fn type (signature drift = UB) and `mmap` of `model.safetensors` from the `REMEM_EMBED_MODEL_DIR`-directed path with no integrity check. | Add a comment/assertion pinning the expected sqlite-vec ABI, and document that the model dir is trusted input (or verify a checksum). |
+| Low | `crates/remem-store/src/lib.rs` (`open_path`), `crates/remem-recall/src/main.rs` (`expand`), `crates/remem-mcp/src/main.rs` (`db_path`) | Fragile DB path handling: non-UTF8 `REMEM_DB` becomes `""` via `unwrap_or_default()`; `~/` with `HOME` unset creates a literal `~` directory in cwd; `create_dir_all` failures are ignored (`.ok()`), surfacing later as a confusing open error. | Use `PathBuf` from `OsStr` (no UTF8 loss), error clearly when `HOME` is unset, and propagate `create_dir_all` errors with context. |
+
+## Explicit non-findings (checked, no action)
+
+- SQL injection: all store queries bind via `params!`; the one `format!` (`list`) interpolates a `bool`, not input.
+- FTS5 injection: `fts_quote` quotes every token and the result is bound to `?2`; worst case is a no-match, not a syntax break-out.
+- Cypher injection: `neighbors_detail` uses `cypher_builder().param(...)`; `cypher()` binds object params via `query_builder`. Raw-string `query()`/`query_builder()` are library-only (not reachable from CLI/MCP tools); keep it that way or add an allowlist if ever exposed.
+- `rel` edge types: sanitized to `_` by graphqlite (documented on `link`).
+- Panic paths: no `unwrap`/`expect` on untrusted input in non-test code (remaining ones are on checked lengths, clocks, or infallible tag serialization). Integer-overflow cases above are the exceptions.
+- Secrets: none present in scope; nothing to redact or rotate.
