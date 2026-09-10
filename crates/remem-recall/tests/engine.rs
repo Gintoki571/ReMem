@@ -320,7 +320,11 @@ fn weights_tune_fts_vs_vector() {
     // fts zeroed the ranking is pure vector, so b wins.
     let (e, path) = engine(
         "weights",
-        FakeEmbedder::new(&[("keyword", 0), ("keyword only", 1)]),
+        FakeEmbedder::new(&[
+            ("keyword", 0),
+            ("keyword only", 1),
+            ("pastry content", 2), // b: vector#1 only (distinct slot; tie-order fragile otherwise)
+        ]),
     );
     e.remember(&item("keyword only")).unwrap(); // a: fts#1 + vector#2
     e.remember(&item("pastry content")).unwrap(); // b: vector#1 only

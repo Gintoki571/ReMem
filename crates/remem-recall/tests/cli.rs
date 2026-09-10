@@ -74,6 +74,67 @@ fn cli_roundtrip() {
     }
 }
 
+/// `remem trace <id>` walks the full correction chain oldest -> newest.
+/// The chain link is set directly (no CLI supersede command yet); the CLI
+/// surface under test is trace itself. Unknown id -> empty output.
+#[test]
+fn cli_trace_walks_correction_chain_from_both_ends() {
+    let db = std::env::temp_dir().join(format!("remem-cli-trace-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+
+    let v1 = remem(&db, &["remember", "fact", "deploy uses port 8080"])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+    let v2 = remem(&db, &["remember", "fact", "deploy uses port 9090"])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+
+    // Hand-set the chain link: v2 replaces v1 (same as Store::supersede).
+    // rusqlite is not a test dep here, so go through sqlite3 CLI; if absent,
+    // fall back to the store crate.
+    let sql = format!("UPDATE memories SET supersedes = '{v1}' WHERE id = '{v2}';");
+    let out = Command::new("sqlite3")
+        .arg(&db)
+        .arg(sql)
+        .output()
+        .expect("run sqlite3");
+    assert!(
+        out.status.success(),
+        "sqlite3: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+
+    // From the newest end: full chain oldest -> newest.
+    let t = remem(&db, &["trace", &v2]);
+    let ids: Vec<&str> = t.lines().collect();
+    assert_eq!(
+        ids,
+        vec![v1.as_str(), v2.as_str()],
+        "trace from newest: {t}"
+    );
+
+    // From the oldest end: same chain.
+    let t = remem(&db, &["trace", &v1]);
+    let ids: Vec<&str> = t.lines().collect();
+    assert_eq!(
+        ids,
+        vec![v1.as_str(), v2.as_str()],
+        "trace from oldest: {t}"
+    );
+
+    // Unknown id: empty output, no error.
+    let t = remem(&db, &["trace", "no-such-id"]);
+    assert!(t.trim().is_empty(), "unknown id: {t}");
+
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
+
 /// `validate` reports graph problems on stdout and exits 1; a healthy db exits 0.
 #[test]
 fn cli_validate_flags_orphans_and_passes_linked_memories() {

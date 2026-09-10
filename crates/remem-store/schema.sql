@@ -10,10 +10,26 @@ CREATE TABLE IF NOT EXISTS memories (
   updated_at INTEGER NOT NULL,
   occurred_at INTEGER,
   deleted INTEGER NOT NULL DEFAULT 0,
-  content_hash TEXT
+  content_hash TEXT,
+  -- Correction chain (issue #7): the OLD row points at the id that replaces
+  -- it; superseded_at is the unix second the row was superseded. Superseded
+  -- rows stay on disk for trace/audit but are hidden from every read path.
+  supersedes TEXT,
+  superseded_at INTEGER
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash);
+-- Partial: only LIVE rows hold a content hash. A superseded row frees its
+-- hash so the same content can be re-learned under a new id.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash)
+  WHERE deleted = 0 AND superseded_at IS NULL;
+
+-- Forget audit trail (issue #7): rowid order = insertion order, so
+-- ORDER BY rowid DESC is newest-first. undo_forget consumes one event.
+CREATE TABLE IF NOT EXISTS forget_events (
+  id INTEGER PRIMARY KEY,
+  memory_id TEXT NOT NULL,
+  forgotten_at INTEGER NOT NULL
+);
 
 -- CHOICE: separate `tags` column (not concatenated content+tags) so tag words
 -- match with a higher bm25 column weight (content 1.0, tags 2.0 in fts_search).

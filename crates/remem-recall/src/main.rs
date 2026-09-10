@@ -127,6 +127,11 @@ enum Cmd {
         #[arg(long, default_value_t = 10)]
         limit: usize,
     },
+    /// Correction chain of a memory, oldest -> newest (empty if unknown)
+    Trace {
+        /// Id of any version in the chain
+        id: String,
+    },
     /// Shortest memory-to-memory path as `from` .. `to` lines (empty if unreachable)
     Path {
         /// Id of the start memory
@@ -400,6 +405,13 @@ fn main() -> Result<()> {
                 .take(limit)
             {
                 println!("{id}  {score:.6}");
+            }
+        }
+        Cmd::Trace { id } => {
+            // Unknown id -> empty chain, mirroring related/path emptiness.
+            let eng = engine(&cli.db)?;
+            for cid in eng.store().trace(&id).context("trace")? {
+                println!("{cid}");
             }
         }
         Cmd::Path { from, to } => {

@@ -55,6 +55,8 @@ impl Store {
         for ddl in [
             "ALTER TABLE memories ADD COLUMN occurred_at INTEGER",
             "ALTER TABLE memories ADD COLUMN content_hash TEXT",
+            "ALTER TABLE memories ADD COLUMN supersedes TEXT",
+            "ALTER TABLE memories ADD COLUMN superseded_at INTEGER",
         ] {
             match conn.execute_batch(ddl) {
                 Ok(()) => {}
@@ -68,11 +70,13 @@ impl Store {
         Ok(Self { conn })
     }
 
-    /// Existing id for this content hash, if any (includes soft-deleted rows).
+    /// Existing id for this content hash, if any. Soft-deleted and superseded
+    /// rows never block dedup: their hash is freed so the same content can be
+    /// re-learned under a new id.
     pub fn find_by_hash(&self, hash: &str) -> Option<String> {
         self.conn
             .query_row(
-                "SELECT id FROM memories WHERE content_hash = ?1",
+                "SELECT id FROM memories WHERE content_hash = ?1 AND deleted = 0 AND superseded_at IS NULL",
                 params![hash],
                 |r| r.get(0),
             )
@@ -113,7 +117,7 @@ impl Store {
         self.conn
             .query_row(
                 "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
-                 FROM memories WHERE id = ?1 AND deleted = 0",
+                 FROM memories WHERE id = ?1 AND deleted = 0 AND superseded_at IS NULL",
                 params![id],
                 row_to_item,
             )
@@ -160,20 +164,170 @@ impl Store {
         Ok(true)
     }
 
-    /// Soft-delete: sets deleted = 1. get/fts_search/knn then skip the row.
+    /// Soft-delete: sets deleted = 1 and records a forget event.
+    /// get/fts_search/knn then skip the row.
     pub fn delete(&self, id: &str) -> rusqlite::Result<()> {
-        self.conn.execute(
+        let n = self.conn.execute(
             "UPDATE memories SET deleted = 1, updated_at = ?2 WHERE id = ?1 AND deleted = 0",
             params![id, MemoryItem::now()],
         )?;
+        if n > 0 {
+            self.conn.execute(
+                "INSERT INTO forget_events (memory_id, forgotten_at) VALUES (?1, ?2)",
+                params![id, MemoryItem::now()],
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Correction chain (issue #7): in ONE transaction, mark the old row
+    /// superseded (still on disk, hidden from every read path) and insert the
+    /// replacement with `supersedes` pointing back at the old id. No FOREIGN
+    /// KEY: the chain is walked in Rust (trace), so hostile data cannot trap
+    /// inserts. Errors when the old id is unknown or already superseded.
+    pub fn supersede(&self, old_id: &str, replacement: &MemoryItem) -> rusqlite::Result<String> {
+        let tx = self.conn.unchecked_transaction()?;
+        let superseded = tx.execute(
+            "UPDATE memories SET superseded_at = ?2
+             WHERE id = ?1 AND deleted = 0 AND superseded_at IS NULL",
+            params![old_id, MemoryItem::now()],
+        )?;
+        if superseded == 0 {
+            return Err(rusqlite::Error::InvalidParameterName(format!(
+                "cannot supersede '{old_id}': unknown, deleted, or already superseded"
+            )));
+        }
+        tx.execute(
+            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, deleted, content_hash, supersedes)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11, ?12)",
+            params![
+                replacement.id,
+                replacement.kind.as_str(),
+                replacement.content,
+                serde_json::to_string(&replacement.tags).expect("tags serialize"),
+                replacement.agent_id,
+                replacement.session_id,
+                MemoryItem::clamp_importance(replacement.importance) as f64,
+                replacement.created_at,
+                replacement.updated_at,
+                replacement.occurred_at,
+                content_hash(&replacement.kind, &replacement.content),
+                old_id,
+            ],
+        )?;
+        tx.commit()?;
+        Ok(replacement.id.clone())
+    }
+
+    /// Full correction chain, oldest -> newest. The `supersedes` pointer lives
+    /// on the NEW row and points at the id it replaces, so the backward walk
+    /// (toward older versions) follows the row's own pointer with a HashSet
+    /// guard, and the forward walk (toward newer versions) uses the inverse
+    /// lookup `SELECT id WHERE supersedes = ?` with a chain-membership guard.
+    /// Both guards terminate hand-edited cycles. Unknown id -> empty chain.
+    pub fn trace(&self, id: &str) -> rusqlite::Result<Vec<String>> {
+        let known: Option<i64> = self
+            .conn
+            .query_row("SELECT 1 FROM memories WHERE id = ?1", params![id], |r| {
+                r.get(0)
+            })
+            .optional()?;
+        if known.is_none() {
+            return Ok(Vec::new());
+        }
+        // Backward: id, its predecessor, ... (newest -> oldest walk order).
+        let mut back: Vec<String> = Vec::new();
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut cur = id.to_string();
+        loop {
+            if !seen.insert(cur.clone()) {
+                break;
+            }
+            back.push(cur.clone());
+            let prev: Option<String> = self
+                .conn
+                .query_row(
+                    "SELECT supersedes FROM memories WHERE id = ?1",
+                    params![cur],
+                    |r| r.get(0),
+                )
+                .optional()?
+                .flatten();
+            match prev {
+                Some(p) => cur = p,
+                None => break,
+            }
+        }
+        // The oldest end heads the chain; forward walk appends newer versions.
+        let mut chain: Vec<String> = back.into_iter().rev().collect();
+        cur = id.to_string();
+        loop {
+            let next: Option<String> = self
+                .conn
+                .query_row(
+                    "SELECT id FROM memories WHERE supersedes = ?1",
+                    params![cur],
+                    |r| r.get(0),
+                )
+                .optional()?
+                .flatten();
+            match next {
+                Some(n) if !chain.contains(&n) => {
+                    chain.push(n.clone());
+                    cur = n;
+                }
+                _ => break,
+            }
+        }
+        Ok(chain)
+    }
+
+    /// Recorded forget events, newest first. `limit` clamps at MAX_LIMIT.
+    pub fn forget_events(&self, limit: usize) -> rusqlite::Result<Vec<String>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT memory_id FROM forget_events ORDER BY rowid DESC LIMIT ?1")?;
+        let rows = stmt.query_map(params![clamp_limit(limit)], |r| r.get(0))?;
+        rows.collect()
+    }
+
+    /// Undo one forget: revive the memory and consume its newest event.
+    /// Unknown id or already-reverted event -> error.
+    pub fn undo_forget(&self, id: &str) -> rusqlite::Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute(
+            "UPDATE memories SET deleted = 0, updated_at = ?2 WHERE id = ?1 AND deleted = 1",
+            params![id, MemoryItem::now()],
+        )?;
+        let rows = tx.changes();
+        if rows == 0 {
+            return Err(rusqlite::Error::InvalidParameterName(format!(
+                "cannot undo forget of '{id}': unknown or not deleted"
+            )));
+        }
+        // Consume the newest event for this id; its absence after a successful
+        // revive means the ledger was tampered with — surface, don't ignore.
+        let consumed = tx.execute(
+            "DELETE FROM forget_events WHERE memory_id = ?1 AND id = (
+               SELECT MAX(id) FROM forget_events WHERE memory_id = ?1)",
+            params![id],
+        )?;
+        if consumed == 0 {
+            return Err(rusqlite::Error::InvalidParameterName(format!(
+                "no forget event recorded for '{id}'"
+            )));
+        }
+        tx.commit()?;
         Ok(())
     }
 
     pub fn list(&self, include_deleted: bool) -> rusqlite::Result<Vec<MemoryItem>> {
+        // Superseded rows are never listed, not even with include_deleted:
+        // superseding is not deleting, and the chain stays reachable via trace.
         let sql = format!(
             "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
-             FROM memories {} ORDER BY created_at DESC, rowid DESC",
-            if include_deleted { "" } else { "WHERE deleted = 0" }
+             FROM memories WHERE superseded_at IS NULL {} ORDER BY created_at DESC, rowid DESC",
+            if include_deleted { "" } else { "AND deleted = 0" }
         );
         let mut stmt = self.conn.prepare(&sql)?;
         let rows = stmt.query_map([], row_to_item)?;
@@ -190,7 +344,7 @@ impl Store {
             "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, bm25(memories_fts, 1.0, 2.0) AS rank, m.rowid AS m_rowid
              FROM memories_fts f
              JOIN memories m ON m.rowid = f.rowid
-             WHERE memories_fts MATCH ?2 AND m.deleted = 0
+             WHERE memories_fts MATCH ?2 AND m.deleted = 0 AND m.superseded_at IS NULL
              ORDER BY rank
              LIMIT ?3",
         )?;
@@ -237,7 +391,7 @@ impl Store {
             "SELECT m.id, v.distance
              FROM mem_vec v
              JOIN memories m ON m.rowid = v.rowid
-             WHERE m.deleted = 0 AND v.embedding MATCH ?1 AND v.k = ?2
+             WHERE m.deleted = 0 AND m.superseded_at IS NULL AND v.embedding MATCH ?1 AND v.k = ?2
              ORDER BY v.distance",
         )?;
         let rows = stmt.query_map(params![serialize_f32(query), clamp_limit(k)], |row| {
@@ -269,8 +423,32 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     if !has_col("content_hash")? {
         conn.execute_batch("ALTER TABLE memories ADD COLUMN content_hash TEXT")?;
     }
+    // Correction chain (issue #7): legacy DBs have a FULL unique index on
+    // content_hash, which would block re-learning superseded content. Detect
+    // it in sqlite_master and replace it with the partial one (WHERE deleted
+    // = 0 AND superseded_at IS NULL). Fresh DBs get the partial index from
+    // SCHEMA, so no-op there.
+    let idx_sql: Option<String> = conn
+        .prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'idx_memories_content_hash'")?
+        .query_row([], |r| r.get(0))
+        .optional()?;
+    let is_partial = idx_sql
+        .as_deref()
+        .map(|s| s.contains("superseded_at"))
+        .unwrap_or(true);
+    if !is_partial {
+        conn.execute_batch(
+            "DROP INDEX IF EXISTS idx_memories_content_hash;
+             CREATE UNIQUE INDEX idx_memories_content_hash ON memories(content_hash)
+               WHERE deleted = 0 AND superseded_at IS NULL;",
+        )?;
+    }
     conn.execute_batch(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash)",
+        "CREATE TABLE IF NOT EXISTS forget_events (
+           id INTEGER PRIMARY KEY,
+           memory_id TEXT NOT NULL,
+           forgotten_at INTEGER NOT NULL
+         );",
     )?;
     // Backfill content_hash for pre-existing rows (docs/migrate-gap.md):
     // old DBs predate the column, so those rows are NULL and invisible to
