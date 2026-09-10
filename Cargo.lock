@@ -1615,6 +1615,7 @@ dependencies = [
  "remem-graph",
  "remem-store",
  "remem-types",
+ "rusqlite",
  "serde_json",
 ]
 

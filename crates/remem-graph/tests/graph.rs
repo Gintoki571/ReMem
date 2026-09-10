@@ -412,8 +412,8 @@ fn shortest_path_returns_full_route() {
     g.link("A", "B", "RELATES_TO").unwrap();
     g.link("B", "C", "RELATES_TO").unwrap();
     assert_eq!(g.shortest_path("A", "C").unwrap(), vec!["A", "B", "C"]);
-    // Directional: the reverse edge does not exist.
-    assert!(g.shortest_path("C", "A").unwrap().is_empty());
+    // Undirected: reverse lookup falls back to the stored-orientation path.
+    assert_eq!(g.shortest_path("C", "A").unwrap(), vec!["A", "B", "C"]);
 }
 
 /// Unknown endpoints or unreachable targets: empty vector, no error.

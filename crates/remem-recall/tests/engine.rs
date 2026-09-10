@@ -829,3 +829,99 @@ fn content_free_queries_abstain_and_content_searches() {
     assert!(hits[0].item.content.contains("redis sharding"));
     cleanup(&path);
 }
+
+#[test]
+fn graph_gaps_flags_missing_and_ghost_nodes() {
+    use remem_graph::Graph;
+    let (e, path) = engine("gaps", FakeEmbedder::new(&[]));
+    let ida = e.remember(&item("gap alpha note")).unwrap().0;
+    e.remember(&item("gap beta note")).unwrap();
+    assert!(e.graph_gaps().unwrap().is_empty(), "healthy");
+
+    // Ghost: purge the row directly (no graph forget), node survives.
+    e.store().purge(&ida).unwrap();
+    let issues = e.graph_gaps().unwrap();
+    assert!(
+        issues
+            .iter()
+            .any(|i| i == &format!("ghost graph node: {ida}")),
+        "ghost flagged: {issues:?}"
+    );
+    // Ghost persists in gaps until gc runs (by design).
+    assert_eq!(e.gc_ghost_nodes().unwrap(), 1);
+    assert!(e.graph_gaps().unwrap().is_empty(), "clean after gc");
+
+    // Missing: live row without graph node.
+    let (e2, path2) = engine("gaps-missing", FakeEmbedder::new(&[]));
+    let id = e2.remember(&item("gap gamma note")).unwrap().0;
+    let g = Graph::open(path2.to_str().unwrap()).unwrap();
+    g.forget(&id).unwrap();
+    let issues = e2.graph_gaps().unwrap();
+    assert!(
+        issues
+            .iter()
+            .any(|i| i == &format!("missing graph node: {id}")),
+        "missing flagged: {issues:?}"
+    );
+    cleanup(&path);
+    cleanup(&path2);
+}
+
+#[test]
+fn gc_ghost_nodes_removes_only_dead_nodes() {
+    let (e, path) = engine("gc", FakeEmbedder::new(&[]));
+    let live = e.remember(&item("gc keep me")).unwrap().0;
+    let dead = e.remember(&item("gc kill me")).unwrap().0;
+    e.store().purge(&dead).unwrap();
+    assert_eq!(e.gc_ghost_nodes().unwrap(), 1);
+    assert_eq!(e.gc_ghost_nodes().unwrap(), 0, "idempotent");
+    // Live node untouched, still reachable via graph.
+    assert!(
+        e.graph()
+            .unwrap()
+            .cypher(
+                "MATCH (n:Memory) WHERE n.mid = $id RETURN n.mid AS mid",
+                &serde_json::json!({"id": live})
+            )
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .len()
+            == 1
+    );
+    cleanup(&path);
+}
+
+#[test]
+fn index_audit_reconciles_fts_and_vec_against_live_memories() {
+    use remem_store::content_hash;
+    let (e, path) = engine("audit", FakeEmbedder::new(&[("audit indexed words", 0)]));
+    let id = e.remember(&item("audit indexed words")).unwrap().0;
+    assert!(
+        e.index_audit().unwrap().is_empty(),
+        "healthy: {a:?}",
+        a = e.index_audit().unwrap()
+    );
+
+    // Drift: row vanishes from fts index and vec index behind the engine's back.
+    let conn = e.store().connection();
+    let rowid: i64 = conn
+        .query_row("SELECT rowid FROM memories WHERE id = ?1", [&id], |r| {
+            r.get(0)
+        })
+        .unwrap();
+    conn.execute("DELETE FROM memories_fts WHERE rowid = ?1", [rowid])
+        .unwrap();
+    conn.execute("DELETE FROM mem_vec WHERE rowid = ?1", [rowid])
+        .unwrap();
+    let issues = e.index_audit().unwrap();
+    assert!(
+        issues.iter().any(|i| i.contains("fts missing: 1")),
+        "{issues:?}"
+    );
+    assert!(
+        issues.iter().any(|i| i.contains("vec missing: 1")),
+        "{issues:?}"
+    );
+    cleanup(&path);
+}

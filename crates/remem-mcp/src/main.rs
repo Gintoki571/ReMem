@@ -190,6 +190,9 @@ fn tools_list() -> Value {
         {"name": "validate", "description": "Validate store/graph consistency; returns a list of issues (empty means healthy).",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object", "properties": {}}},
+        {"name": "gc", "description": "Remove ghost graph nodes (nodes whose memory row is gone). Returns {removed: N}. DESTRUCTIVE.",
+         "annotations": {"readOnlyHint": false, "destructiveHint": true},
+         "inputSchema": {"type": "object", "properties": {}}},
         {"name": "related", "description": "Graph neighbors of a memory id as [{id, rel}]. Optional rel filters by edge type.",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object",
@@ -449,10 +452,17 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
         }
         "stats" => Ok(serde_json::to_string(&eng.stats()?)?),
         "validate" => {
-            let g = eng
+            let mut issues = eng
                 .graph()
-                .ok_or_else(|| anyhow!("engine has no graph open"))?;
-            Ok(serde_json::to_string(&json!({"issues": g.validate()}))?)
+                .ok_or_else(|| anyhow!("engine has no graph open"))?
+                .validate();
+            issues.extend(eng.graph_gaps().map_err(|e| anyhow!("graph gaps: {e}"))?);
+            issues.extend(eng.index_audit().map_err(|e| anyhow!("index audit: {e}"))?);
+            Ok(serde_json::to_string(&json!({"issues": issues}))?)
+        }
+        "gc" => {
+            let removed = eng.gc_ghost_nodes().map_err(|e| anyhow!("gc: {e}"))?;
+            Ok(serde_json::to_string(&json!({"removed": removed}))?)
         }
         _ => Err(anyhow!("unknown tool '{name}'")),
     }

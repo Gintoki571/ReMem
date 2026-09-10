@@ -627,11 +627,11 @@ fn path_chain_and_unknown_empty() {
     let p: Value = c.call("path", json!({"from": ida, "to": idc}));
     assert_eq!(p, json!([ida, idb, idc]), "A->B->C: {p:?}");
 
-    let unreachable: Value = c.call("path", json!({"from": idc, "to": ida}));
+    let reverse: Value = c.call("path", json!({"from": idc, "to": ida}));
     assert_eq!(
-        unreachable,
-        json!([]),
-        "reverse unreachable: {unreachable:?}"
+        reverse,
+        json!([ida, idb, idc]),
+        "undirected reverse returns stored orientation: {reverse:?}"
     );
 
     let unknown: Value = c.call("path", json!({"from": "does-not-exist", "to": idc}));
@@ -775,4 +775,49 @@ fn content_length_header_is_case_insensitive() {
         );
         assert_eq!(resp["id"], json!(99), "{tag} header id: {resp:?}");
     }
+}
+
+#[test]
+fn gc_tool_removes_ghost_nodes() {
+    use remem_store::Store;
+    let db = temp_db("gc-tool");
+    let mut c = Client::spawn(&db);
+    c.request(
+        "initialize",
+        json!({"protocolVersion": "2024-11-05",
+        "capabilities": {}, "clientInfo": {"name": "test", "version": "0"}}),
+    );
+
+    let a: Value = c.call(
+        "remember",
+        json!({"kind": "fact", "content": "gc ghost probe token"}),
+    );
+    let ida = a["id"].as_str().unwrap().to_string();
+
+    // Ghost: hard-delete the row behind the server's back (no graph forget).
+    let store = Store::open(&db).unwrap();
+    assert!(store.purge(&ida).unwrap());
+
+    let v1: Value = c.call("validate", json!({}));
+    let issues1 = v1["issues"].as_array().unwrap();
+    assert!(
+        issues1
+            .iter()
+            .any(|i| i.as_str().unwrap_or("") == format!("ghost graph node: {ida}")),
+        "ghost flagged: {issues1:?}"
+    );
+
+    let g1: Value = c.call("gc", json!({}));
+    assert_eq!(g1, json!({"removed": 1}), "first gc: {g1:?}");
+    let g2: Value = c.call("gc", json!({}));
+    assert_eq!(g2, json!({"removed": 0}), "second gc idempotent: {g2:?}");
+
+    let v2: Value = c.call("validate", json!({}));
+    let issues2 = v2["issues"].as_array().unwrap();
+    assert!(
+        !issues2
+            .iter()
+            .any(|i| i.as_str().unwrap_or("").contains("ghost graph node")),
+        "no ghosts after gc: {issues2:?}"
+    );
 }
