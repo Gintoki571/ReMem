@@ -45,9 +45,6 @@ enum Cmd {
         /// Session id that owns the memory
         #[arg(long, default_value = "")]
         session: String,
-        /// Importance weight (default: 0.5)
-        #[arg(long, default_value_t = 0.5)]
-        importance: f32,
         /// When it happened: unix seconds or YYYY-MM-DD (default: storage time)
         #[arg(long)]
         occurred_at: Option<String>,
@@ -81,6 +78,16 @@ enum Cmd {
         /// Drop hits scoring below this (0 = off, the default)
         #[arg(long, default_value_t = remem_recall::DEFAULT_MIN_SCORE)]
         min_score: f64,
+        /// Filter by kind (fact|decision|mistake|preference|event|note).
+        /// Repeatable and comma-separated; kinds OR together.
+        #[arg(long, value_delimiter = ',')]
+        kind: Vec<String>,
+        /// Filter by tag. Repeatable; a memory needs any one of them.
+        #[arg(long, value_delimiter = ',')]
+        tag: Vec<String>,
+        /// Print per-hit per-channel contributions to stderr
+        #[arg(long)]
+        explain: bool,
     },
     /// List stored memories (newest first)
     List {
@@ -261,7 +268,6 @@ fn main() -> Result<()> {
             tags,
             agent,
             session,
-            importance,
             occurred_at,
         } => {
             let kind = MemoryKind::parse(&kind).ok_or_else(|| {
@@ -271,7 +277,6 @@ fn main() -> Result<()> {
             item.tags = tags;
             item.agent_id = agent;
             item.session_id = session;
-            item.importance = importance;
             if let Some(when) = occurred_at.as_deref() {
                 item.occurred_at = Some(parse_time(when)?);
             }
@@ -283,7 +288,7 @@ fn main() -> Result<()> {
                     .iter()
                     .map(|(sid, d)| format!("{sid} {d:.3}"))
                     .collect();
-                println!("similar: [{}]", list.join(", "));
+                eprintln!("similar: [{}]", list.join(", "));
             }
         }
         Cmd::Recall {
@@ -296,7 +301,25 @@ fn main() -> Result<()> {
             until,
             max_chars,
             min_score,
+            kind,
+            tag,
+            explain,
         } => {
+            let parse_kind = |s: &str| {
+                MemoryKind::parse(s).ok_or_else(|| {
+                    anyhow!("unknown kind '{s}' (fact|decision|mistake|preference|event|note)")
+                })
+            };
+            let kinds = if kind.is_empty() {
+                None
+            } else {
+                Some(
+                    kind.iter()
+                        .map(|s| parse_kind(s))
+                        .collect::<Result<Vec<_>>>()?,
+                )
+            };
+            let tags = if tag.is_empty() { None } else { Some(tag) };
             let q = RecallQuery {
                 text: query.join(" "),
                 k,
@@ -305,9 +328,40 @@ fn main() -> Result<()> {
                 session_id: session,
                 since: since.as_deref().map(parse_time).transpose()?,
                 until: until.as_deref().map(parse_time).transpose()?,
+                kinds,
+                tags,
                 ..Default::default()
             };
-            let hits = engine(&cli.db)?.with_min_score(min_score).recall(&q)?;
+            let eng = engine(&cli.db)?.with_min_score(min_score);
+            let hits = eng.recall(&q)?;
+            if explain {
+                // Contributions are weight * 1/(DEFAULT_RRF_K + rank), parsed
+                // from the per-hit reasons ("fts#1", "vector#2", "graph#3").
+                for h in &hits {
+                    let mut parts: Vec<String> = Vec::new();
+                    for r in &h.reasons {
+                        if let Some((ch, rank)) = r.split_once('#') {
+                            if let (Some(w), Ok(rank)) = (
+                                match ch {
+                                    "fts" => Some(eng.weights().fts),
+                                    "vector" => Some(eng.weights().vector),
+                                    "graph" => Some(eng.weights().graph),
+                                    _ => None,
+                                },
+                                rank.parse::<usize>(),
+                            ) {
+                                parts.push(format!(
+                                    "{ch}#{rank}={:.5}",
+                                    w / (remem_recall::DEFAULT_RRF_K as f64 + rank as f64)
+                                ));
+                            }
+                        }
+                    }
+                    if !parts.is_empty() {
+                        eprintln!("{}  {}", h.item.id, parts.join(" "));
+                    }
+                }
+            }
             if json {
                 let v: Vec<_> = hits
                     .iter()

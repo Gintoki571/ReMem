@@ -36,20 +36,11 @@ fn cli_roundtrip() {
     .next()
     .unwrap()
     .to_string();
-    let id2 = remem(
-        &db,
-        &[
-            "remember",
-            "preference",
-            "prefer pnpm over npm",
-            "--importance",
-            "0.9",
-        ],
-    )
-    .lines()
-    .next()
-    .unwrap()
-    .to_string();
+    let id2 = remem(&db, &["remember", "preference", "prefer pnpm over npm"])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
     assert!(!id1.is_empty() && !id2.is_empty());
 
     remem(&db, &["link", &id1, &id2, "--rel", "SUPERSEDES"]);
@@ -312,28 +303,17 @@ fn cli_recall_max_chars() {
             "remember",
             "fact",
             &format!("budget keyword {}", "z".repeat(200)),
-            "--importance",
-            "0.1",
         ],
     )
     .lines()
     .next()
     .unwrap()
     .to_string();
-    let short = remem(
-        &db,
-        &[
-            "remember",
-            "fact",
-            "budget keyword short",
-            "--importance",
-            "0.9",
-        ],
-    )
-    .lines()
-    .next()
-    .unwrap()
-    .to_string();
+    let short = remem(&db, &["remember", "fact", "budget keyword short"])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
 
     let hits = remem(
         &db,
@@ -453,21 +433,29 @@ fn cli_remember_reports_similar_for_paraphrase_only() {
         "empty store must stay silent: {first}"
     );
 
-    let out = remem(&db, &["remember", "fact", para]);
-    let lines: Vec<&str> = out.trim().lines().collect();
-    assert_eq!(lines.len(), 2, "want id + similar line: {out}");
-    assert!(
-        !lines[0].contains("similar"),
-        "id line must stay bare: {out}"
+    // The hint moved to stderr; use the raw Command helper to see both streams.
+    let out = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args(["--db", db.to_str().unwrap(), "remember", "fact", para])
+        .output()
+        .expect("run remem");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(
+        stdout.trim().lines().count(),
+        1,
+        "stdout stays bare id: {stdout}"
     );
-    let similar = lines[1];
     assert!(
-        similar.starts_with("similar: [") && similar.ends_with(']'),
-        "similar line shape: {out}"
+        stderr.contains("similar:"),
+        "similar hint on stderr: {stderr}"
     );
+    let similar = stderr
+        .lines()
+        .find(|l| l.contains("similar: ["))
+        .expect("similar line present");
     assert!(
         similar.contains(&first),
-        "similar must name the stored id: {out}"
+        "similar must name the stored id: {stderr}"
     );
 
     let third = remem(&db, &["remember", "fact", other]);
@@ -682,8 +670,6 @@ fn cli_recall_json_includes_agent_session_occurred_at_importance() {
             "alice",
             "--session",
             "s1",
-            "--importance",
-            "0.9",
             "--occurred-at",
             "2024-03-01",
         ],
@@ -699,8 +685,8 @@ fn cli_recall_json_includes_agent_session_occurred_at_importance() {
     assert_eq!(hit["session"], "s1", "hit: {hit}");
     assert_eq!(hit["occurred_at"], 1709251200, "hit: {hit}");
     assert!(
-        (hit["importance"].as_f64().unwrap() - 0.9).abs() < 1e-6,
-        "hit: {hit}"
+        (hit["importance"].as_f64().unwrap() - 0.5).abs() < 1e-6,
+        "importance defaults to 0.5: {hit}"
     );
     for suffix in ["", "-wal", "-shm"] {
         let _ = std::fs::remove_file(std::path::PathBuf::from(format!(
@@ -708,5 +694,248 @@ fn cli_recall_json_includes_agent_session_occurred_at_importance() {
             db.display(),
             suffix
         )));
+    }
+}
+
+/// `recall --kind` filters by kind (repeatable and comma-separated).
+#[test]
+fn cli_recall_kind_filter() {
+    let db = std::env::temp_dir().join(format!("remem-cli-kind-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let fact = remem(&db, &["remember", "fact", "kind filter fact alpha"])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+    let note = remem(&db, &["remember", "note", "kind filter note beta"])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+
+    let hits = remem(
+        &db,
+        &["recall", "kind", "filter", "--kind", "fact", "--json"],
+    );
+    let v: Vec<serde_json::Value> = serde_json::from_str(&hits).unwrap();
+    assert!(
+        !v.is_empty() && v.iter().all(|h| h["kind"] == "fact"),
+        "hits: {hits}"
+    );
+    assert!(hits.contains(&fact), "fact hit missing: {hits}");
+
+    // repeatable flags OR together
+    let hits = remem(
+        &db,
+        &[
+            "recall", "kind", "filter", "--kind", "fact", "--kind", "note", "--json",
+        ],
+    );
+    assert!(
+        hits.contains(&fact) && hits.contains(&note),
+        "both kinds: {hits}"
+    );
+
+    // comma-separated form too
+    let hits = remem(
+        &db,
+        &["recall", "kind", "filter", "--kind", "fact,note", "--json"],
+    );
+    assert!(
+        hits.contains(&fact) && hits.contains(&note),
+        "comma kinds: {hits}"
+    );
+
+    // unknown kind errors with the valid list
+    let bad = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args([
+            "--db",
+            db.to_str().unwrap(),
+            "recall",
+            "kind",
+            "filter",
+            "--kind",
+            "bogus",
+        ])
+        .output()
+        .expect("run remem");
+    assert!(!bad.status.success());
+    let err = String::from_utf8_lossy(&bad.stderr);
+    assert!(
+        err.contains("fact") && err.contains("note"),
+        "kind list: {err}"
+    );
+
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
+
+/// `recall --tag` filters to memories carrying the tag (repeatable).
+#[test]
+fn cli_recall_tag_filter() {
+    let db = std::env::temp_dir().join(format!("remem-cli-tag-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let tagged = remem(
+        &db,
+        &[
+            "remember",
+            "fact",
+            "tag filter probe",
+            "--tags",
+            "rust,build",
+        ],
+    )
+    .lines()
+    .next()
+    .unwrap()
+    .to_string();
+    let _untagged = remem(&db, &["remember", "fact", "tag filter probe"]);
+
+    let hits = remem(&db, &["recall", "tag", "filter", "--tag", "rust", "--json"]);
+    let v: Vec<serde_json::Value> = serde_json::from_str(&hits).unwrap();
+    assert!(
+        !v.is_empty()
+            && v.iter()
+                .all(|h| h["tags"].as_array().unwrap().iter().any(|t| t == "rust")),
+        "hits: {hits}"
+    );
+    assert!(hits.contains(&tagged), "tagged hit missing: {hits}");
+
+    let hits = remem(
+        &db,
+        &[
+            "recall", "tag", "filter", "--tag", "rust", "--tag", "build", "--json",
+        ],
+    );
+    assert!(hits.contains(&tagged), "repeatable tags: {hits}");
+
+    // a tag no memory carries yields empty, not an error
+    let hits = remem(&db, &["recall", "tag", "filter", "--tag", "nope", "--json"]);
+    assert!(
+        serde_json::from_str::<Vec<serde_json::Value>>(&hits)
+            .unwrap()
+            .is_empty(),
+        "{hits}"
+    );
+
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
+
+/// `similar:` hint moved to stderr so stdout stays the bare id for scripts.
+#[test]
+fn cli_remember_similar_hint_goes_to_stderr() {
+    use std::process::Command;
+    let db = std::env::temp_dir().join(format!("remem-cli-simstderr-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let base = "the nightly backup job rsyncs snapshots to cold storage every dawn";
+    let para = "the nightly backup job rsyncs snapshots to cold storage each dawn";
+    Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args(["--db", db.to_str().unwrap(), "remember", "fact", base])
+        .output()
+        .expect("run remem");
+    let out = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args(["--db", db.to_str().unwrap(), "remember", "fact", para])
+        .output()
+        .expect("run remem");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(
+        stdout.trim().lines().count(),
+        1,
+        "stdout stays bare id: {stdout}"
+    );
+    assert!(stderr.contains("similar:"), "hint on stderr: {stderr}");
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
+
+/// `recall --explain` prints per-hit per-channel contributions to stderr;
+/// stdout stays the plain hit list. Contributions are weight * 1/(30+rank)
+/// parsed from reasons ("fts#1", "vector#2", "graph#3").
+#[test]
+fn cli_recall_explain_prints_channel_scores_to_stderr() {
+    use std::process::Command;
+    let db = std::env::temp_dir().join(format!("remem-cli-explain-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    remem(&db, &["remember", "fact", "explain channels alpha keyword"]);
+    remem(&db, &["remember", "fact", "explain channels beta keyword"]);
+    let out = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args([
+            "--db",
+            db.to_str().unwrap(),
+            "recall",
+            "explain",
+            "channels",
+            "keyword",
+            "--explain",
+        ])
+        .output()
+        .expect("run remem");
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(!stdout.is_empty(), "stdout keeps the hit list");
+    assert!(
+        stderr.contains("fts#"),
+        "per-channel lines on stderr: {stderr}"
+    );
+    assert!(
+        !stdout.contains("fts#1=") && !stdout.contains("vector#1="),
+        "stdout stays clean: {stdout}"
+    );
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
+
+/// `remember --importance` is gone: the flag must error (rank.rs / weight-spike
+/// rationale). The stored attribute stays (MCP contract untouched).
+#[test]
+fn cli_remember_importance_flag_removed() {
+    use std::process::Command;
+    let db = std::env::temp_dir().join(format!("remem-cli-noimp-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let out = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args([
+            "--db",
+            db.to_str().unwrap(),
+            "remember",
+            "fact",
+            "x",
+            "--importance",
+            "0.9",
+        ])
+        .output()
+        .expect("run remem");
+    assert!(!out.status.success(), "--importance must be rejected");
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}
+
+/// JSON recall still reports the stored importance (default 0.5) even though
+/// the CLI flag is gone: the attribute is stored, only scoring dropped it.
+#[test]
+fn cli_recall_json_importance_defaults_stored() {
+    let db = std::env::temp_dir().join(format!("remem-cli-impstore-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    remem(&db, &["remember", "fact", "importance stays stored probe"]);
+    let hits = remem(&db, &["recall", "importance stays stored", "--json"]);
+    let v: Vec<serde_json::Value> = serde_json::from_str(&hits).unwrap();
+    let hit = v.first().expect("hit");
+    assert!(
+        (hit["importance"].as_f64().unwrap() - 0.5).abs() < 1e-6,
+        "importance must stay 0.5 in json: {hit}"
+    );
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
 }
