@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use remem_recall::{rank, Embed, RecallEngine, Weights};
+use remem_recall::{rank, Embed, RecallEngine};
 use remem_store::Store;
 use remem_types::{MemoryItem, MemoryKind, RecallQuery};
 
