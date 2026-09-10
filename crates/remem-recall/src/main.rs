@@ -79,8 +79,16 @@ enum Cmd {
         #[arg(long)]
         max_chars: Option<usize>,
         /// Drop hits scoring below this (0 = off, the default)
-        #[arg(long, default_value_t = remem_recall::DEFAULT_MIN_SCORE)]
+        #[arg(long, env = "REMEM_COSINE_FLOOR",
+              default_value_t = remem_recall::DEFAULT_MIN_SCORE)]
         min_score: f64,
+        /// Disable the recency band (score contribution + `recent` reasons)
+        #[arg(long, env = "REMEM_NO_RECENCY")]
+        no_recency: bool,
+        /// Recency half-life in days (must be finite and > 0)
+        #[arg(long, env = "REMEM_HALF_LIFE_DAYS",
+              default_value_t = remem_recall::DEFAULT_HALF_LIFE_DAYS)]
+        half_life_days: f64,
     },
     /// List stored memories (newest first)
     List {
@@ -291,7 +299,14 @@ fn main() -> Result<()> {
             until,
             max_chars,
             min_score,
+            no_recency,
+            half_life_days,
         } => {
+            if !half_life_days.is_finite() || half_life_days <= 0.0 {
+                return Err(anyhow!(
+                    "invalid --half-life-days '{half_life_days}' (must be finite and > 0)"
+                ));
+            }
             let q = RecallQuery {
                 text: query.join(" "),
                 k,
@@ -302,7 +317,15 @@ fn main() -> Result<()> {
                 until: until.as_deref().map(parse_time).transpose()?,
                 ..Default::default()
             };
-            let hits = engine(&cli.db)?.with_min_score(min_score).recall(&q)?;
+            let eng = engine(&cli.db)?
+                .with_min_score(min_score)
+                .with_half_life_days(half_life_days);
+            let eng = if no_recency {
+                eng.with_recency_off()
+            } else {
+                eng
+            };
+            let hits = eng.recall(&q)?;
             if json {
                 let v: Vec<_> = hits
                     .iter()

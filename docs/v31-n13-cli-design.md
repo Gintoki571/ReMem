@@ -1,6 +1,11 @@
 # v3.1 Lane N13 — recall CLI/env wiring (issue #13) — PHASE 1 DESIGN
 
-## Status: DESIGN ONLY — no code, nothing compiled
+## Status: DONE — implemented, suite green (lane-n13, post lane-c merge)
+
+Phase 2 built exactly this spec: `git merge lane-c`; `main.rs` wiring;
+`tests/lane_n13.rs` 6/6 green; full `cargo test -p remem-recall` 96 passed
+(30 lib + 9 main + 11 cli + 29 engine + 11 lane_c + 6 lane_n13), 0 failed;
+`cargo fmt --check` clean. Original Phase-1 design below, kept as-is.
 
 Rank API lives on lane-c (still in verification). This doc is the full
 Phase-2 build spec. Canonical coordination copy: `/home/bindesh/rag/reports/v31-n13.md`
