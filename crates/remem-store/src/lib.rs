@@ -76,7 +76,10 @@ impl Store {
     pub fn find_by_hash(&self, hash: &str) -> Option<String> {
         self.conn
             .query_row(
-                "SELECT id FROM memories WHERE content_hash = ?1 AND deleted = 0 AND superseded_at IS NULL",
+                &format!(
+                    "SELECT id FROM memories WHERE content_hash = ?1 AND {}",
+                    Self::live_filter("memories")
+                ),
                 params![hash],
                 |r| r.get(0),
             )
@@ -116,8 +119,11 @@ impl Store {
     pub fn get(&self, id: &str) -> rusqlite::Result<Option<MemoryItem>> {
         self.conn
             .query_row(
-                "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
-                 FROM memories WHERE id = ?1 AND deleted = 0 AND superseded_at IS NULL",
+                &format!(
+                    "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
+                 FROM memories WHERE id = ?1 AND {}",
+                    Self::live_filter("memories")
+                ),
                 params![id],
                 row_to_item,
             )
@@ -188,8 +194,10 @@ impl Store {
     pub fn supersede(&self, old_id: &str, replacement: &MemoryItem) -> rusqlite::Result<String> {
         let tx = self.conn.unchecked_transaction()?;
         let superseded = tx.execute(
-            "UPDATE memories SET superseded_at = ?2
-             WHERE id = ?1 AND deleted = 0 AND superseded_at IS NULL",
+            &format!(
+                "UPDATE memories SET superseded_at = ?2 WHERE id = ?1 AND {}",
+                Self::live_filter("memories")
+            ),
             params![old_id, MemoryItem::now()],
         )?;
         if superseded == 0 {
@@ -324,6 +332,8 @@ impl Store {
     pub fn list(&self, include_deleted: bool) -> rusqlite::Result<Vec<MemoryItem>> {
         // Superseded rows are never listed, not even with include_deleted:
         // superseding is not deleting, and the chain stays reachable via trace.
+        // include_deleted bypasses only the deleted check; superseded rows
+        // are never listed (chain reachable via trace).
         let sql = format!(
             "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
              FROM memories WHERE superseded_at IS NULL {} ORDER BY created_at DESC, rowid DESC",
@@ -341,12 +351,15 @@ impl Store {
         limit: usize,
     ) -> rusqlite::Result<Vec<(MemoryItem, f32)>> {
         let mut stmt = self.conn.prepare(
-            "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, bm25(memories_fts, 1.0, 2.0) AS rank, m.rowid AS m_rowid
+            &format!(
+                "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, bm25(memories_fts, 1.0, 2.0) AS rank, m.rowid AS m_rowid
              FROM memories_fts f
              JOIN memories m ON m.rowid = f.rowid
-             WHERE memories_fts MATCH ?2 AND m.deleted = 0 AND m.superseded_at IS NULL
+             WHERE memories_fts MATCH ?2 AND {}
              ORDER BY rank
              LIMIT ?3",
+                Self::live_filter("m")
+            ),
         )?;
         let rows = stmt.query_map(
             params![clamp_limit(limit), fts_quote(query), clamp_limit(limit)],
@@ -387,19 +400,30 @@ impl Store {
     /// k > stored vectors returns all of them.
     pub fn knn(&self, query: &[f32], k: usize) -> rusqlite::Result<Vec<(String, f32)>> {
         check_dims(query.len())?;
-        let mut stmt = self.conn.prepare(
+        let mut stmt = self.conn.prepare(&format!(
             "SELECT m.id, v.distance
              FROM mem_vec v
              JOIN memories m ON m.rowid = v.rowid
-             WHERE m.deleted = 0 AND m.superseded_at IS NULL AND v.embedding MATCH ?1 AND v.k = ?2
+             WHERE {} AND v.embedding MATCH ?1 AND v.k = ?2
              ORDER BY v.distance",
-        )?;
+            Self::live_filter("m")
+        ))?;
         let rows = stmt.query_map(params![serialize_f32(query), clamp_limit(k)], |row| {
             let id: String = row.get(0)?;
             let dist: f64 = row.get(1)?;
             Ok((id, dist as f32))
         })?;
         rows.collect()
+    }
+
+    /// Central live-row predicate (issue #11): a row is visible on read
+    /// paths only when it is not soft-deleted and not superseded. Used at six
+    /// sites: find_by_hash, get, supersede's guard UPDATE, list, fts_search,
+    /// knn. Deliberately NOT used by trace (must walk superseded chain rows),
+    /// purge/set_embedding (raw rowid lookups must reach any row), delete /
+    /// undo_forget (state transitions on `deleted` itself).
+    fn live_filter(alias: &str) -> String {
+        format!("{alias}.deleted = 0 AND {alias}.superseded_at IS NULL")
     }
 
     /// Escape hatch for graph/cypher coexistence checks; not part of the store API.
