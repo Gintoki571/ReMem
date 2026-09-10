@@ -97,18 +97,34 @@ fn cli_trace_walks_correction_chain_from_both_ends() {
     // rusqlite is not a test dep here, so go through sqlite3 CLI; if absent,
     // fall back to the store crate.
     let sql = format!("UPDATE memories SET supersedes = '{v1}' WHERE id = '{v2}';");
-    let out = Command::new("sqlite3").arg(&db).arg(sql).output().expect("run sqlite3");
-    assert!(out.status.success(), "sqlite3: {}", String::from_utf8_lossy(&out.stderr));
+    let out = Command::new("sqlite3")
+        .arg(&db)
+        .arg(sql)
+        .output()
+        .expect("run sqlite3");
+    assert!(
+        out.status.success(),
+        "sqlite3: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 
     // From the newest end: full chain oldest -> newest.
     let t = remem(&db, &["trace", &v2]);
     let ids: Vec<&str> = t.lines().collect();
-    assert_eq!(ids, vec![v1.as_str(), v2.as_str()], "trace from newest: {t}");
+    assert_eq!(
+        ids,
+        vec![v1.as_str(), v2.as_str()],
+        "trace from newest: {t}"
+    );
 
     // From the oldest end: same chain.
     let t = remem(&db, &["trace", &v1]);
     let ids: Vec<&str> = t.lines().collect();
-    assert_eq!(ids, vec![v1.as_str(), v2.as_str()], "trace from oldest: {t}");
+    assert_eq!(
+        ids,
+        vec![v1.as_str(), v2.as_str()],
+        "trace from oldest: {t}"
+    );
 
     // Unknown id: empty output, no error.
     let t = remem(&db, &["trace", "no-such-id"]);
