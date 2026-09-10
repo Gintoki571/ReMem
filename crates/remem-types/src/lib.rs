@@ -51,6 +51,12 @@ pub struct MemoryItem {
     /// timeless memories. Absent in older payloads deserializes to None.
     #[serde(default)]
     pub occurred_at: Option<i64>,
+    /// Unknown-end sentinel (issue #12, utopia 0030 pattern): true means "the
+    /// thing ended, date unknown". Separate from occurred_at, which stays NULL
+    /// in both the ongoing and ended-unknown cases. Absent in older payloads
+    /// deserializes to false (legacy rows read as ongoing).
+    #[serde(default)]
+    pub ended: bool,
 }
 
 impl MemoryItem {
@@ -74,6 +80,7 @@ impl MemoryItem {
             created_at: now,
             updated_at: now,
             occurred_at: None,
+            ended: false,
         }
     }
 

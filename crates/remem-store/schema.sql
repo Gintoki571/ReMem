@@ -11,11 +11,14 @@ CREATE TABLE IF NOT EXISTS memories (
   occurred_at INTEGER,
   deleted INTEGER NOT NULL DEFAULT 0,
   content_hash TEXT,
-  -- Correction chain (issue #7): the OLD row points at the id that replaces
-  -- it; superseded_at is the unix second the row was superseded. Superseded
-  -- rows stay on disk for trace/audit but are hidden from every read path.
+  -- Correction chain (issue #7): the NEW row points back at the id it
+  -- replaces (supersedes); superseded_at is the unix second the old row was
+  -- retired. Superseded rows stay on disk for trace/audit but are hidden
+  -- from every read path.
   supersedes TEXT,
-  superseded_at INTEGER
+  superseded_at INTEGER,
+  -- Unknown-end sentinel (issue #12): 1 = "ended, date unknown", 0 = ongoing.
+  ended INTEGER NOT NULL DEFAULT 0
 );
 
 -- Partial: only LIVE rows hold a content hash. A superseded row frees its

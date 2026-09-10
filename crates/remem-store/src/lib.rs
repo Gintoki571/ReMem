@@ -95,8 +95,8 @@ impl Store {
             return Ok(existing);
         }
         self.conn.execute(
-            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, deleted, content_hash)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11)",
+            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, deleted, content_hash, ended)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11, ?12)",
             params![
                 item.id,
                 item.kind.as_str(),
@@ -109,6 +109,7 @@ impl Store {
                 item.updated_at,
                 item.occurred_at,
                 hash,
+                item.ended,
             ],
         )?;
         Ok(item.id.clone())
@@ -120,7 +121,7 @@ impl Store {
         self.conn
             .query_row(
                 &format!(
-                    "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
+                    "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, ended, rowid AS m_rowid
                  FROM memories WHERE id = ?1 AND {}",
                     Self::live_filter("memories")
                 ),
@@ -133,7 +134,7 @@ impl Store {
     /// Update content/metadata. Keeps id and created_at.
     pub fn update(&self, item: &MemoryItem) -> rusqlite::Result<()> {
         self.conn.execute(
-            "UPDATE memories SET kind = ?2, content = ?3, tags = ?4, agent_id = ?5, session_id = ?6, importance = ?7, updated_at = ?8, occurred_at = ?9, content_hash = ?10
+            "UPDATE memories SET kind = ?2, content = ?3, tags = ?4, agent_id = ?5, session_id = ?6, importance = ?7, updated_at = ?8, occurred_at = ?9, content_hash = ?10, ended = ?11
              WHERE id = ?1",
             params![
                 item.id,
@@ -146,6 +147,7 @@ impl Store {
                 item.updated_at,
                 item.occurred_at,
                 content_hash(&item.kind, &item.content),
+                item.ended,
             ],
         )?;
         Ok(())
@@ -206,8 +208,8 @@ impl Store {
             )));
         }
         tx.execute(
-            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, deleted, content_hash, supersedes)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11, ?12)",
+            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, deleted, content_hash, supersedes, ended)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11, ?12, ?13)",
             params![
                 replacement.id,
                 replacement.kind.as_str(),
@@ -221,6 +223,7 @@ impl Store {
                 replacement.occurred_at,
                 content_hash(&replacement.kind, &replacement.content),
                 old_id,
+                replacement.ended,
             ],
         )?;
         tx.commit()?;
@@ -335,7 +338,7 @@ impl Store {
         // include_deleted bypasses only the deleted check; superseded rows
         // are never listed (chain reachable via trace).
         let sql = format!(
-            "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
+            "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, ended, rowid AS m_rowid
              FROM memories WHERE superseded_at IS NULL {} ORDER BY created_at DESC, rowid DESC",
             if include_deleted { "" } else { "AND deleted = 0" }
         );
@@ -352,7 +355,7 @@ impl Store {
     ) -> rusqlite::Result<Vec<(MemoryItem, f32)>> {
         let mut stmt = self.conn.prepare(
             &format!(
-                "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, bm25(memories_fts, 1.0, 2.0) AS rank, m.rowid AS m_rowid
+                "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, m.ended, bm25(memories_fts, 1.0, 2.0) AS rank, m.rowid AS m_rowid
              FROM memories_fts f
              JOIN memories m ON m.rowid = f.rowid
              WHERE memories_fts MATCH ?2 AND {}
@@ -365,7 +368,8 @@ impl Store {
             params![clamp_limit(limit), fts_quote(query), clamp_limit(limit)],
             |row| {
                 let item = row_to_item(row)?;
-                let rank: f64 = row.get(10)?;
+                // m.ended sits at index 10; bm25 rank moved to 11.
+                let rank: f64 = row.get(11)?;
                 Ok((item, rank as f32))
             },
         )?;
@@ -466,6 +470,10 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
              CREATE UNIQUE INDEX idx_memories_content_hash ON memories(content_hash)
                WHERE deleted = 0 AND superseded_at IS NULL;",
         )?;
+    }
+    // Unknown-end sentinel (issue #12): legacy DBs lack the column.
+    if !has_col("ended")? {
+        conn.execute_batch("ALTER TABLE memories ADD COLUMN ended INTEGER NOT NULL DEFAULT 0")?;
     }
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS forget_events (
@@ -583,6 +591,8 @@ fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryItem> {
         created_at: row.get(7)?,
         updated_at: row.get(8)?,
         occurred_at: row.get(9)?,
+        // Legacy rows (column added after first release) read as ongoing.
+        ended: row.get::<_, Option<bool>>(10)?.unwrap_or(false),
     })
 }
 
