@@ -389,6 +389,125 @@ impl RecallEngine {
         };
         Ok(hits)
     }
+
+    /// Cross-check live store rows against graph Memory nodes. Reports store
+    /// rows with no graph node (`missing graph node: {id}`) and graph nodes
+    /// with no live row (`ghost graph node: {id}` — purged without graph
+    /// forget). Soft-deleted rows are not ghosts: their nodes are dropped by
+    /// design when the memory is forgotten.
+    pub fn graph_gaps(&self) -> Result<Vec<String>> {
+        let g = self
+            .graph
+            .as_ref()
+            .ok_or_else(|| anyhow!("engine has no graph open"))?;
+        let live: HashSet<String> = self.store.list(false)?.into_iter().map(|m| m.id).collect();
+        let rows = g.cypher(
+            "MATCH (n:Memory) RETURN n.mid AS mid",
+            &serde_json::Value::Null,
+        )?;
+        let mut graph_ids: HashSet<String> = HashSet::new();
+        if let Some(list) = rows.as_array() {
+            for row in list {
+                if let Some(mid) = row.get("mid").and_then(|v| v.as_str()) {
+                    graph_ids.insert(mid.to_string());
+                }
+            }
+        }
+        let mut gaps = Vec::new();
+        for id in &live {
+            if !graph_ids.contains(id) {
+                gaps.push(format!("missing graph node: {id}"));
+            }
+        }
+        for id in &graph_ids {
+            if !live.contains(id) {
+                gaps.push(format!("ghost graph node: {id}"));
+            }
+        }
+        gaps.sort();
+        Ok(gaps)
+    }
+
+    /// Delete ghost graph nodes (nodes with no live store row). Returns the
+    /// number removed; store-live nodes are never touched.
+    pub fn gc_ghost_nodes(&self) -> Result<usize> {
+        let g = self
+            .graph
+            .as_ref()
+            .ok_or_else(|| anyhow!("engine has no graph open"))?;
+        let rows = g.cypher(
+            "MATCH (n:Memory) RETURN n.mid AS mid",
+            &serde_json::Value::Null,
+        )?;
+        let graph_ids: Vec<String> = rows
+            .as_array()
+            .map(|list| {
+                list.iter()
+                    .filter_map(|row| row.get("mid").and_then(|v| v.as_str()))
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default();
+        let live: HashSet<String> = self.store.list(false)?.into_iter().map(|m| m.id).collect();
+        let mut removed = 0;
+        for id in graph_ids {
+            if !live.contains(&id) {
+                g.forget(&id)
+                    .map_err(|e| anyhow!("graph forget {id}: {e}"))?;
+                removed += 1;
+            }
+        }
+        Ok(removed)
+    }
+
+    /// Reconcile FTS and vec index row counts against live (deleted=0)
+    /// memories. FTS is external-content (rowid = memories.rowid), vec is
+    /// vec0 keyed by rowid; a live memory with no joinable index row is drift.
+    /// Returns issue lines, empty when healthy.
+    pub fn index_audit(&self) -> Result<Vec<String>> {
+        let conn = self.store.connection();
+        let memories: i64 =
+            conn.query_row("SELECT COUNT(*) FROM memories WHERE deleted = 0", [], |r| {
+                r.get(0)
+            })?;
+        // FTS external-content probe: one quoted-token MATCH per live memory
+        // (first alphanumeric token, rowid-filtered). Token-less content is
+        // skipped by design.
+        let rows: Vec<(i64, String)> = {
+            let mut stmt = conn.prepare("SELECT rowid, content FROM memories WHERE deleted = 0")?;
+            rows_of(&mut stmt)?
+        };
+        let mut fts: i64 = 0;
+        for (rowid, content) in &rows {
+            let token = content
+                .split(|c: char| !c.is_alphanumeric())
+                .find(|t| !t.is_empty());
+            let Some(token) = token else { continue };
+            let found: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM memories_fts WHERE memories_fts MATCH ?1 AND rowid = ?2",
+                rusqlite::params![format!("\"{}\"", token.replace('"', "\"\"\"")), rowid],
+                |r| r.get(0),
+            )?;
+            fts += found.min(1);
+        }
+        let vec: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM memories m WHERE m.deleted = 0 \
+             AND EXISTS (SELECT 1 FROM mem_vec v WHERE v.rowid = m.rowid)",
+            [],
+            |r| r.get(0),
+        )?;
+        let mut issues = Vec::new();
+        if fts < memories || vec < memories {
+            issues.push(format!("memories: {memories}  fts: {fts}  vec: {vec}"));
+            if fts < memories {
+                issues.push(format!("fts missing: {}", memories - fts));
+            }
+            if vec < memories {
+                issues.push(format!("vec missing: {}", memories - vec));
+            }
+        }
+        Ok(issues)
+    }
 }
 
 fn matches(item: &MemoryItem, query: &RecallQuery) -> bool {
@@ -424,4 +543,11 @@ fn matches(item: &MemoryItem, query: &RecallQuery) -> bool {
         }
     }
     true
+}
+
+/// Collect a two-column (i64, String) statement result. Local helper so the
+/// engine facade needs no rusqlite trait imports for the audit escape hatch.
+fn rows_of(stmt: &mut rusqlite::Statement<'_>) -> rusqlite::Result<Vec<(i64, String)>> {
+    let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+    rows.collect()
 }

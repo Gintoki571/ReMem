@@ -11,6 +11,7 @@ remem-embed = { path = "../remem-embed" }
 serde_json = "1"
 clap = { version = "4", features = ["derive", "env"] }
 anyhow = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 [[bin]]
 name = "remem"
