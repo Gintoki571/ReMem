@@ -16,6 +16,28 @@ use remem_store::{content_hash, Store};
 use remem_types::{MemoryItem, RecallHit, RecallQuery};
 use std::collections::HashSet;
 
+/// Distinctive objects of a memory (issue #11 corroboration): the tags, plus
+/// identifier spans (all-digit tokens, e.g. "8080", "v3"), plus proper nouns
+/// (capitalized words that are not the first word of the content).
+/// ponytail: capitalization heuristic, not NER — upgrade to a real NER pass if
+/// a corpus needs it; tags and identifiers already carry most of the signal.
+fn distinctive_objects(item: &MemoryItem) -> std::collections::HashSet<String> {
+    let mut out: std::collections::HashSet<String> = item.tags.iter().cloned().collect();
+    for (i, tok) in item
+        .content
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|t| !t.is_empty())
+        .enumerate()
+    {
+        if tok.chars().all(|c| c.is_ascii_digit())
+            || (i > 0 && tok.chars().next().is_some_and(|c| c.is_uppercase()))
+        {
+            out.insert(tok.to_string());
+        }
+    }
+    out
+}
+
 /// Minimal local embedding contract so this crate is not blocked by
 /// remem-embed. Vectors must be 768-dim (the store's vec0 width); the real
 /// embedder is wired in at integration.
@@ -178,6 +200,34 @@ impl RecallEngine {
                 .filter(|(_id, dist)| *dist <= SIMILAR_MAX_DISTANCE)
                 .collect()
         };
+        // Corroboration gate (issue #11): a near neighbour only absorbs this
+        // write when it is the UNIQUE candidate whose distinctive objects
+        // (tags + identifier spans + proper nouns) all reappear in the new
+        // item. Zero corroborators (new fact) or two-plus (ambiguous) split
+        // into a new row; a value correction ("8080" -> "9090") never has its
+        // old objects reproduced, so it always splits. Live gate, no
+        // kill-switch.
+        let objs = distinctive_objects(item);
+        let corroborating: Vec<String> = similar
+            .iter()
+            .filter(|(id, _)| {
+                self.store
+                    .get(id)
+                    .ok()
+                    .flatten()
+                    .map(|cand| {
+                        let co = distinctive_objects(&cand);
+                        !co.is_empty() && co.is_subset(&objs)
+                    })
+                    .unwrap_or(false)
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        if corroborating.len() == 1 {
+            // Merge: the existing row already says this; no insert, no graph
+            // node, keep the old (original) id.
+            return Ok((corroborating.into_iter().next().expect("len == 1"), similar));
+        }
         let id = self.store.insert(item).context("store insert")?;
         self.store
             .set_embedding(&id, &vec)
