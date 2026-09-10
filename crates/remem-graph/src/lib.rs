@@ -480,11 +480,18 @@ impl Graph {
             .collect())
     }
 
-    /// Shortest memory-to-memory path `from -> to` as `[from, .., to]`, following
-    /// edge direction. Uses graphqlite's Dijkstra (uniform weights). Missing
-    /// endpoints or an unreachable target return an empty vector, not an error.
+    /// Shortest memory-to-memory path between `from` and `to`, returned in
+    /// stored orientation as `[first, .., last]`. graphqlite's Dijkstra is
+    /// DIRECTIONAL, so a forward miss falls back to the reverse query
+    /// (`to -> from`) and the found path is returned as-is: callers use this
+    /// as a symmetric "path between" tool. Missing endpoints or a target
+    /// unreachable in either direction return an empty vector, not an error.
     pub fn shortest_path(&self, from: &str, to: &str) -> Result<Vec<String>> {
         let sp = self.inner.shortest_path(from, to, None)?;
+        if sp.found {
+            return Ok(sp.path);
+        }
+        let sp = self.inner.shortest_path(to, from, None)?;
         Ok(match sp.found {
             true => sp.path,
             false => Vec::new(),
