@@ -345,7 +345,10 @@ fn main() -> Result<()> {
                                 },
                                 rank.parse::<usize>(),
                             ) {
-                                parts.push(format!("{ch}#{rank}={:.5}", w / (1.0 + rank as f64)));
+                                parts.push(format!(
+                                    "{ch}#{rank}={:.5}",
+                                    w / (remem_recall::DEFAULT_RRF_K as f64 + rank as f64)
+                                ));
                             }
                         }
                     }
