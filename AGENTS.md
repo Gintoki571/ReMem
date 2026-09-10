@@ -80,7 +80,7 @@ TDD: add/update the failing test first, then the fix; never commit a red workspa
 
 - `remember <kind> <text> [--tags t1,t2] [--agent a] [--session s] [--importance f] [--occurred-at secs|YYYY-MM-DD]`
 - `recall <query> [--k n] [--json] [--agent a] [--session s] [--since x] [--until y] [--max-chars n] [--min-score f]`
-- `list [--json]` | `link <from> <to> [--rel r]` | `forget <id>` | `purge <id>` | `stats` | `validate` (exit 1 if dangling/orphan) | `related <id>` | `central` | `path <from> <to>`
+- `list [--json]` | `link <from> <to> [--rel r]` | `forget <id>` | `purge <id>` | `stats` | `validate` (exit 1 if dangling/orphan) | `related <id>` | `central` | `path <from> <to>` | `trace <id>` (correction chain, oldest->newest; empty if unknown)
 
 ### Tests per crate
 
