@@ -140,6 +140,10 @@ impl RecallEngine {
         self.graph.as_ref()
     }
 
+    pub fn weights(&self) -> &Weights {
+        &self.weights
+    }
+
     /// Embed `texts` in one batch, checking the embedder kept its contract.
     fn embed_batch(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>> {
         let out = self.embed.embed(texts)?;

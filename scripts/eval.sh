@@ -21,8 +21,7 @@ import json, subprocess, sys
 fx = json.load(open(sys.argv[1]))
 for i, m in enumerate(fx["memories"]):
     args = ["remember", m["kind"], m["content"],
-            "--tags", ",".join(m["tags"]), "--agent", m["agent"],
-            "--importance", str(m["importance"])]
+            "--tags", ",".join(m["tags"]), "--agent", m["agent"]]
     r = subprocess.run(["./target/debug/remem"] + args,
                        capture_output=True, text=True)
     id = r.stdout.splitlines()[0].strip() if r.stdout else ""
