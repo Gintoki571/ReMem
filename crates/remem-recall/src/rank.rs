@@ -12,6 +12,33 @@ pub const DEFAULT_RRF_K: usize = 30;
 /// Recency half-life in days, same as v2.
 pub const DEFAULT_HALF_LIFE_DAYS: f64 = 30.0;
 
+/// Query-vs-anchor cosine below which recall abstains (returns no hits).
+///
+/// Calibration on docs/eval-fixtures.json (real Cpu 768d embedder, fresh db):
+/// junk queries — pure stopwords, cross-topic text — score 0.5529..0.7018
+/// against their best anchor, while the worst answerable query scores 0.6461.
+/// The bands overlap, so NO value separates junk from real on this corpus;
+/// 0.63 is the least-bad point: it keeps all 35 answerable queries and drops
+/// the most junk. The stale "0.235..0.296 usable gap, 0.27 midpoint"
+/// calibration was measured against final fused scores, not raw cosines, and
+/// does not transfer — do not reuse those numbers.
+pub const DEFAULT_COSINE_FLOOR: f32 = 0.63;
+
+/// Cosine similarity of two vectors; 0.0 when either norm is zero (the
+/// floor comparison then sees "no signal", which is the safe answer).
+pub fn cosine(a: &[f32], b: &[f32]) -> f32 {
+    let (mut dot, mut na, mut nb) = (0.0f64, 0.0f64, 0.0f64);
+    for (x, y) in a.iter().zip(b.iter()) {
+        dot += (*x as f64) * (*y as f64);
+        na += (*x as f64) * (*x as f64);
+        nb += (*y as f64) * (*y as f64);
+    }
+    if na == 0.0 || nb == 0.0 {
+        return 0.0;
+    }
+    (dot / (na.sqrt() * nb.sqrt())) as f32
+}
+
 /// One ranked id list contributing to a fusion. `ids` are best-first.
 #[derive(Debug, Clone, Copy)]
 pub struct Ranking<'a> {

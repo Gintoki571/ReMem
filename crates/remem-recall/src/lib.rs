@@ -5,8 +5,8 @@ pub mod rank;
 pub mod stub;
 
 pub use rank::{
-    apply_floor, final_score, fuse, is_content_free, pack_by_budget, recency_score, rrf, tag_boost,
-    tokens, Fused, Ranking, DEFAULT_HALF_LIFE_DAYS, DEFAULT_RRF_K,
+    apply_floor, cosine, final_score, fuse, is_content_free, pack_by_budget, recency_score, rrf,
+    tag_boost, tokens, Fused, Ranking, DEFAULT_COSINE_FLOOR, DEFAULT_HALF_LIFE_DAYS, DEFAULT_RRF_K,
 };
 pub use stub::StubEmbedder;
 
@@ -88,31 +88,50 @@ impl Default for Weights {
 }
 
 /// Store + Graph + embedder, ranked recall on top.
+///
+/// Heavy resources live behind one `Arc`, so the scoring knobs
+/// ([`RecallEngine::with_half_life_days`], [`RecallEngine::with_min_score`],
+/// [`RecallEngine::with_recency_off`]) derive a re-tuned engine from `&self`
+/// without re-opening store or graph. The construction-time builders
+/// ([`RecallEngine::with_graph`], [`RecallEngine::with_weights`]) still consume
+/// `self`: they shape the engine, not a recall variant of it.
 pub struct RecallEngine {
-    store: Store,
-    graph: Option<Graph>,
-    embed: Box<dyn Embed>,
+    shared: std::sync::Arc<Shared>,
     weights: Weights,
     half_life_days: f64,
     min_score: f64,
+    cosine_floor: f32,
+    recency_enabled: bool,
+}
+
+struct Shared {
+    store: Store,
+    graph: Option<Graph>,
+    embed: Box<dyn Embed>,
 }
 
 impl RecallEngine {
     /// Engine over an open store with no graph projection.
     pub fn new(store: Store, embed: Box<dyn Embed>) -> Self {
         Self {
-            store,
-            graph: None,
-            embed,
+            shared: std::sync::Arc::new(Shared {
+                store,
+                graph: None,
+                embed,
+            }),
             weights: Weights::default(),
             half_life_days: DEFAULT_HALF_LIFE_DAYS,
             min_score: DEFAULT_MIN_SCORE,
+            cosine_floor: rank::DEFAULT_COSINE_FLOOR,
+            recency_enabled: true,
         }
     }
 
     /// Enable graph projection and neighbour expansion on the same db file.
     pub fn with_graph(mut self, graph: Graph) -> Self {
-        self.graph = Some(graph);
+        if let Some(s) = std::sync::Arc::get_mut(&mut self.shared) {
+            s.graph = Some(graph);
+        }
         self
     }
 
@@ -121,28 +140,53 @@ impl RecallEngine {
         self
     }
 
-    pub fn with_half_life_days(mut self, days: f64) -> Self {
-        self.half_life_days = days;
-        self
+    /// Config clone with shared resources: the base for every derived knob.
+    fn derive(&self) -> Self {
+        Self {
+            shared: self.shared.clone(),
+            weights: self.weights,
+            half_life_days: self.half_life_days,
+            min_score: self.min_score,
+            cosine_floor: self.cosine_floor,
+            recency_enabled: self.recency_enabled,
+        }
+    }
+
+    /// Recency half-life override, derived from `&self` (shared resources).
+    pub fn with_half_life_days(&self, days: f64) -> Self {
+        let mut e = self.derive();
+        e.half_life_days = days;
+        e
     }
 
     /// Drop recall hits scoring below `min_score`. `0.0` disables the floor.
-    pub fn with_min_score(mut self, min_score: f64) -> Self {
-        self.min_score = min_score;
-        self
+    pub fn with_min_score(&self, min_score: f64) -> Self {
+        let mut e = self.derive();
+        e.min_score = min_score;
+        e
+    }
+
+    /// Recency off: skip the recency band entirely (no `recent` reasons, no
+    /// recency multiplier). Derived from `&self` so it composes with the other
+    /// knobs (docs/temporal-eval.md: the fixtures are timeless; callers that
+    /// know their corpus has no time signal can turn the band off).
+    pub fn with_recency_off(&self) -> Self {
+        let mut e = self.derive();
+        e.recency_enabled = false;
+        e
     }
 
     pub fn store(&self) -> &Store {
-        &self.store
+        &self.shared.store
     }
 
     pub fn graph(&self) -> Option<&Graph> {
-        self.graph.as_ref()
+        self.shared.graph.as_ref()
     }
 
     /// Embed `texts` in one batch, checking the embedder kept its contract.
     fn embed_batch(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>> {
-        let out = self.embed.embed(texts)?;
+        let out = self.shared.embed.embed(texts)?;
         if out.len() != texts.len() {
             return Err(anyhow!(
                 "embedder returned {} vectors for {} texts",
@@ -166,23 +210,26 @@ impl RecallEngine {
     pub fn remember(&self, item: &MemoryItem) -> Result<(String, Vec<(String, f32)>)> {
         let vec = self.embed_one(&item.content)?;
         let is_dup = self
+            .shared
             .store
             .find_by_hash(&content_hash(&item.kind, &item.content))
             .is_some();
         let similar: Vec<(String, f32)> = if is_dup {
             Vec::new()
         } else {
-            self.store
+            self.shared
+                .store
                 .knn(&vec, SIMILAR_PROBE_K)?
                 .into_iter()
                 .filter(|(_id, dist)| *dist <= SIMILAR_MAX_DISTANCE)
                 .collect()
         };
-        let id = self.store.insert(item).context("store insert")?;
-        self.store
+        let id = self.shared.store.insert(item).context("store insert")?;
+        self.shared
+            .store
             .set_embedding(&id, &vec)
             .context("set_embedding")?;
-        if let Some(g) = &self.graph {
+        if let Some(g) = &self.shared.graph {
             g.attach(item).map_err(|e| anyhow!("graph attach: {e}"))?;
         }
         Ok((id, similar))
@@ -190,8 +237,8 @@ impl RecallEngine {
 
     /// Remove a memory from store and graph.
     pub fn forget(&self, id: &str) -> Result<()> {
-        self.store.delete(id).context("store delete")?;
-        if let Some(g) = &self.graph {
+        self.shared.store.delete(id).context("store delete")?;
+        if let Some(g) = &self.shared.graph {
             g.forget(id).map_err(|e| anyhow!("graph forget: {e}"))?;
         }
         Ok(())
@@ -200,6 +247,7 @@ impl RecallEngine {
     /// Directed edge between two memories. Nodes must already be attached.
     pub fn link(&self, from: &str, to: &str, rel: Option<&str>) -> Result<()> {
         let g = self
+            .shared
             .graph
             .as_ref()
             .ok_or_else(|| anyhow!("engine has no graph open"))?;
@@ -209,14 +257,14 @@ impl RecallEngine {
     }
 
     pub fn list(&self) -> Result<Vec<MemoryItem>> {
-        Ok(self.store.list(false)?)
+        Ok(self.shared.store.list(false)?)
     }
 
     /// Combined counts for `remem stats`.
     pub fn stats(&self) -> Result<serde_json::Value> {
-        let memories = self.store.list(false)?.len();
+        let memories = self.shared.store.list(false)?.len();
         let mut out = serde_json::json!({ "memories": memories });
-        if let Some(g) = &self.graph {
+        if let Some(g) = &self.shared.graph {
             let s = g.stats().map_err(|e| anyhow!("graph stats: {e}"))?;
             out["graph"] = s;
         }
@@ -245,6 +293,7 @@ impl RecallEngine {
 
         // Filtered id set; an unfiltered list would leak soft-scoped hits.
         let allowed: HashSet<String> = self
+            .shared
             .store
             .list(false)?
             .into_iter()
@@ -253,6 +302,7 @@ impl RecallEngine {
             .collect();
 
         let fts: Vec<String> = self
+            .shared
             .store
             .fts_search(text, depth)?
             .into_iter()
@@ -261,17 +311,62 @@ impl RecallEngine {
             .collect();
 
         let qvec = self.embed_one(text)?;
-        let vector: Vec<String> = self
+
+        // Cosine floor (issue #9): two guards on the query, judged against
+        // vector geometry, not fused ranks.
+        // R1 - abstention: no lexical anchor at all, and even the closest
+        // stored vector sits below the floor -> the query is junk relative to
+        // this corpus; every hit downstream would be arbitrary. Returns [].
+        // R2 - list pruning: a STRONG lexical anchor (fts#1 content at/above
+        // the floor) means the query is real, so vector-only candidates below
+        // the floor are noise riding the knn tail and are dropped from the
+        // vector list. A weak lexical anchor prunes nothing: the embedder may
+        // simply not carry the signal (tag-only or graph-only recall must
+        // survive), and the fts list already vouches for the query.
+        // knn returns L2 distance on L2-normalized vectors, so
+        // cosine = 1 - d^2/2 (d=0 -> 1.0, orthogonal sqrt(2) -> 0.0).
+        let knn: Vec<(String, f32)> = self
+            .shared
             .store
             .knn(&qvec, depth)?
             .into_iter()
-            .map(|(id, _dist)| id)
-            .filter(|id| allowed.contains(id))
+            .filter(|(id, _)| allowed.contains(id))
             .collect();
+        let knn_cosine = |d: f32| 1.0 - d * d / 2.0;
+        if fts.is_empty() && self.cosine_floor > 0.0 {
+            let below = knn
+                .first()
+                .map_or(true, |(_, d)| knn_cosine(*d) < self.cosine_floor);
+            if below {
+                return Ok(Vec::new());
+            }
+        }
+        let vector: Vec<String> = if !fts.is_empty() && self.cosine_floor > 0.0 {
+            let anchored = match fts.first() {
+                Some(id) => match self.shared.store.get(id)? {
+                    Some(item) => {
+                        let av = self.embed_one(&item.content)?;
+                        rank::cosine(&qvec, &av) >= self.cosine_floor
+                    }
+                    None => false,
+                },
+                None => false,
+            };
+            if anchored {
+                knn.into_iter()
+                    .filter(|(_, d)| knn_cosine(*d) >= self.cosine_floor)
+                    .map(|(id, _)| id)
+                    .collect()
+            } else {
+                knn.into_iter().map(|(id, _)| id).collect()
+            }
+        } else {
+            knn.into_iter().map(|(id, _)| id).collect()
+        };
 
         // Graph expansion: neighbours of the top fts+vector seeds, fused as a
         // third list so linked-but-not-matched memories can surface.
-        let graph_ids: Vec<String> = if let Some(g) = &self.graph {
+        let graph_ids: Vec<String> = if let Some(g) = &self.shared.graph {
             let seeds = fuse(
                 &[
                     Ranking {
@@ -329,13 +424,19 @@ impl RecallEngine {
         for entry in fused {
             // Strict decode: skip a row that vanished or fails to decode
             // instead of failing the whole recall.
-            let Ok(Some(item)) = self.store.get(&entry.id) else {
+            let Ok(Some(item)) = self.shared.store.get(&entry.id) else {
                 continue;
             };
             // Two clocks: rank by when it happened, not when it was typed.
-            let recency = recency_score(item.event_time(), self.half_life_days, now);
+            // with_recency_off pins the band at 1.0: no multiplier, no `recent`
+            // reasons (docs/temporal-eval.md fixtures carry no time signal).
+            let recency = if self.recency_enabled {
+                recency_score(item.event_time(), self.half_life_days, now)
+            } else {
+                1.0
+            };
             let mut reasons = entry.reasons;
-            if recency > 0.9 {
+            if self.recency_enabled && recency > 0.9 {
                 reasons.push("recent".to_string());
             }
             if item.importance >= 0.8 {
@@ -412,7 +513,11 @@ fn matches(item: &MemoryItem, query: &RecallQuery) -> bool {
             return false;
         }
     }
-    let t = item.event_time();
+    // Future occurred_at rows never belong to a historical window: the clamp
+    // pins event_time at "now" for scoring, so window filters must see the
+    // same clamped value or a --since/--until pair would exclude-and-include
+    // the same row inconsistently.
+    let t = item.event_time().min(MemoryItem::now());
     if let Some(since) = &query.since {
         if t < *since {
             return false;
