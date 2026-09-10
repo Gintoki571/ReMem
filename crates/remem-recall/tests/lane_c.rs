@@ -193,7 +193,9 @@ fn recency_off_skips_recent_reason() {
         .recall(&q("redis sharding plan", 5))
         .unwrap();
     assert!(!hits.is_empty());
-    assert!(hits.iter().all(|h| !h.reasons.contains(&"recent".to_string())));
+    assert!(hits
+        .iter()
+        .all(|h| !h.reasons.contains(&"recent".to_string())));
     cleanup(&path);
 }
 
@@ -254,6 +256,8 @@ fn recency_knobs_compose() {
         .recall(&q("redis sharding plan", 5))
         .unwrap();
     assert!(!hits.is_empty());
-    assert!(hits.iter().all(|h| !h.reasons.contains(&"recent".to_string())));
+    assert!(hits
+        .iter()
+        .all(|h| !h.reasons.contains(&"recent".to_string())));
     cleanup(&path);
 }
