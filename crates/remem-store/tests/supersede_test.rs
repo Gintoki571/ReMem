@@ -35,7 +35,7 @@ fn supersede_marks_old_and_inserts_new_in_one_tx() {
     assert!(store.get(&old).unwrap().is_none());
     // New row is live and linked back.
     assert_eq!(store.get(&new_id).unwrap().unwrap().content, new.content);
-    let (supersedes, superseded_at): (Option<String>, Option<i64>) = store
+    let (_, superseded_at): (Option<String>, Option<i64>) = store
         .connection()
         .query_row(
             "SELECT supersedes, superseded_at FROM memories WHERE id = ?1",
