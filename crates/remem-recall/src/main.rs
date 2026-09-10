@@ -76,7 +76,8 @@ enum Cmd {
         #[arg(long)]
         max_chars: Option<usize>,
         /// Drop hits scoring below this (0 = off, the default)
-        #[arg(long, default_value_t = remem_recall::DEFAULT_MIN_SCORE)]
+        #[arg(long, env = "REMEM_COSINE_FLOOR",
+              default_value_t = remem_recall::DEFAULT_MIN_SCORE)]
         min_score: f64,
         /// Filter by kind (fact|decision|mistake|preference|event|note).
         /// Repeatable and comma-separated; kinds OR together.
@@ -88,6 +89,13 @@ enum Cmd {
         /// Print per-hit per-channel contributions to stderr
         #[arg(long)]
         explain: bool,
+        /// Disable the recency band (score contribution + `recent` reasons)
+        #[arg(long, env = "REMEM_NO_RECENCY")]
+        no_recency: bool,
+        /// Recency half-life in days (must be finite and > 0)
+        #[arg(long, env = "REMEM_HALF_LIFE_DAYS",
+              default_value_t = remem_recall::DEFAULT_HALF_LIFE_DAYS)]
+        half_life_days: f64,
     },
     /// List stored memories (newest first)
     List {
@@ -304,6 +312,8 @@ fn main() -> Result<()> {
             kind,
             tag,
             explain,
+            no_recency,
+            half_life_days,
         } => {
             let parse_kind = |s: &str| {
                 MemoryKind::parse(s).ok_or_else(|| {
@@ -320,6 +330,11 @@ fn main() -> Result<()> {
                 )
             };
             let tags = if tag.is_empty() { None } else { Some(tag) };
+            if !half_life_days.is_finite() || half_life_days <= 0.0 {
+                return Err(anyhow!(
+                    "invalid --half-life-days '{half_life_days}' (must be finite and > 0)"
+                ));
+            }
             let q = RecallQuery {
                 text: query.join(" "),
                 k,
@@ -332,7 +347,14 @@ fn main() -> Result<()> {
                 tags,
                 ..Default::default()
             };
-            let eng = engine(&cli.db)?.with_min_score(min_score);
+            let eng = engine(&cli.db)?
+                .with_min_score(min_score)
+                .with_half_life_days(half_life_days);
+            let eng = if no_recency {
+                eng.with_recency_off()
+            } else {
+                eng
+            };
             let hits = eng.recall(&q)?;
             if explain {
                 // Contributions are weight * 1/(DEFAULT_RRF_K + rank), parsed

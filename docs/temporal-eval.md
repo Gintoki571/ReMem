@@ -15,8 +15,7 @@ backdated event times. Testing and docs only; no code changed.
   - `march outage` -> 2026-03-15, `Q1 freeze` -> 2026-01-20, `Feb 20 audit` ->
     2026-02-20, `April billing` -> 2026-04-15, `BigQuery` -> 2026-05-01,
     `Aug pipeline` -> 2026-08-03, `v1 shutdown` -> 2026-12-31 (future-dated).
-- No `--no-recency` flag exists, so recency is flattened externally rather than
-  inferred from ranks. Three arms, all with identical FTS and vector input:
+- `--no-recency` (issue #13) disables the recency band in-engine, so the no-recency arm no longer needs external flattening. Three arms, all with identical FTS and vector input:
 
 | arm | file | construction | what it isolates |
 |-----|------|--------------|------------------|
