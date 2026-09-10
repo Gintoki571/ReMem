@@ -553,10 +553,14 @@ impl RecallEngine {
     /// design when the memory is forgotten.
     pub fn graph_gaps(&self) -> Result<Vec<String>> {
         let g = self
-            .graph
-            .as_ref()
+            .graph()
             .ok_or_else(|| anyhow!("engine has no graph open"))?;
-        let live: HashSet<String> = self.store.list(false)?.into_iter().map(|m| m.id).collect();
+        let live: HashSet<String> = self
+            .store()
+            .list(false)?
+            .into_iter()
+            .map(|m| m.id)
+            .collect();
         let rows = g.cypher(
             "MATCH (n:Memory) RETURN n.mid AS mid",
             &serde_json::Value::Null,
@@ -588,8 +592,7 @@ impl RecallEngine {
     /// number removed; store-live nodes are never touched.
     pub fn gc_ghost_nodes(&self) -> Result<usize> {
         let g = self
-            .graph
-            .as_ref()
+            .graph()
             .ok_or_else(|| anyhow!("engine has no graph open"))?;
         let rows = g.cypher(
             "MATCH (n:Memory) RETURN n.mid AS mid",
@@ -604,7 +607,12 @@ impl RecallEngine {
                     .collect()
             })
             .unwrap_or_default();
-        let live: HashSet<String> = self.store.list(false)?.into_iter().map(|m| m.id).collect();
+        let live: HashSet<String> = self
+            .store()
+            .list(false)?
+            .into_iter()
+            .map(|m| m.id)
+            .collect();
         let mut removed = 0;
         for id in graph_ids {
             if !live.contains(&id) {
@@ -621,7 +629,7 @@ impl RecallEngine {
     /// vec0 keyed by rowid; a live memory with no joinable index row is drift.
     /// Returns issue lines, empty when healthy.
     pub fn index_audit(&self) -> Result<Vec<String>> {
-        let conn = self.store.connection();
+        let conn = self.store().connection();
         let memories: i64 =
             conn.query_row("SELECT COUNT(*) FROM memories WHERE deleted = 0", [], |r| {
                 r.get(0)
