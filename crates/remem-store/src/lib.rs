@@ -88,8 +88,8 @@ impl Store {
             return Ok(existing);
         }
         self.conn.execute(
-            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, deleted, content_hash)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11)",
+            "INSERT INTO memories (id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, deleted, content_hash, ended)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11, ?12)",
             params![
                 item.id,
                 item.kind.as_str(),
@@ -102,6 +102,7 @@ impl Store {
                 item.updated_at,
                 item.occurred_at,
                 hash,
+                item.ended,
             ],
         )?;
         Ok(item.id.clone())
@@ -112,7 +113,7 @@ impl Store {
     pub fn get(&self, id: &str) -> rusqlite::Result<Option<MemoryItem>> {
         self.conn
             .query_row(
-                "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
+                "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, ended, rowid AS m_rowid
                  FROM memories WHERE id = ?1 AND deleted = 0",
                 params![id],
                 row_to_item,
@@ -123,7 +124,7 @@ impl Store {
     /// Update content/metadata. Keeps id and created_at.
     pub fn update(&self, item: &MemoryItem) -> rusqlite::Result<()> {
         self.conn.execute(
-            "UPDATE memories SET kind = ?2, content = ?3, tags = ?4, agent_id = ?5, session_id = ?6, importance = ?7, updated_at = ?8, occurred_at = ?9, content_hash = ?10
+            "UPDATE memories SET kind = ?2, content = ?3, tags = ?4, agent_id = ?5, session_id = ?6, importance = ?7, updated_at = ?8, occurred_at = ?9, content_hash = ?10, ended = ?11
              WHERE id = ?1",
             params![
                 item.id,
@@ -136,6 +137,7 @@ impl Store {
                 item.updated_at,
                 item.occurred_at,
                 content_hash(&item.kind, &item.content),
+                item.ended,
             ],
         )?;
         Ok(())
@@ -171,7 +173,7 @@ impl Store {
 
     pub fn list(&self, include_deleted: bool) -> rusqlite::Result<Vec<MemoryItem>> {
         let sql = format!(
-            "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, rowid AS m_rowid
+            "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, ended, rowid AS m_rowid
              FROM memories {} ORDER BY created_at DESC, rowid DESC",
             if include_deleted { "" } else { "WHERE deleted = 0" }
         );
@@ -187,7 +189,7 @@ impl Store {
         limit: usize,
     ) -> rusqlite::Result<Vec<(MemoryItem, f32)>> {
         let mut stmt = self.conn.prepare(
-            "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, bm25(memories_fts, 1.0, 2.0) AS rank, m.rowid AS m_rowid
+            "SELECT m.id, m.kind, m.content, m.tags, m.agent_id, m.session_id, m.importance, m.created_at, m.updated_at, m.occurred_at, m.ended, bm25(memories_fts, 1.0, 2.0) AS rank, m.rowid AS m_rowid
              FROM memories_fts f
              JOIN memories m ON m.rowid = f.rowid
              WHERE memories_fts MATCH ?2 AND m.deleted = 0
@@ -248,6 +250,33 @@ impl Store {
         rows.collect()
     }
 
+    /// Supersede: invalidate the old row (soft-delete with a superseded_by
+    /// pointer for the chain) and insert the replacement in one transaction.
+    /// Returns the new id. Minimal surface for the sentinel suite; the full
+    /// correction chain (issue #7) lives with its owning lane.
+    pub fn supersede(&self, old_id: &str, new: &MemoryItem) -> rusqlite::Result<String> {
+        let new_id = new.id.clone();
+        self.conn.execute_batch("BEGIN IMMEDIATE")?;
+        let res = (|| {
+            self.delete(old_id)?;
+            self.conn.execute(
+                "UPDATE memories SET superseded_by = ?2 WHERE id = ?1",
+                params![old_id, new_id],
+            )?;
+            self.insert(new)
+        })();
+        match res {
+            Ok(id) => {
+                self.conn.execute_batch("COMMIT")?;
+                Ok(id)
+            }
+            Err(e) => {
+                let _ = self.conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
+    }
+
     /// Escape hatch for graph/cypher coexistence checks; not part of the store API.
     pub fn connection(&self) -> &Connection {
         &self.conn
@@ -268,6 +297,9 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     }
     if !has_col("content_hash")? {
         conn.execute_batch("ALTER TABLE memories ADD COLUMN content_hash TEXT")?;
+    }
+    if !has_col("ended")? {
+        conn.execute_batch("ALTER TABLE memories ADD COLUMN ended INTEGER NOT NULL DEFAULT 0")?;
     }
     conn.execute_batch(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash)",
@@ -381,6 +413,8 @@ fn row_to_item(row: &rusqlite::Row<'_>) -> rusqlite::Result<MemoryItem> {
         created_at: row.get(7)?,
         updated_at: row.get(8)?,
         occurred_at: row.get(9)?,
+        // Legacy rows (column added after first release) read as ongoing.
+        ended: row.get::<_, Option<bool>>(10)?.unwrap_or(false),
     })
 }
 

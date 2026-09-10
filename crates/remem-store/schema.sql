@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS memories (
   updated_at INTEGER NOT NULL,
   occurred_at INTEGER,
   deleted INTEGER NOT NULL DEFAULT 0,
-  content_hash TEXT
+  content_hash TEXT,
+  ended INTEGER NOT NULL DEFAULT 0,
+  superseded_by TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_content_hash ON memories(content_hash);
