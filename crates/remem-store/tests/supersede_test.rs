@@ -43,7 +43,6 @@ fn supersede_marks_old_and_inserts_new_in_one_tx() {
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .unwrap();
-    assert_eq!(supersedes.as_deref(), Some(new_id.as_str()));
     assert!(superseded_at.is_some());
     let (n_sup, s_at): (Option<String>, Option<i64>) = store
         .connection()
@@ -53,7 +52,9 @@ fn supersede_marks_old_and_inserts_new_in_one_tx() {
             |r| Ok((r.get(0)?, r.get(1)?)),
         )
         .unwrap();
-    assert!(n_sup.is_none() && s_at.is_none());
+    // The NEW row points back at the id it replaces.
+    assert_eq!(n_sup.as_deref(), Some(old.as_str()));
+    assert!(s_at.is_none());
 }
 
 #[test]
@@ -91,7 +92,12 @@ fn get_list_fts_knn_exclude_superseded() {
     let old = store.insert(&item("port 8080 deploy")).unwrap();
     let new_id = store.supersede(&old, &item("port 9090 deploy")).unwrap();
     assert!(store.get(&old).unwrap().is_none());
-    let ids: Vec<String> = store.list(false).unwrap().into_iter().map(|m| m.id).collect();
+    let ids: Vec<String> = store
+        .list(false)
+        .unwrap()
+        .into_iter()
+        .map(|m| m.id)
+        .collect();
     assert_eq!(ids, vec![new_id.clone()]);
     let fts: Vec<String> = store
         .fts_search("deploy", 10)
@@ -101,7 +107,12 @@ fn get_list_fts_knn_exclude_superseded() {
         .collect();
     assert_eq!(fts, vec![new_id.clone()], "fts must skip superseded");
     store.set_embedding(&new_id, &one_hot(0)).unwrap();
-    let knn: Vec<String> = store.knn(&one_hot(0), 10).unwrap().into_iter().map(|(id, _)| id).collect();
+    let knn: Vec<String> = store
+        .knn(&one_hot(0), 10)
+        .unwrap()
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
     assert_eq!(knn, vec![new_id], "knn must skip superseded");
     // include_deleted still hides superseded rows: superseding is not deleting.
     assert!(store.list(true).unwrap().iter().all(|m| m.id != old));
@@ -119,8 +130,13 @@ fn partial_unique_index_allows_live_duplicate_only_after_supersede() {
          VALUES ('dup', 'fact', 'unique content here', 1, 1, ?1)",
         [hash.as_str()],
     );
-    assert!(dup.is_err(), "live duplicate must violate the partial index");
-    store.supersede(&old, &item("unique content here v2")).unwrap();
+    assert!(
+        dup.is_err(),
+        "live duplicate must violate the partial index"
+    );
+    store
+        .supersede(&old, &item("unique content here v2"))
+        .unwrap();
     // Old row is superseded: a live row with the same hash is now allowed.
     store
         .connection()
@@ -185,7 +201,10 @@ fn trace_walks_backward_and_forward_through_the_chain() {
     let v2_id = store.supersede(&v1, &item("port 9090")).unwrap();
     let v3 = store.supersede(&v2_id, &item("port 7070")).unwrap();
     // From the oldest end: forward to the newest.
-    assert_eq!(store.trace(&v1).unwrap(), vec![v1.clone(), v2_id.clone(), v3.clone()]);
+    assert_eq!(
+        store.trace(&v1).unwrap(),
+        vec![v1.clone(), v2_id.clone(), v3.clone()]
+    );
     // From the newest end: backward to the oldest.
     assert_eq!(store.trace(&v3).unwrap(), vec![v1, v2_id, v3.clone()]);
     // From the middle: both directions join into one chain.
@@ -201,7 +220,9 @@ fn v1_of(store: &Store, chain: &[String]) -> String {
     for id in chain {
         let prev: Option<String> = store
             .connection()
-            .query_row("SELECT supersedes FROM memories WHERE id = ?1", [id], |r| r.get(0))
+            .query_row("SELECT supersedes FROM memories WHERE id = ?1", [id], |r| {
+                r.get(0)
+            })
             .unwrap();
         if prev.is_none() {
             return id.clone();
@@ -224,7 +245,10 @@ fn trace_terminates_on_hand_edited_cycle() {
     // Hostile data: b supersedes a AND a supersedes b (cycle).
     store
         .connection()
-        .execute("UPDATE memories SET supersedes = ?1 WHERE id = ?2", rusqlite::params![b, a])
+        .execute(
+            "UPDATE memories SET supersedes = ?1 WHERE id = ?2",
+            rusqlite::params![b, a],
+        )
         .unwrap();
     let chain = store.trace(&a).unwrap();
     assert_eq!(chain.len(), 2, "cycle guard must stop the walk: {chain:?}");
@@ -239,7 +263,11 @@ fn forget_events_recorded_newest_first_and_undo_revives() {
     store.delete(&a).unwrap();
     store.delete(&b).unwrap();
     let events = store.forget_events(10).unwrap();
-    assert_eq!(events, vec![b.clone(), a.clone()], "newest first (rowid DESC)");
+    assert_eq!(
+        events,
+        vec![b.clone(), a.clone()],
+        "newest first (rowid DESC)"
+    );
     store.undo_forget(&a).unwrap();
     assert!(store.get(&a).unwrap().is_some(), "undo revives");
     assert!(store.get(&b).unwrap().is_none(), "untouched stays deleted");
