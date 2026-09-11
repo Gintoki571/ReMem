@@ -939,3 +939,22 @@ fn cli_recall_json_importance_defaults_stored() {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
 }
+
+/// Task 1 regression: the `embedder: Cpu (768d)` banner (and any other engine
+/// chatter) must stay on stderr; stdout line 0 is the bare id that scripts and
+/// eval.sh parse. A near-duplicate write prints the merged id, still bare.
+#[test]
+fn cli_stdout_stays_bare_id_banner_on_stderr() {
+    let db = std::env::temp_dir().join(format!("remem-cli-banner-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+
+    let out = remem(&db, &["remember", "fact", "banner purity check alpha"]);
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines.len(), 1, "stdout must be exactly the id: {lines:?}");
+    assert!(!lines[0].is_empty());
+    assert!(!out.contains("embedder:"), "banner leaked to stdout");
+
+    // Near-duplicate merge path keeps stdout clean too.
+    let out2 = remem(&db, &["remember", "fact", "banner purity check alpha"]);
+    assert_eq!(out2.lines().count(), 1, "merge stdout: {out2:?}");
+}
