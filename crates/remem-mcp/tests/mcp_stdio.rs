@@ -198,9 +198,11 @@ fn remember_recall_link_stats_roundtrip() {
         "remember",
         json!({"kind": "fact", "content": "mcp roundtrip alpha token", "tags": ["t1"]}),
     );
+    // Dissimilar content: a similar second write would write-time auto-link
+    // an edge and make the validate-healthy assertion below fail by design.
     let b: Value = c.call(
         "remember",
-        json!({"kind": "note", "content": "mcp roundtrip beta token"}),
+        json!({"kind": "note", "content": "quarterly banana taxonomy unrelated"}),
     );
     let ida = a["id"].as_str().unwrap();
     let idb = b["id"].as_str().unwrap();

@@ -11,7 +11,7 @@ pub use rank::{
 pub use stub::StubEmbedder;
 
 use anyhow::{anyhow, Context, Result};
-use remem_graph::{EdgeProvenance, Graph, MEMORY_LABEL};
+use remem_graph::{EdgeProvenance, Graph, DEFAULT_REL, MEMORY_LABEL};
 use remem_store::{content_hash, Store};
 use remem_types::{MemoryItem, RecallHit, RecallQuery};
 use std::collections::{HashMap, HashSet};
@@ -82,6 +82,14 @@ pub const SIMILAR_MAX_DISTANCE: f32 = 0.48;
 /// tracker; a 4th near-dup would itself be a re-save worth seeing, but the
 /// writer only needs enough to recognize the duplicate.
 const SIMILAR_PROBE_K: usize = 3;
+
+/// Auto-link precision gate (graphify unique-evidence): a write links to an
+/// existing memory only when the candidate set that clears this cosine floor
+/// is EXACTLY one. Vectors are L2-normalized; 0.72 cosine is L2 <= 0.749.
+pub const AUTO_LINK_MIN_COSINE: f32 = 0.72;
+
+/// How many neighbours the write-time auto-link probe pulls.
+const AUTO_LINK_PROBE_K: usize = 3;
 
 /// Per-list depth for candidate generation. bm25 and knn both truncate here;
 /// `4 * k` leaves room for fusion to disagree. ponytail: constant depth, no
@@ -327,6 +335,7 @@ impl RecallEngine {
                 .map_err(|e| anyhow!("extract references: {e}"))?;
         }
         self.link_temporal_near(&id, item)?;
+        self.auto_link(&id, &vec);
         Ok((id, similar))
     }
 
@@ -338,7 +347,7 @@ impl RecallEngine {
         &self,
         from: &str,
         content: &str,
-        g: &remem_graph::Graph,
+        g: &Graph,
     ) -> Result<()> {
         static REF: OnceLock<regex::Regex> = OnceLock::new();
         let re = REF.get_or_init(|| {
@@ -462,6 +471,47 @@ impl RecallEngine {
                 .map_err(|e| anyhow!("weight write: {e}"))?;
         }
         Ok(())
+
+    /// Write-time auto-link: run the freshly-inserted embedding against
+    /// existing memories (vec0 kNN, top-3) and gate on precision. Exactly one
+    /// candidate at cosine >= AUTO_LINK_MIN_COSINE writes an `auto-link` edge;
+    /// 2-3 candidates park ALL pairs in suggested_edges (graphify
+    /// unique-evidence gate: multiple matches are ambiguous, so nothing is
+    /// written into the graph). Zero LLM.
+    fn auto_link(&self, id: &str, vec: &[f32]) {
+        let g = match &self.shared.graph {
+            Some(g) => g,
+            None => return,
+        };
+        // knn returns L2 on L2-normalized vectors: cosine = 1 - d^2/2.
+        let candidates: Vec<String> = self
+            .shared
+            .store
+            .knn(vec, AUTO_LINK_PROBE_K)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|(cid, d)| {
+                cid != id && 1.0 - (*d as f32) * (*d as f32) / 2.0 >= AUTO_LINK_MIN_COSINE
+            })
+            .map(|(cid, _)| cid)
+            .collect();
+        if candidates.len() == 1 {
+            if let Err(e) =
+                g.link_with_provenance(id, &candidates[0], DEFAULT_REL, EdgeProvenance::AutoLink)
+            {
+                eprintln!("auto-link: {e}");
+            }
+        } else if candidates.len() > 1 {
+            for cid in &candidates {
+                if let Err(e) = self
+                    .shared
+                    .store
+                    .record_suggestion(id, cid, "(auto-link)", 1)
+                {
+                    eprintln!("auto-link suggest: {e}");
+                }
+            }
+        }
     }
 
     /// Remove a memory from store and graph.
@@ -769,6 +819,14 @@ impl RecallEngine {
                     .map_err(|e| anyhow!("graph neighbors: {e}"))?
                 {
                     if !n.labels.iter().any(|l| l == MEMORY_LABEL) {
+                        continue;
+                    }
+                    // Write-time auto-link edges stay out of expansion: they
+                    // are bulk single-evidence pointers, and feeding them to
+                    // the graph list let neighbours of seeds overtake true
+                    // hits in the eval corpus. The provenance stays visible
+                    // on edges (`related`, viz) for other consumers.
+                    if n.provenance == EdgeProvenance::AutoLink {
                         continue;
                     }
                     if allowed.contains(&n.id) && seen.insert(n.id.clone()) {

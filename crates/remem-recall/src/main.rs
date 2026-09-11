@@ -129,7 +129,7 @@ enum Cmd {
         /// Relation label (default: RELATES_TO)
         #[arg(long)]
         rel: Option<String>,
-        /// Edge provenance: manual|recall-suggested|correction-chain|temporal (default: manual)
+        /// Edge provenance: manual|recall-suggested|correction-chain|extracted|temporal|auto-link (default: manual)
         #[arg(long)]
         provenance: Option<String>,
     },
@@ -164,7 +164,8 @@ enum Cmd {
         #[arg(long)]
         rel: Option<String>,
     },
-    /// recall-suggested edge candidates (accept with `link --rel`)
+    /// Edge candidates parked for review: multi-match write-time auto-links
+    /// (query `(auto-link)`) and recall-suggested hits (accept with `link --rel`)
     Suggestions {},
     /// Top memories by graph PageRank as `id  score` lines
     Central {

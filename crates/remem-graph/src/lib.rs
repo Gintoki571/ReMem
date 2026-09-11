@@ -30,11 +30,17 @@ pub enum EdgeProvenance {
     RecallSuggested,
     /// Written by a correction-chain / supersede operation.
     CorrectionChain,
+<<<<<<< HEAD
     /// Extracted automatically from content (e.g. [[uuid]] / remem://uuid
     /// references found at remember() time).
     Extracted,
     /// Written automatically from time proximity (Hindsight pattern).
     Temporal,
+=======
+    /// Written at `remember` time when exactly one vec0 neighbour clears the
+    /// auto-link cosine floor (write-time auto-link).
+    AutoLink,
+>>>>>>> lane-automlink
 }
 
 impl EdgeProvenance {
@@ -43,8 +49,12 @@ impl EdgeProvenance {
             EdgeProvenance::Manual => "manual",
             EdgeProvenance::RecallSuggested => "recall-suggested",
             EdgeProvenance::CorrectionChain => "correction-chain",
+<<<<<<< HEAD
             EdgeProvenance::Extracted => "extracted",
             EdgeProvenance::Temporal => "temporal",
+=======
+            EdgeProvenance::AutoLink => "auto-link",
+>>>>>>> lane-automlink
         }
     }
 
@@ -53,8 +63,12 @@ impl EdgeProvenance {
             "manual" => Some(EdgeProvenance::Manual),
             "recall-suggested" => Some(EdgeProvenance::RecallSuggested),
             "correction-chain" => Some(EdgeProvenance::CorrectionChain),
+<<<<<<< HEAD
             "extracted" => Some(EdgeProvenance::Extracted),
             "temporal" => Some(EdgeProvenance::Temporal),
+=======
+            "auto-link" => Some(EdgeProvenance::AutoLink),
+>>>>>>> lane-automlink
             _ => None,
         }
     }
@@ -129,7 +143,11 @@ impl fmt::Display for Error {
             Error::InvalidParams(e) => write!(f, "invalid params: {e}"),
             Error::UnknownProvenance(s) => write!(
                 f,
+<<<<<<< HEAD
                 "unknown provenance: {s} (manual|recall-suggested|correction-chain|temporal)"
+=======
+                "unknown provenance: {s} (manual|recall-suggested|correction-chain|auto-link)"
+>>>>>>> lane-automlink
             ),
         }
     }

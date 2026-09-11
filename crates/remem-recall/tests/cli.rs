@@ -544,6 +544,10 @@ fn cli_forget_related_central_and_path() {
     let got: Vec<String> = remem(&db, &["related", &b])
         .lines()
         .map(String::from)
+        // write-time auto-link (cosine gate on the real embedder) may add an
+        // extra edge between these fixture nodes; this test is about the
+        // related/central/path mechanics, so drop auto-link rows.
+        .filter(|l| !l.ends_with("auto-link"))
         .collect();
     assert_eq!(got, want, "related both directions");
 
@@ -556,10 +560,12 @@ fn cli_forget_related_central_and_path() {
         vec![format!("{a}  SUPERSEDES  manual")],
         "--rel filter"
     );
-    assert_eq!(
-        remem(&db, &["related", &a]),
-        format!("{b}  SUPERSEDES  manual\n")
-    );
+    let rel_a: String = remem(&db, &["related", &a])
+        .lines()
+        .filter(|l| !l.ends_with("auto-link"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert_eq!(rel_a, format!("{b}  SUPERSEDES  manual"));
 
     // path follows edges; delta is unreachable
     let hops = remem(&db, &["path", &a, &c]);
