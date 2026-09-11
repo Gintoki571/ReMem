@@ -60,6 +60,14 @@ fn cleanup(path: &std::path::Path) {
     }
 }
 
+fn query(text: &str, k: usize) -> remem_types::RecallQuery {
+    remem_types::RecallQuery {
+        text: text.to_string(),
+        k,
+        ..Default::default()
+    }
+}
+
 fn item(content: &str) -> MemoryItem {
     MemoryItem::new(MemoryKind::Fact, content.to_string())
 }
@@ -185,5 +193,46 @@ fn auto_link_provenance_parses_and_links() {
     let edges = e.graph().unwrap().memory_edges().unwrap();
     assert_eq!(edges.len(), 1);
     assert_eq!(edges[0].provenance, remem_graph::EdgeProvenance::AutoLink);
+    cleanup(&path);
+}
+
+/// Recall graph-expansion must NOT walk auto-link edges: write-time links are
+/// bulk low-precision pointers, and letting them feed the graph list let
+/// neighbours of seeds overtake true hits in the eval corpus.
+#[test]
+fn recall_graph_expansion_ignores_auto_link_edges() {
+    let (e, path) = engine(
+        "noexpand",
+        GradedEmbedder::new(&[
+            ("alpha document", 0.0),
+            ("beta document", 10.0_f64.to_radians()),
+            ("gamma query", 90.0_f64.to_radians()),
+            ("delta noise", 170.0_f64.to_radians()),
+        ]),
+    );
+    let ida = e.remember(&item("alpha document")).unwrap().0;
+    let idb = e.remember(&item("beta document")).unwrap().0;
+    // auto-link connects a -> b (cos ~0.985).
+    assert!(e
+        .graph()
+        .unwrap()
+        .memory_edges()
+        .unwrap()
+        .iter()
+        .any(|ed| ed.provenance == remem_graph::EdgeProvenance::AutoLink));
+
+    // Query seeds a (its nearest vector); b is reachable ONLY via the
+    // auto-link edge, so it must never arrive with a graph# reason.
+    let hits = e.recall(&query("alpha document", 5)).unwrap();
+    let reasons: Vec<_> = hits
+        .iter()
+        .filter(|h| h.item.id == idb)
+        .flat_map(|h| h.reasons.iter().cloned())
+        .collect();
+    assert!(
+        !reasons.iter().any(|r| r.starts_with("graph#")),
+        "auto-link edge must not feed graph expansion (b reached with {reasons:?})"
+    );
+    let _ = ida;
     cleanup(&path);
 }

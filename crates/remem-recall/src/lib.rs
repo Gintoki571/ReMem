@@ -684,6 +684,14 @@ impl RecallEngine {
                     if !n.labels.iter().any(|l| l == MEMORY_LABEL) {
                         continue;
                     }
+                    // Write-time auto-link edges stay out of expansion: they
+                    // are bulk single-evidence pointers, and feeding them to
+                    // the graph list let neighbours of seeds overtake true
+                    // hits in the eval corpus. The provenance stays visible
+                    // on edges (`related`, viz) for other consumers.
+                    if n.provenance == EdgeProvenance::AutoLink {
+                        continue;
+                    }
                     if allowed.contains(&n.id) && seen.insert(n.id.clone()) {
                         edge_prov.insert(n.id.clone(), n.provenance);
                         edge_from.insert(n.id.clone(), seed.id.clone());
