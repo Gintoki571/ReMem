@@ -812,3 +812,170 @@ fn rows_of(stmt: &mut rusqlite::Statement<'_>) -> rusqlite::Result<Vec<(i64, Str
     let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
     rows.collect()
 }
+
+#[cfg(test)]
+mod impact_tests {
+    use super::*;
+    use crate::stub::StubEmbedder;
+    use remem_graph::Graph;
+    use remem_store::Store;
+    use remem_types::{MemoryItem, MemoryKind};
+
+    fn test_engine(path: &std::path::Path) -> RecallEngine {
+        let store = Store::open_path(path).unwrap();
+        let graph = Graph::open(path).unwrap();
+        RecallEngine::new(store, Box::new(StubEmbedder)).with_graph(graph)
+    }
+
+    fn tmp_db(tag: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "remem-impact-{tag}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir.join("remem.db")
+    }
+
+    fn item(kind: MemoryKind, content: &str, tags: &[&str]) -> MemoryItem {
+        let mut m = MemoryItem::new(kind, content.to_string());
+        m.tags = tags.iter().map(|s| s.to_string()).collect();
+        m
+    }
+
+    /// Chain fixture: m0 <- m1 (SUPERSEDES, correction-chain) plus an
+    /// unrelated live memory m_unlinked.
+    fn chain_fixture(path: &std::path::Path) -> (RecallEngine, Vec<String>) {
+        let eng = test_engine(path);
+        let mut ids = Vec::new();
+        let mut prev: Option<MemoryItem> = None;
+        for (i, content) in [
+            "deploy runs on port 8080",
+            "deploy runs on port 9090",
+            "deploy runs on port 9443",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let mut m = item(MemoryKind::Fact, content, &["deploy"]);
+            if let Some(old) = &prev {
+                let new_id = eng
+                    .supersede(&old.id, &m)
+                    .expect("supersede succeeds");
+                ids.push(new_id.clone());
+                m.id = new_id;
+            } else {
+                eng.remember(&m).expect("remember succeeds");
+                ids.push(m.id.clone());
+            }
+            prev = Some(m);
+        }
+        let unlinked = item(MemoryKind::Note, "unrelated grocery list", &["groceries"]);
+        eng.remember(&unlinked).expect("remember succeeds");
+        ids.push(unlinked.id);
+        (eng, ids)
+    }
+
+    #[test]
+    fn correction_chain_root_reports_every_successor() {
+        let db = tmp_db("chain-root");
+        let (eng, ids) = chain_fixture(&db);
+        let report = eng.impact(&ids[0]).expect("impact succeeds");
+        // Root is line 0; both successors appear (depth walk is unbounded on
+        // SUPERSEDES), the newest-last.
+        assert_eq!(report.root, ids[0]);
+        let walked: Vec<&str> = report.nodes.iter().map(|n| n.id.as_str()).collect();
+        assert!(
+            walked.contains(&ids[1].as_str()) && walked.contains(&ids[2].as_str()),
+            "both successors must appear: {walked:?}"
+        );
+        assert!(
+            report
+                .nodes
+                .iter()
+                .filter(|n| n.id == ids[2])
+                .all(|n| n.depth == 2),
+            "newest successor sits two hops out: {:?}",
+            report.nodes
+        );
+        assert!(!walked.contains(&ids[3].as_str()), "unrelated memory stays out");
+        let sup = report
+            .nodes
+            .iter()
+            .find(|n| n.id == ids[1])
+            .expect("m1 present");
+        assert_eq!(sup.rel, "SUPERSEDES");
+        assert_eq!(sup.provenance, remem_graph::EdgeProvenance::CorrectionChain);
+        let _ = std::fs::remove_dir_all(db.parent().unwrap());
+    }
+
+    #[test]
+    fn newest_version_walks_back_to_superseded_originals() {
+        // Task spec: superseded rows point to live successors — show both.
+        // impact on the newest id must surface the older, hidden rows.
+        let db = tmp_db("chain-newest");
+        let (eng, ids) = chain_fixture(&db);
+        let report = eng.impact(&ids[2]).expect("impact succeeds");
+        let walked: Vec<&str> = report.nodes.iter().map(|n| n.id.as_str()).collect();
+        assert!(
+            walked.contains(&ids[0].as_str()) && walked.contains(&ids[1].as_str()),
+            "superseded originals must appear from the live tip: {walked:?}"
+        );
+        let _ = std::fs::remove_dir_all(db.parent().unwrap());
+    }
+
+    #[test]
+    fn fan_out_links_report_each_dependent_breadth_first() {
+        let db = tmp_db("fanout");
+        let eng = test_engine(&db);
+        let base = item(MemoryKind::Decision, "api base url is https://api.example.com", &["api"]);
+        eng.remember(&base).expect("remember succeeds");
+        let mut dependents = Vec::new();
+        for content in [
+            "client a uses the api base url",
+            "client b uses the api base url",
+            "client c uses the api base url",
+        ] {
+            let m = item(MemoryKind::Fact, content, &["api"]);
+            eng.remember(&m).expect("remember succeeds");
+            eng.link(&m.id, &base.id, Some("USES")).expect("link succeeds");
+            dependents.push(m.id);
+        }
+        let deep = item(MemoryKind::Fact, "client a retry uses the api base url too", &["api"]);
+        eng.remember(&deep).expect("remember succeeds");
+        eng.link(&deep.id, &dependents[0], Some("USES")).expect("link succeeds");
+
+        let report = eng.impact(&base.id).expect("impact succeeds");
+        let get = |id: &str| report.nodes.iter().find(|n| n.id == id).unwrap_or_else(|| panic!("{id} missing: {:?}", report.nodes));
+        for d in &dependents {
+            assert_eq!(get(d).depth, 1, "direct dependents at depth 1");
+        }
+        assert_eq!(get(&deep.id).depth, 2, "second-hop dependent at depth 2");
+        // depth=1 prunes the second hop entirely.
+        let shallow = eng.impact_depth(&base.id, 1).expect("impact succeeds");
+        assert!(
+            shallow.nodes.iter().all(|n| n.id != deep.id),
+            "depth 1 must exclude the second hop: {:?}",
+            shallow.nodes
+        );
+        // rel filter narrows to USES edges only.
+        let filtered = eng
+            .impact_filtered(&base.id, 3, Some("USES"))
+            .expect("impact succeeds");
+        assert!(filtered.nodes.iter().all(|n| n.rel == "USES"));
+        assert_eq!(filtered.nodes.len(), 4);
+        let _ = std::fs::remove_dir_all(db.parent().unwrap());
+    }
+
+    #[test]
+    fn unknown_id_gives_empty_report() {
+        let db = tmp_db("unknown");
+        let eng = test_engine(&db);
+        let report = eng.impact("no-such-id").expect("impact succeeds");
+        assert!(report.nodes.is_empty());
+        let _ = std::fs::remove_dir_all(db.parent().unwrap());
+    }
+}
