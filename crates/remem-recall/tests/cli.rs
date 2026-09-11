@@ -509,8 +509,12 @@ fn cli_forget_related_central_and_path() {
     remem(&db, &["link", &a, &b, "--rel", "SUPERSEDES"]);
     remem(&db, &["link", &b, &c, "--rel", "RELATES_TO"]);
 
-    // related: both directions, sorted by id, Memory-only (hubs stay out)
-    let mut want: Vec<String> = vec![format!("{a}  SUPERSEDES"), format!("{c}  RELATES_TO")];
+    // related: both directions, sorted by id, Memory-only (hubs stay out),
+    // third column is the edge provenance (manual by default)
+    let mut want: Vec<String> = vec![
+        format!("{a}  SUPERSEDES  manual"),
+        format!("{c}  RELATES_TO  manual"),
+    ];
     want.sort();
     let got: Vec<String> = remem(&db, &["related", &b])
         .lines()
@@ -522,8 +526,15 @@ fn cli_forget_related_central_and_path() {
         .lines()
         .map(String::from)
         .collect();
-    assert_eq!(filtered, vec![format!("{a}  SUPERSEDES")], "--rel filter");
-    assert_eq!(remem(&db, &["related", &a]), format!("{b}  SUPERSEDES\n"));
+    assert_eq!(
+        filtered,
+        vec![format!("{a}  SUPERSEDES  manual")],
+        "--rel filter"
+    );
+    assert_eq!(
+        remem(&db, &["related", &a]),
+        format!("{b}  SUPERSEDES  manual\n")
+    );
 
     // path follows edges; delta is unreachable
     let hops = remem(&db, &["path", &a, &c]);

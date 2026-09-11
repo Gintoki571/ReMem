@@ -35,8 +35,13 @@ TDD: add/update the failing test first, then the fix; never commit a red workspa
 
 - `remember <kind> <text> [--tags t1,t2] [--agent a] [--session s] [--importance f] [--occurred-at secs|YYYY-MM-DD]`
 - `recall <query> [--k n] [--json] [--agent a] [--session s] [--since x] [--until y] [--max-chars n] [--min-score f] [--no-recency] [--half-life-days d]`
+<<<<<<< HEAD
 - `list [--json]` | `link <from> <to> [--rel r]` | `forget <id>` | `purge <id>` | `stats` | `validate` (exit 1 if dangling/orphan) | `related <id>` | `central` | `path <from> <to>` | `trace <id>` (correction chain, oldest->newest; empty if unknown)
 - `graph --html <file>` — export the whole knowledge graph as a self-contained HTML file (canvas spring layout, click node for content, kind filter; no CDN/server; data via remem-graph `Graph::edges()`)
+=======
+- `list [--json]` | `link <from> <to> [--rel r] [--provenance manual|recall-suggested|correction-chain]` (default manual) | `correct <old-id> <kind> <text>` (supersede + correction-chain SUPERSEDES edge) | `forget <id>` | `purge <id>` | `stats` | `validate` (exit 1 if dangling/orphan/unreviewed/suspect-SUPERSEDES) | `related <id>` (id/rel/provenance) | `central` (id/score/provenance-summary) | `path <from> <to>` | `trace <id>` (correction chain, oldest->newest; empty if unknown)`
+- Edge provenance: missing prop reads as manual (old DBs validate clean); graph-fused recall hits carry `prov:<value>` reasons.
+>>>>>>> lane-edge
 
 ### Tests per crate
 

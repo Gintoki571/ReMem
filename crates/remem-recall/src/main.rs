@@ -129,6 +129,32 @@ enum Cmd {
         /// Relation label (default: RELATES_TO)
         #[arg(long)]
         rel: Option<String>,
+        /// Edge provenance: manual|recall-suggested|correction-chain (default: manual)
+        #[arg(long)]
+        provenance: Option<String>,
+    },
+    /// Correct a memory: supersede it with a new version, linked by a
+    /// correction-chain SUPERSEDES edge (prints the new id)
+    Correct {
+        /// Id of the memory being corrected
+        id: String,
+        /// Memory kind for the new version: fact|decision|mistake|preference|event|note
+        kind: String,
+        /// New version content (joined with spaces)
+        #[arg(required = true)]
+        text: Vec<String>,
+        /// Comma-separated tags to attach
+        #[arg(long, value_delimiter = ',')]
+        tags: Vec<String>,
+        /// Agent id that owns the memory
+        #[arg(long, default_value = "")]
+        agent: String,
+        /// Session id that owns the memory
+        #[arg(long, default_value = "")]
+        session: String,
+        /// When it happened: unix seconds or YYYY-MM-DD (default: storage time)
+        #[arg(long)]
+        occurred_at: Option<String>,
     },
     /// Graph neighbours of a memory as `id  rel` lines (Memory nodes only)
     Related {
@@ -459,8 +485,39 @@ fn main() -> Result<()> {
                 .map_err(|e| anyhow!("graph forget: {e}"))?;
             println!("purged {id}");
         }
-        Cmd::Link { from, to, rel } => {
-            engine(&cli.db)?.link(&from, &to, rel.as_deref())?;
+        Cmd::Link {
+            from,
+            to,
+            rel,
+            provenance,
+        } => {
+            let eng = engine(&cli.db)?;
+            match provenance.as_deref() {
+                None => eng.link(&from, &to, rel.as_deref())?,
+                Some(p) => eng.link_with_provenance(&from, &to, rel.as_deref(), p)?,
+            }
+        }
+        Cmd::Correct {
+            id,
+            kind,
+            text,
+            tags,
+            agent,
+            session,
+            occurred_at,
+        } => {
+            let kind = MemoryKind::parse(&kind).ok_or_else(|| {
+                anyhow!("unknown kind '{kind}' (fact|decision|mistake|preference|event|note)")
+            })?;
+            let mut item = MemoryItem::new(kind, text.join(" "));
+            item.tags = tags;
+            item.agent_id = agent;
+            item.session_id = session;
+            if let Some(when) = occurred_at.as_deref() {
+                item.occurred_at = Some(parse_time(when)?);
+            }
+            let new_id = engine(&cli.db)?.supersede(&id, &item)?;
+            println!("{new_id}");
         }
         Cmd::Related { id, rel } => {
             // Unknown id stays empty: neighbours of nothing is empty, not an
@@ -468,15 +525,19 @@ fn main() -> Result<()> {
             let eng = engine(&cli.db)?;
             let g = eng.graph().context("engine has no graph open")?;
             let filter = rel.unwrap_or_default();
-            let mut hits: Vec<(String, String)> = g
-                .neighbors(&id)
+            let mut hits: Vec<(String, String, String)> = g
+                .neighbors_detail(&id)
                 .map_err(|e| anyhow!("graph neighbors: {e}"))?
                 .into_iter()
-                .filter(|(_, r)| filter.is_empty() || *r == filter)
+                .filter(|n| {
+                    n.labels.iter().any(|l| l == remem_graph::MEMORY_LABEL)
+                        && (filter.is_empty() || n.rel == filter)
+                })
+                .map(|n| (n.id, n.rel, n.provenance.to_string()))
                 .collect();
             hits.sort();
-            for (nid, r) in hits {
-                println!("{nid}  {r}");
+            for (nid, r, p) in hits {
+                println!("{nid}  {r}  {p}");
             }
         }
         Cmd::Central { limit } => {
@@ -488,7 +549,22 @@ fn main() -> Result<()> {
                 .into_iter()
                 .take(limit)
             {
-                println!("{id}  {score:.6}");
+                // Provenance summary over memory-to-memory edges: distinct
+                // values, or manual when there is nothing unreviewed to show.
+                let mut provs: Vec<String> = g
+                    .neighbors_detail(&id)
+                    .map_err(|e| anyhow!("graph neighbors: {e}"))?
+                    .into_iter()
+                    .filter(|n| n.labels.iter().any(|l| l == remem_graph::MEMORY_LABEL))
+                    .map(|n| n.provenance.to_string())
+                    .collect();
+                provs.sort();
+                provs.dedup();
+                let show = match provs.is_empty() {
+                    true => "manual".to_string(),
+                    false => provs.join(","),
+                };
+                println!("{id}  {score:.6}  {show}");
             }
         }
         Cmd::Trace { id } => {
@@ -559,10 +635,9 @@ fn main() -> Result<()> {
             );
         }
         Cmd::Validate => {
-            let problems = engine(&cli.db)?
-                .graph()
-                .context("engine has no graph open")?
-                .validate();
+            let eng = engine(&cli.db)?;
+            let mut problems = eng.graph().context("engine has no graph open")?.validate();
+            problems.extend(eng.suspect_supersedes().context("suspect supersedes")?);
             for line in &problems {
                 println!("{line}");
             }
