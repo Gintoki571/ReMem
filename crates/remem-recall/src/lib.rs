@@ -11,7 +11,7 @@ pub use rank::{
 pub use stub::StubEmbedder;
 
 use anyhow::{anyhow, Context, Result};
-use remem_graph::{EdgeProvenance, Graph, MemoryEdge, MEMORY_LABEL};
+use remem_graph::{EdgeProvenance, Graph, MEMORY_LABEL};
 use remem_store::{content_hash, Store};
 use remem_types::{MemoryItem, RecallHit, RecallQuery};
 use std::collections::{HashMap, HashSet};

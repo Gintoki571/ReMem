@@ -175,6 +175,19 @@ enum Cmd {
         /// Id of any version in the chain
         id: String,
     },
+    /// What breaks if a memory changes: directional BFS over memory edges
+    /// (dependents + dependencies, SUPERSEDES chains included), as an
+    /// indented tree
+    Impact {
+        /// Id of the memory to assess
+        id: String,
+        /// Max hops from the seed (default: 3)
+        #[arg(long, default_value_t = 3)]
+        depth: usize,
+        /// Only follow edges of this relation type
+        #[arg(long)]
+        rel: Option<String>,
+    },
     /// Replace a memory with a corrected version (soft-supersede + back-pointer)
     Supersede {
         /// Id of the memory to replace
@@ -611,6 +624,44 @@ fn main() -> Result<()> {
             let eng = engine(&cli.db)?;
             for cid in eng.store().trace(&id).context("trace")? {
                 println!("{cid}");
+            }
+        }
+        Cmd::Impact { id, depth, rel } => {
+            // Unknown id stays an empty tree: impact of nothing touches
+            // nothing (mirrors related/path/trace emptiness).
+            let eng = engine(&cli.db)?;
+            let report = match rel.as_deref() {
+                Some(r) => eng.impact_filtered(&id, depth, Some(r))?,
+                None => eng.impact_depth(&id, depth)?,
+            };
+            // Snippets come per-id from the store (get_any: superseded rows
+            // surface too); a forgotten memory's graph node shows no text.
+            let snippet = |c: &str| {
+                let mut s: String = c.chars().take(80).collect();
+                if c.chars().count() > 80 {
+                    s.push('…');
+                }
+                s
+            };
+            let row = |nid: &str| -> (String, String) {
+                match eng.store().get_any(nid) {
+                    Ok(Some(m)) => (m.kind.as_str().to_string(), snippet(&m.content)),
+                    _ => (String::new(), String::new()),
+                }
+            };
+            let (root_kind, root_text) = row(&id);
+            println!("{id}  [{root_kind}]  {root_text}");
+            let mut order: Vec<&remem_recall::ImpactNode> = report.nodes.iter().collect();
+            order.sort_by_key(|n| (n.depth, n.id.clone()));
+            for n in order {
+                let (kind, text) = row(&n.id);
+                let indent = "  ".repeat(n.depth);
+                println!(
+                    "{indent}<- {nid}  [{kind}]  {rel} ({prov})  {text}",
+                    nid = n.id,
+                    rel = n.rel,
+                    prov = n.provenance
+                );
             }
         }
         Cmd::Path { from, to } => {

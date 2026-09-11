@@ -20,3 +20,7 @@ default = []
 # DEPRECATED: remove this backend once candle natively supports sm_75 on CUDA 13.x
 # (upstream PR huggingface/candle#3909 or equivalent lands in a candle release).
 cuda = ["dep:cudarc"]
+
+[[example]]
+name = "gemm_probe"
+required-features = ["cuda"]
