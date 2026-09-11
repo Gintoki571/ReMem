@@ -288,9 +288,24 @@ fn main() -> Result<()> {
             if let Some(when) = occurred_at.as_deref() {
                 item.occurred_at = Some(parse_time(when)?);
             }
-            let (id, similar) = engine(&cli.db)?.remember(&item)?;
+            let eng = engine(&cli.db)?;
+            // Check before the write: an existing row with the same hash means
+            // insert() will dedup (merged), not insert (split).
+            let hash_dup = eng
+                .store()
+                .find_by_hash(&remem_store::content_hash(&kind, &item.content))
+                .is_some();
+            let (id, similar) = eng.remember(&item)?;
             // Line 1 stays the bare id: eval.sh and scripts take stdout line 0.
             println!("{id}");
+            // A merge returns an id that already existed before this write
+            // (exact hash dup via find_by_hash, or an absorbed near-duplicate
+            // whose old id is among the similar candidates); a split is new.
+            if hash_dup || similar.iter().any(|(sid, _)| *sid == id) {
+                eprintln!("merged: {id}");
+            } else {
+                eprintln!("split: {id}");
+            }
             if !similar.is_empty() {
                 let list: Vec<String> = similar
                     .iter()

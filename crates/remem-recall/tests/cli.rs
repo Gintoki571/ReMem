@@ -17,6 +17,24 @@ fn remem(db: &std::path::Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&out.stdout).to_string()
 }
 
+/// (stdout, stderr) pair for tests that assert on stderr chatter.
+fn remem_err(db: &std::path::Path, args: &[&str]) -> (String, String) {
+    let out = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args(["--db", db.to_str().unwrap()])
+        .args(args)
+        .output()
+        .expect("run remem");
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    (
+        String::from_utf8_lossy(&out.stdout).to_string(),
+        String::from_utf8_lossy(&out.stderr).to_string(),
+    )
+}
+
 #[test]
 fn cli_roundtrip() {
     let db = std::env::temp_dir().join(format!("remem-cli-{}.db", std::process::id()));
@@ -957,4 +975,32 @@ fn cli_stdout_stays_bare_id_banner_on_stderr() {
     // Near-duplicate merge path keeps stdout clean too.
     let out2 = remem(&db, &["remember", "fact", "banner purity check alpha"]);
     assert_eq!(out2.lines().count(), 1, "merge stdout: {out2:?}");
+}
+
+/// Task 2: `remember` prints a `merged:`/`split:` suffix on stderr so the
+/// agent (and dogfooding) can tell which write path fired. Merged = absorbed
+/// into an existing near-duplicate row (returned id is the old id); split =
+/// new row inserted. Stdout stays the bare id either way.
+#[test]
+fn cli_remember_prints_merge_split_suffix_on_stderr() {
+    let db = std::env::temp_dir().join(format!("remem-cli-suffix-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+
+    let (_, err1) = remem_err(&db, &["remember", "fact", "ci runs via github actions"]);
+    assert!(
+        err1.contains("split:"),
+        "first write must split, stderr: {err1}"
+    );
+
+    let (_, err2) = remem_err(&db, &["remember", "fact", "ci runs via github actions"]);
+    assert!(
+        err2.contains("merged:"),
+        "near-dup must merge, stderr: {err2}"
+    );
+
+    let (_, err3) = remem_err(&db, &["remember", "preference", "prefer ripgrep over grep"]);
+    assert!(
+        err3.contains("split:"),
+        "distinct write must split, stderr: {err3}"
+    );
 }
