@@ -102,6 +102,22 @@ pub struct Neighbor {
     pub labels: Vec<String>,
 }
 
+/// One node of the [`Graph::edges`] snapshot: a memory (id = mid, kind = memory
+/// kind) or a hub (id = `agent:<aid>`/`session:<sid>`, kind = label).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VizNode {
+    pub id: String,
+    pub kind: String,
+}
+
+/// One directed edge of the [`Graph::edges`] snapshot.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VizEdge {
+    pub from: String,
+    pub rel: String,
+    pub to: String,
+}
+
 pub struct Graph {
     inner: GqlGraph,
 }
@@ -496,6 +512,65 @@ impl Graph {
             true => sp.path,
             false => Vec::new(),
         })
+    }
+
+    /// Whole-graph snapshot for visualization: every node (memories + hubs) and
+    /// every directed edge. Nodes ordered by id, edges by (from, rel, to), for
+    /// stable output. `kind` is the memory kind for `Memory` nodes and the hub
+    /// label (`Agent`/`Session`) for hubs.
+    pub fn edges(&self) -> Result<(Vec<VizNode>, Vec<VizEdge>)> {
+        let node_rows = self.cypher(
+            "MATCH (n) RETURN n.id AS id, labels(n) AS labels, n.kind AS kind ORDER BY id",
+            &JsonValue::Null,
+        )?;
+        let edge_rows = self.cypher(
+            "MATCH (a)-[r]->(b)              RETURN a.id AS src, type(r) AS rel, b.id AS tgt              ORDER BY src, rel, tgt",
+            &JsonValue::Null,
+        )?;
+        let JsonValue::Array(node_rows) = node_rows else {
+            unreachable!("cypher returns a JSON array of rows")
+        };
+        let mut nodes = Vec::with_capacity(node_rows.len());
+        for row in node_rows {
+            let id = row
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let labels: Vec<String> = row
+                .get("labels")
+                .and_then(|v| v.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let kind = row
+                .get("kind")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+                .unwrap_or_else(|| labels.first().cloned().unwrap_or_default());
+            nodes.push(VizNode { id, kind });
+        }
+        let JsonValue::Array(edge_rows) = edge_rows else {
+            unreachable!("cypher returns a JSON array of rows")
+        };
+        let mut edges = Vec::with_capacity(edge_rows.len());
+        for row in edge_rows {
+            let str_at = |k: &str| {
+                row.get(k)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default()
+                    .to_string()
+            };
+            edges.push(VizEdge {
+                from: str_at("src"),
+                rel: str_at("rel"),
+                to: str_at("tgt"),
+            });
+        }
+        Ok((nodes, edges))
     }
 
     /// Node/edge counts, for `remem stats`.
