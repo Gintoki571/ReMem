@@ -925,3 +925,26 @@ fn index_audit_reconciles_fts_and_vec_against_live_memories() {
     );
     cleanup(&path);
 }
+
+#[test]
+fn remember_extracts_references_edges() {
+    let (e, path) = engine("reflinks", FakeEmbedder::new(&[]));
+    let a = e.remember(&item("deploy script is at scripts/deploy.mjs")).unwrap().0;
+    // Content mentions A (valid), a bogus id, and A again (duplicate ref).
+    let bogus = "00000000-0000-0000-0000-000000000000";
+    let content = format!(
+        "see [[{a}]] and remem://{a} plus [[{bogus}]] for details"
+    );
+    let b = e.remember(&item(&content)).unwrap().0;
+    let g = remem_graph::Graph::open(&path).unwrap();
+    let edges = g.memory_edges().unwrap();
+    let refs: Vec<_> = edges
+        .iter()
+        .filter(|e| e.rel == "references")
+        .collect();
+    assert_eq!(refs.len(), 1, "expected exactly one references edge: {refs:?}");
+    assert_eq!(refs[0].from, b);
+    assert_eq!(refs[0].to, a);
+    assert_eq!(refs[0].provenance.as_str(), "extracted");
+    cleanup(&path);
+}
