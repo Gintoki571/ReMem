@@ -2,6 +2,7 @@
 
 ## Unreleased / in flight (unmerged working-tree changes)
 
+- Traceable merges (issue #14): corroboration merges record the absorbed phrasing in a `merges` table (`merges_fts` aux); recall searches absorbed content too (appended after direct fts hits, eval 35/37 unchanged); `remem trace` lists absorbed rows under the survivor.
 - Graph algos landed: `Graph::central` (PageRank over memory nodes) and `Graph::shortest_path` (directed, empty when unreachable), exposed as CLI + MCP `central`/`path`.
 - Score floor landed: `apply_floor` drops recall hits below a minimum score (default 0.0 = off, opt-in `--min-score 0.02`; floor decision tracker #1 closed).
 - Abstention guard: content-free recall returns [] with query-empty reason.
