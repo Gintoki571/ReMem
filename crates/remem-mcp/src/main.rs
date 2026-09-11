@@ -168,11 +168,12 @@ fn tools_list() -> Value {
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object",
             "properties": {"limit": {"type": "integer"}}}},
-        {"name": "link", "description": "Link two memories in the graph.",
+        {"name": "link", "description": "Link two memories in the graph (default provenance manual).",
          "annotations": {"readOnlyHint": false, "destructiveHint": false},
          "inputSchema": {"type": "object",
             "properties": {"from": {"type": "string"}, "to": {"type": "string"},
-                "rel": {"type": "string"}},
+                "rel": {"type": "string"},
+                "provenance": {"type": "string"}},
             "required": ["from", "to"]}},
         {"name": "forget", "description": "Delete a memory by id.",
          "annotations": {"readOnlyHint": false, "destructiveHint": true},
@@ -193,12 +194,12 @@ fn tools_list() -> Value {
         {"name": "gc", "description": "Remove ghost graph nodes (nodes whose memory row is gone). Returns {removed: N}. DESTRUCTIVE.",
          "annotations": {"readOnlyHint": false, "destructiveHint": true},
          "inputSchema": {"type": "object", "properties": {}}},
-        {"name": "related", "description": "Graph neighbors of a memory id as [{id, rel}]. Optional rel filters by edge type.",
+        {"name": "related", "description": "Graph neighbors of a memory id as [{id, rel, provenance}]. Optional rel filters by edge type.",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object",
             "properties": {"id": {"type": "string"}, "rel": {"type": "string"}},
             "required": ["id"]}},
-        {"name": "central", "description": "Top central memories by graph PageRank as [{id, score}]. Optional limit (default 10).",
+        {"name": "central", "description": "Top central memories by graph PageRank as [{id, score, provenance}]. Optional limit (default 10).",
          "annotations": {"readOnlyHint": true, "destructiveHint": false},
          "inputSchema": {"type": "object",
             "properties": {"limit": {"type": "integer"}}}},
@@ -379,7 +380,12 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
         "link" => {
             let from = str_arg(args, "from").ok_or_else(|| anyhow!("link: missing 'from'"))?;
             let to = str_arg(args, "to").ok_or_else(|| anyhow!("link: missing 'to'"))?;
-            eng.link(&from, &to, str_arg(args, "rel").as_deref())?;
+            match str_arg(args, "provenance") {
+                None => eng.link(&from, &to, str_arg(args, "rel").as_deref())?,
+                Some(p) => {
+                    eng.link_with_provenance(&from, &to, str_arg(args, "rel").as_deref(), &p)?
+                }
+            }
             Ok(serde_json::to_string(&json!({"ok": true}))?)
         }
         "forget" => {
@@ -411,11 +417,14 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                 .ok_or_else(|| anyhow!("engine has no graph open"))?;
             let rel_filter = str_arg(args, "rel").unwrap_or_default();
             let mut out: Vec<Value> = g
-                .neighbors(&id)
+                .neighbors_detail(&id)
                 .map_err(|e| anyhow!("graph neighbors: {e}"))?
                 .into_iter()
-                .filter(|(_, rel)| rel_filter.is_empty() || rel == &rel_filter)
-                .map(|(nid, rel)| json!({"id": nid, "rel": rel}))
+                .filter(|n| {
+                    n.labels.iter().any(|l| l == remem_graph::MEMORY_LABEL)
+                        && (rel_filter.is_empty() || n.rel == rel_filter)
+                })
+                .map(|n| json!({"id": n.id, "rel": n.rel, "provenance": n.provenance.to_string()}))
                 .collect();
             out.sort_by(|a, b| a["id"].as_str().cmp(&b["id"].as_str()));
             Ok(serde_json::to_string(&out)?)
@@ -432,11 +441,22 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                 .graph()
                 .ok_or_else(|| anyhow!("engine has no graph open"))?;
             let ranked = g.central().map_err(|e| anyhow!("graph central: {e}"))?;
-            let out: Vec<Value> = ranked
-                .into_iter()
-                .take(limit)
-                .map(|(id, score)| json!({"id": id, "score": score}))
-                .collect();
+            let mut out: Vec<Value> = Vec::new();
+            for (id, score) in ranked.into_iter().take(limit) {
+                let mut provs: Vec<String> = g
+                    .neighbors_detail(&id)
+                    .map_err(|e| anyhow!("graph neighbors: {e}"))?
+                    .into_iter()
+                    .filter(|n| n.labels.iter().any(|l| l == remem_graph::MEMORY_LABEL))
+                    .map(|n| n.provenance.to_string())
+                    .collect();
+                provs.sort();
+                provs.dedup();
+                if provs.is_empty() {
+                    provs.push(remem_graph::EdgeProvenance::Manual.to_string());
+                }
+                out.push(json!({"id": id, "score": score, "provenance": provs}));
+            }
             Ok(serde_json::to_string(&out)?)
         }
         "path" => {
@@ -457,6 +477,10 @@ fn dispatch(eng: &RecallEngine, name: &str, args: &Value) -> Result<String> {
                 .ok_or_else(|| anyhow!("engine has no graph open"))?
                 .validate();
             issues.extend(eng.graph_gaps().map_err(|e| anyhow!("graph gaps: {e}"))?);
+            issues.extend(
+                eng.suspect_supersedes()
+                    .map_err(|e| anyhow!("suspect supersedes: {e}"))?,
+            );
             issues.extend(eng.index_audit().map_err(|e| anyhow!("index audit: {e}"))?);
             Ok(serde_json::to_string(&json!({"issues": issues}))?)
         }
