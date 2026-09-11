@@ -1004,3 +1004,17 @@ fn cli_remember_prints_merge_split_suffix_on_stderr() {
         "distinct write must split, stderr: {err3}"
     );
 }
+
+/// Task 3: `--k` is an accepted alias for recall's top-k flag (clap alias,
+/// so `--k 3` and `-k 3` behave like `--k-count`). Keeps scripts written
+/// against the documented synopsis working.
+#[test]
+fn cli_recall_accepts_k_alias() {
+    let db = std::env::temp_dir().join(format!("remem-cli-kalias-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    remem(&db, &["remember", "fact", "alias check memory about postgres tuning"]);
+    let long = remem(&db, &["recall", "postgres", "tuning"]);
+    let alias = remem(&db, &["recall", "postgres", "tuning", "--k", "1"]);
+    assert!(!alias.is_empty(), "alias --k must work: {alias}");
+    let _ = long;
+}
