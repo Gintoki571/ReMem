@@ -2,7 +2,7 @@
 
 ## Status
 - [x] Worktree /home/bindesh/rag/lanes/suggest (branch lane-suggest)
-- [ ] RED tests: suggestion recorded on graph-fused hit; dedup; prune; list output
+- [x] RED tests (compile-fail RED: 8 missing-method errors): suggestion recorded on graph-fused hit; dedup; prune; list output
 - [ ] suggested_edges table (id, from_id, to_id, query, rank, created_at), upsert per pair, 30d prune
 - [ ] Engine writes candidate on graph-fused hit (no auto-link)
 - [ ] `remem suggestions` CLI lists (id, pair, query, count); accept = `link --rel`
