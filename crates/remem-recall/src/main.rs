@@ -523,6 +523,29 @@ fn main() -> Result<()> {
 }
 
 #[cfg(test)]
+mod html_tests {
+    use super::graph_html;
+
+    #[test]
+    fn html_is_self_contained_and_embeds_data() {
+        let nodes = serde_json::json!([
+            {"id": "m1", "kind": "fact", "snippet": "hello world"},
+            {"id": "agent:a1", "kind": "Agent", "snippet": "hub agent:a1"}
+        ]);
+        let edges = serde_json::json!([
+            {"from": "m1", "rel": "BELONGS_TO_AGENT", "to": "agent:a1"}
+        ]);
+        let html = graph_html(&nodes, &edges);
+        // self-contained: no external references, data embedded as JSON
+        assert!(!html.contains("http://") && !html.contains("https://"));
+        assert!(!html.contains("<script src="));
+        assert!(html.contains("agent:a1"));
+        assert!(html.contains("<canvas"));
+        assert!(html.contains("filter")); // kind filter control
+    }
+}
+
+#[cfg(test)]
 mod time_tests {
     use super::{days_from_civil, parse_time};
 
