@@ -525,10 +525,7 @@ impl CudaEmbedder {
         let mut probs = self.stream.alloc_zeros::<f32>(n * heads * width * width)?;
 
         let nwh = n * width * h;
-        let t0 = std::time::Instant::now();
-        let mut layer_times = Vec::new();
         for (li, dl) in self.dev.layers.iter().enumerate() {
-            let lt = std::time::Instant::now();
             let f1out = self.weights.layers[li].ff1.out;
             // post-LN BERT block: attention reads x directly, LN after each residual add.
             self.stream.memcpy_dtod(&x, &mut resid)?;
@@ -564,13 +561,8 @@ impl CudaEmbedder {
             self.gemm_bias(&ff, n * width, f1out, &dl.f2w, &dl.f2b, &mut x, 0)?;
             self.add_resid(&mut x, &resid, total)?;
             self.layernorm(&mut x, &dl.ln2w, &dl.ln2b, n * width, h, eps)?;
-            self.stream.synchronize()?;
-            layer_times.push(lt.elapsed());
         }
         self.stream.synchronize()?;
-        if std::env::var_os("REMEM_CUDA_TIMING").is_some() {
-            eprintln!("[timing] layers: {:?}", layer_times);
-        }
         Ok(x)
     }
 
