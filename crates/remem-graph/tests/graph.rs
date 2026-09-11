@@ -6,6 +6,24 @@ fn graph() -> Graph {
     Graph::open_in_memory().expect("open in-memory graph")
 }
 
+#[test]
+fn edges_returns_all_nodes_and_memory_edges() {
+    let g = graph();
+    g.upsert_memory("m1", MemoryKind::Fact).unwrap();
+    g.upsert_memory("m2", MemoryKind::Decision).unwrap();
+    g.link("m1", "m2", "RELATES_TO").unwrap();
+
+    let (nodes, edges) = g.edges().unwrap();
+    let mut node_ids: Vec<&str> = nodes.iter().map(|n| n.id.as_str()).collect();
+    node_ids.sort();
+    assert_eq!(node_ids, vec!["m1", "m2"]);
+    assert!(nodes.iter().any(|n| n.id == "m1" && n.kind == "fact"));
+    assert_eq!(edges.len(), 1);
+    assert_eq!(edges[0].from, "m1");
+    assert_eq!(edges[0].to, "m2");
+    assert_eq!(edges[0].rel, "RELATES_TO");
+}
+
 fn sorted(mut v: Vec<(String, String)>) -> Vec<(String, String)> {
     v.sort();
     v

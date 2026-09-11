@@ -1,5 +1,7 @@
 //! remem: ReMem v3 long-term memory CLI.
 
+mod html;
+
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
@@ -153,6 +155,12 @@ enum Cmd {
         from: String,
         /// Id of the end memory
         to: String,
+    },
+    /// Export the knowledge graph as a self-contained HTML file
+    Graph {
+        /// Output file path
+        #[arg(long)]
+        html: PathBuf,
     },
     /// Database and graph counts
     Stats,
@@ -500,6 +508,50 @@ fn main() -> Result<()> {
                 println!("{id}");
             }
         }
+        Cmd::Graph { html } => {
+            let eng = engine(&cli.db)?;
+            let g = eng.graph().context("engine has no graph open")?;
+            let (nodes, edges) = g.edges().map_err(|e| anyhow!("graph edges: {e}"))?;
+            // Content snippets from the store; hub nodes have no memory row.
+            let items = eng.store().list(false).context("list memories")?;
+            let by_id: std::collections::HashMap<&str, &MemoryItem> =
+                items.iter().map(|m| (m.id.as_str(), m)).collect();
+            let snippet = |id: &str| {
+                by_id
+                    .get(id)
+                    .map(|m| {
+                        let mut s = m.content.chars().take(200).collect::<String>();
+                        if m.content.chars().count() > 200 {
+                            s.push('…');
+                        }
+                        s
+                    })
+                    .unwrap_or_default()
+            };
+            let node_json: Vec<_> = nodes
+                .iter()
+                .map(|n| {
+                    serde_json::json!({
+                        "id": n.id, "kind": n.kind, "snippet": snippet(&n.id),
+                    })
+                })
+                .collect();
+            let edge_json: Vec<_> = edges
+                .iter()
+                .map(|e| serde_json::json!({"from": e.from, "rel": e.rel, "to": e.to}))
+                .collect();
+            let doc = html::graph_html(
+                &serde_json::to_value(&node_json)?,
+                &serde_json::to_value(&edge_json)?,
+            )?;
+            std::fs::write(&html, doc).with_context(|| format!("write {}", html.display()))?;
+            println!(
+                "wrote {} ({} nodes, {} edges)",
+                html.display(),
+                nodes.len(),
+                edges.len()
+            );
+        }
         Cmd::Stats => {
             println!(
                 "{}",
@@ -520,6 +572,30 @@ fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod html_tests {
+    use super::html::graph_html;
+
+    #[test]
+    fn html_is_self_contained_and_embeds_data() -> anyhow::Result<()> {
+        let nodes = serde_json::json!([
+            {"id": "m1", "kind": "fact", "snippet": "hello world"},
+            {"id": "agent:a1", "kind": "Agent", "snippet": "hub agent:a1"}
+        ]);
+        let edges = serde_json::json!([
+            {"from": "m1", "rel": "BELONGS_TO_AGENT", "to": "agent:a1"}
+        ]);
+        let html = graph_html(&nodes, &edges)?;
+        // self-contained: no external references, data embedded as JSON
+        assert!(!html.contains("http://") && !html.contains("https://"));
+        assert!(!html.contains("<script src="));
+        assert!(html.contains("agent:a1"));
+        assert!(html.contains("<canvas"));
+        assert!(html.contains("filter")); // kind filter control
+        Ok(())
+    }
 }
 
 #[cfg(test)]
