@@ -1340,12 +1340,14 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "regex",
  "remem-embed",
  "remem-graph",
  "remem-store",
  "remem-types",
  "rusqlite",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]

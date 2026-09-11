@@ -15,6 +15,7 @@ use remem_graph::{EdgeProvenance, Graph, MEMORY_LABEL};
 use remem_store::{content_hash, Store};
 use remem_types::{MemoryItem, RecallHit, RecallQuery};
 use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
 
 /// Distinctive objects of a memory (issue #11 corroboration): the tags, plus
 /// identifier spans (all-digit tokens, e.g. "8080", "v3"), plus proper nouns
@@ -322,8 +323,53 @@ impl RecallEngine {
             .context("set_embedding")?;
         if let Some(g) = &self.shared.graph {
             g.attach(item).map_err(|e| anyhow!("graph attach: {e}"))?;
+            self.extract_references(&id, &item.content, g)
+                .map_err(|e| anyhow!("extract references: {e}"))?;
         }
         Ok((id, similar))
+    }
+
+    /// Reference extraction at remember(): scan inserted content for
+    /// `[[uuid]]` or `remem://<uuid>` patterns and write one `references`
+    /// edge (provenance `extracted`) per unique id that resolves to a live
+    /// memory. Unresolvable ids (bogus or deleted) are ignored silently.
+    fn extract_references(
+        &self,
+        from: &str,
+        content: &str,
+        g: &remem_graph::Graph,
+    ) -> Result<()> {
+        static REF: OnceLock<regex::Regex> = OnceLock::new();
+        let re = REF.get_or_init(|| {
+            regex::Regex::new(r"\[\[([0-9a-fA-F-]{36})\]\]|remem://([0-9a-fA-F-]{36})")
+                .expect("static regex")
+        });
+        for cap in re.captures_iter(content) {
+            let Some(raw) = cap.get(1).or_else(|| cap.get(2)).map(|m| m.as_str()) else {
+                continue;
+            };
+            let Ok(uuid) = uuid::Uuid::parse_str(raw) else {
+                continue;
+            };
+            let target = uuid.to_string();
+            if target == from {
+                continue;
+            }
+            // Resolve against the memories table: only live rows count.
+            if self
+                .shared
+                .store
+                .get(&target)
+                .ok()
+                .flatten()
+                .is_none()
+            {
+                continue;
+            }
+            g.link_with_provenance(from, &target, "references", EdgeProvenance::Extracted)
+                .map_err(|e| anyhow!("graph link: {e}"))?;
+        }
+        Ok(())
     }
 
     /// Remove a memory from store and graph.
@@ -357,7 +403,7 @@ impl RecallEngine {
             .ok_or_else(|| anyhow!("engine has no graph open"))?;
         let rel = rel.unwrap_or(remem_graph::DEFAULT_REL);
         let prov = EdgeProvenance::parse(provenance).ok_or_else(|| {
-            anyhow!("unknown provenance: {provenance} (manual|recall-suggested|correction-chain)")
+            anyhow!("unknown provenance: {provenance} (manual|recall-suggested|correction-chain|extracted)")
         })?;
         g.link_with_provenance(from, to, rel, prov)
             .map_err(|e| anyhow!("graph link: {e}"))

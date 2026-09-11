@@ -20,7 +20,7 @@ use serde_json::{json, Value as JsonValue};
 pub const PROVENANCE_KEY: &str = "provenance";
 
 /// Where a graph edge came from (issue #15). Stored as a text edge property;
-/// accepted values are exactly the three below — anything else is rejected at
+/// accepted values are exactly the four below — anything else is rejected at
 /// the write API so a typo cannot silently become a fourth provenance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EdgeProvenance {
@@ -30,6 +30,9 @@ pub enum EdgeProvenance {
     RecallSuggested,
     /// Written by a correction-chain / supersede operation.
     CorrectionChain,
+    /// Extracted automatically from content (e.g. [[uuid]] / remem://uuid
+    /// references found at remember() time).
+    Extracted,
 }
 
 impl EdgeProvenance {
@@ -38,6 +41,7 @@ impl EdgeProvenance {
             EdgeProvenance::Manual => "manual",
             EdgeProvenance::RecallSuggested => "recall-suggested",
             EdgeProvenance::CorrectionChain => "correction-chain",
+            EdgeProvenance::Extracted => "extracted",
         }
     }
 
@@ -46,6 +50,7 @@ impl EdgeProvenance {
             "manual" => Some(EdgeProvenance::Manual),
             "recall-suggested" => Some(EdgeProvenance::RecallSuggested),
             "correction-chain" => Some(EdgeProvenance::CorrectionChain),
+            "extracted" => Some(EdgeProvenance::Extracted),
             _ => None,
         }
     }
