@@ -30,6 +30,9 @@ pub enum EdgeProvenance {
     RecallSuggested,
     /// Written by a correction-chain / supersede operation.
     CorrectionChain,
+    /// Written at `remember` time when exactly one vec0 neighbour clears the
+    /// auto-link cosine floor (write-time auto-link).
+    AutoLink,
 }
 
 impl EdgeProvenance {
@@ -38,6 +41,7 @@ impl EdgeProvenance {
             EdgeProvenance::Manual => "manual",
             EdgeProvenance::RecallSuggested => "recall-suggested",
             EdgeProvenance::CorrectionChain => "correction-chain",
+            EdgeProvenance::AutoLink => "auto-link",
         }
     }
 
@@ -46,6 +50,7 @@ impl EdgeProvenance {
             "manual" => Some(EdgeProvenance::Manual),
             "recall-suggested" => Some(EdgeProvenance::RecallSuggested),
             "correction-chain" => Some(EdgeProvenance::CorrectionChain),
+            "auto-link" => Some(EdgeProvenance::AutoLink),
             _ => None,
         }
     }
@@ -120,7 +125,7 @@ impl fmt::Display for Error {
             Error::InvalidParams(e) => write!(f, "invalid params: {e}"),
             Error::UnknownProvenance(s) => write!(
                 f,
-                "unknown provenance: {s} (manual|recall-suggested|correction-chain)"
+                "unknown provenance: {s} (manual|recall-suggested|correction-chain|auto-link)"
             ),
         }
     }
