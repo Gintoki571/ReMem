@@ -439,14 +439,18 @@ impl Graph {
     }
 
     /// Structural health check: human-readable lines describing edges that point
-    /// at nodes which no longer exist, and `Memory` nodes with no memory-to-memory
-    /// edge (agent/session hub edges alone do not count). Empty means healthy.
+    /// at nodes which no longer exist, and memory-to-memory edges awaiting
+    /// review (non-manual provenance). Empty means healthy.
+    ///
+    /// Orphan (unlinked) memories are NOT health problems — unlinked is the
+    /// normal new-memory state — so they live in [`orphan_memories`](Self::orphan_memories),
+    /// reported separately without failing validation (issue #17).
     ///
     /// graphqlite declares `ON DELETE CASCADE` and opens its connection with
     /// `PRAGMA foreign_keys = ON`, so this crate's own API cannot create a dangling
     /// edge. The check exists for what that layer cannot cover: another writer on
     /// the same file (the pragma is per connection) or schema drift. Ordering is
-    /// deterministic: dangling edges by rowid, then orphans by memory id.
+    /// deterministic: dangling edges by rowid, then unreviewed edges by rowid.
     ///
     /// SQL failures become lines rather than `Err`: callers print the result, and a
     /// broken query must not read back as a healthy graph.
@@ -457,10 +461,6 @@ impl Graph {
             Err(e) => return vec![format!("validation query failed: {e}")],
         }
         match self.unreviewed_edges() {
-            Ok(rows) => out.extend(rows),
-            Err(e) => out.push(format!("validation query failed: {e}")),
-        }
-        match self.orphan_memories() {
             Ok(rows) => out.extend(rows),
             Err(e) => out.push(format!("validation query failed: {e}")),
         }
@@ -600,7 +600,10 @@ impl Graph {
     }
 
     /// Lines for `Memory` nodes whose only edges (if any) touch hub nodes.
-    fn orphan_memories(&self) -> Result<Vec<String>> {
+    /// Completeness note, not a health problem: unlinked is the normal
+    /// new-memory state (issue #17). Callers report these separately and
+    /// must not fail validation on them.
+    pub fn orphan_memories(&self) -> Result<Vec<String>> {
         let mut stmt = self.sqlite().prepare(&format!(
             "SELECT p.value AS mid FROM node_props_text p \
                  JOIN property_keys k ON k.id = p.key_id \

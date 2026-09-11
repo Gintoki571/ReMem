@@ -200,8 +200,14 @@ enum Cmd {
     },
     /// Database and graph counts
     Stats,
-    /// Report dangling graph edges and orphan memories (exit 1 if any)
-    Validate,
+    /// Report graph health problems (exit 1 if any). Orphan (unlinked)
+    /// memories are completeness notes, not health: opt in with --show-orphans
+    /// (still exit 0).
+    Validate {
+        /// Also list orphan (unlinked) memories; does not affect the exit code
+        #[arg(long)]
+        show_orphans: bool,
+    },
 }
 
 /// Parse a unix timestamp or a `YYYY-MM-DD` date (UTC midnight) into seconds.
@@ -673,12 +679,24 @@ fn main() -> Result<()> {
                 serde_json::to_string_pretty(&engine(&cli.db)?.stats()?)?
             );
         }
-        Cmd::Validate => {
+        Cmd::Validate { show_orphans } => {
             let eng = engine(&cli.db)?;
-            let mut problems = eng.graph().context("engine has no graph open")?.validate();
+            let graph = eng.graph().context("engine has no graph open")?;
+            let mut problems = graph.validate();
+            problems.extend(eng.graph_gaps().context("graph gaps")?);
             problems.extend(eng.suspect_supersedes().context("suspect supersedes")?);
             for line in &problems {
                 println!("{line}");
+            }
+            if show_orphans {
+                match graph.orphan_memories() {
+                    Ok(notes) => {
+                        for line in &notes {
+                            println!("{line}");
+                        }
+                    }
+                    Err(e) => println!("validation query failed: {e}"),
+                }
             }
             if !problems.is_empty() {
                 std::process::exit(1);

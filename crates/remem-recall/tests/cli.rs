@@ -144,9 +144,10 @@ fn cli_trace_walks_correction_chain_from_both_ends() {
     }
 }
 
-/// `validate` reports graph problems on stdout and exits 1; a healthy db exits 0.
+/// `validate` reports health problems on stdout and exits 1; orphan (unlinked)
+/// memories are completeness notes — exit 0 unless `--show-orphans` lists them.
 #[test]
-fn cli_validate_flags_orphans_and_passes_linked_memories() {
+fn cli_validate_passes_orphans_and_flags_health_problems() {
     let db = std::env::temp_dir().join(format!("remem-cli-validate-{}.db", std::process::id()));
     let _ = std::fs::remove_file(&db);
     let run = |args: &[&str]| {
@@ -174,12 +175,18 @@ fn cli_validate_flags_orphans_and_passes_linked_memories() {
         .unwrap()
         .to_string();
 
+    // Orphans alone are healthy: exit 0 and quiet by default.
     let (code, stdout) = run(&["validate"]);
     assert_eq!(
         code,
-        Some(1),
-        "two unlinked memories must fail validation: {stdout}"
+        Some(0),
+        "unlinked memories are not health problems: {stdout}"
     );
+    assert_eq!(stdout, "", "quiet on a healthy db");
+
+    // Opt-in completeness list; still exit 0.
+    let (code, stdout) = run(&["validate", "--show-orphans"]);
+    assert_eq!(code, Some(0), "orphan list must not fail: {stdout}");
     // memory ids are random UUIDs, so compare sorted, not in creation order
     let mut got: Vec<String> = stdout.lines().map(String::from).collect();
     got.sort();
@@ -191,9 +198,9 @@ fn cli_validate_flags_orphans_and_passes_linked_memories() {
     assert_eq!(got, want, "stdout: {stdout}");
 
     run(&["link", &a, &b, "--rel", "RELATES_TO"]);
-    let (code, stdout) = run(&["validate"]);
+    let (code, stdout) = run(&["validate", "--show-orphans"]);
     assert_eq!(code, Some(0), "linked memories should pass: {stdout}");
-    assert_eq!(stdout, "", "quiet on a healthy db");
+    assert_eq!(stdout, "", "quiet when nothing is orphaned");
 
     for suffix in ["", "-wal", "-shm"] {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));

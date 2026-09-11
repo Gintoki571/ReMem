@@ -299,15 +299,17 @@ fn survives_reopen_of_same_file() {
     let _ = std::fs::remove_file(&path);
 }
 
-/// Hand-built graph exercising both problems `validate` looks for: an edge whose
-/// target row is gone, and Memories with no memory-to-memory edge.
+/// Hand-built graph exercising what `validate` looks for: an edge whose
+/// target row is gone. Orphan (unlinked) memories are completeness notes, not
+/// health problems (issue #17): `validate` stays silent on them while
+/// `orphan_memories` lists them.
 ///
 /// graphqlite opens its connection with `PRAGMA foreign_keys = ON` and declares
 /// `ON DELETE CASCADE` on `edges`, so no [`Graph`] API can produce the dangling
 /// row. It is written here with raw SQL after switching enforcement off, which is
 /// what a foreign writer on the same file or schema drift would leave behind.
 #[test]
-fn validate_reports_dangling_edges_and_orphan_memories() {
+fn validate_reports_dangling_edges_but_not_orphan_memories() {
     let g = Graph::open_in_memory().unwrap();
     let conn = g.sqlite();
 
@@ -321,12 +323,14 @@ fn validate_reports_dangling_edges_and_orphan_memories() {
     assert_eq!(g.validate(), Vec::<String>::new(), "healthy graph");
 
     // Orphans: a Memory with no edges at all, and one with hub edges only.
+    // Health stays green; the completeness list carries them.
     g.upsert_memory("m3", MemoryKind::Fact).unwrap();
     g.upsert_memory("m4", MemoryKind::Fact).unwrap();
     g.upsert_session("s1").unwrap();
     g.link("m4", "session:s1", BELONGS_TO_SESSION).unwrap();
+    assert_eq!(g.validate(), Vec::<String>::new(), "orphans are not health");
     assert_eq!(
-        g.validate(),
+        g.orphan_memories().unwrap(),
         vec![
             "orphan memory: m3 (no edges outside agent/session hubs)".to_string(),
             "orphan memory: m4 (no edges outside agent/session hubs)".to_string(),
@@ -342,8 +346,11 @@ fn validate_reports_dangling_edges_and_orphan_memories() {
     .unwrap();
     assert_eq!(
         g.validate(),
+        vec!["dangling edge: m1 -[:RELATES_TO]-> #9999 (missing target node)".to_string(),]
+    );
+    assert_eq!(
+        g.orphan_memories().unwrap(),
         vec![
-            "dangling edge: m1 -[:RELATES_TO]-> #9999 (missing target node)".to_string(),
             "orphan memory: m3 (no edges outside agent/session hubs)".to_string(),
             "orphan memory: m4 (no edges outside agent/session hubs)".to_string(),
         ]
