@@ -147,6 +147,16 @@ enum Cmd {
         /// Id of any version in the chain
         id: String,
     },
+    /// Replace a memory with a corrected version (soft-supersede + back-pointer)
+    Supersede {
+        /// Id of the memory to replace
+        old_id: String,
+        /// Memory kind of the replacement: fact|decision|mistake|preference|event|note
+        kind: String,
+        /// Replacement content (joined with spaces)
+        #[arg(required = true)]
+        text: Vec<String>,
+    },
     /// Shortest memory-to-memory path as `from` .. `to` lines (empty if unreachable)
     Path {
         /// Id of the start memory
@@ -497,6 +507,20 @@ fn main() -> Result<()> {
             {
                 println!("{id}  {score:.6}");
             }
+        }
+        Cmd::Supersede { old_id, kind, text } => {
+            let kind = MemoryKind::parse(&kind).ok_or_else(|| {
+                anyhow!("unknown kind '{kind}' (fact|decision|mistake|preference|event|note)")
+            })?;
+            let eng = engine(&cli.db)?;
+            let mut item = MemoryItem::new(kind, text.join(" "));
+            // Carry forward the agent/session ownership of the old row.
+            if let Some(old) = eng.store().get(&old_id)? {
+                item.agent_id = old.agent_id;
+                item.session_id = old.session_id;
+            }
+            let id = eng.store().supersede(&old_id, &item).context("supersede")?;
+            println!("{id}");
         }
         Cmd::Trace { id } => {
             // Unknown id -> empty chain, mirroring related/path emptiness.
