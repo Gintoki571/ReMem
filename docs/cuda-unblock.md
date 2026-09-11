@@ -25,7 +25,8 @@ source (see docs/cuda.md option 2) — do not bump the released version.
 
 ## Until then
 
-Keep both docs/cuda.md workarounds unchanged:
+The lane-gpu cudarc backend (docs/cuda.md) is the active workaround on this machine; the
+options below remain the alternatives if a candle-native path is preferred:
 
 1. Side-by-side CUDA 12.x toolkit: `CUDA_HOME=$HOME/cuda-12.6 cargo check -p remem-embed --features cuda`
    (plus `LD_LIBRARY_PATH=$HOME/cuda-12.6/lib64:$LD_LIBRARY_PATH` at runtime).
