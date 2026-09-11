@@ -3,16 +3,16 @@
 Base: 92f421a (v3.1). Lane lane-kgui.
 
 ## Plan
-1. TDD: `Graph::edges()` in remem-graph (all nodes + edges for viz) — RED first.
-2. `graph --html <file>` subcommand in remem CLI; stdlib HTML/JS/CSS, canvas,
-   force-ish layout, click-for-content, kind filter, no CDN, <300 lines.
+1. [x] TDD `Graph::edges()` in remem-graph — RED committed 3f9f8f4, GREEN 748fcdf (24 tests pass).
+2. `graph --html <file>` subcommand in remem CLI: stdlib HTML/JS/CSS, <canvas>,
+   spring layout, click node -> content, kind filter, no CDN, target <300 lines.
 
-## Progress
-- [x] Read DOX chain (root AGENTS.md; found committed conflict markers — TODO fix)
-- [ ] RED test edges()
-- [ ] edges() impl green
-- [ ] CLI + html export
-- [ ] dogfood on real DB
+## Decisions
+- `edges()` uses graphqlite Cypher (`MATCH (n)`, `MATCH (a)-[r]->(b)`) via the
+  crate's existing `cypher()` — raw table schema is an extension internal, do
+  not couple to it.
+- Kind for hubs = label (`Agent`/`Session`); memory kind from `n.kind` property.
 
 ## Notes
-- (incremental)
+- Root AGENTS.md has committed `<<<<<<< HEAD` conflict markers in the CLI
+  section (related/trace lines) — fixing in this lane's DOX pass.
