@@ -1209,11 +1209,22 @@ fn cli_graph_html_hub_toggle() {
     let db = std::env::temp_dir().join(format!("remem-cli-graph-hub-{}.db", std::process::id()));
     let _ = std::fs::remove_file(&db);
     let mk = |text: &str| {
-        remem(&db, &["remember", "fact", text])
-            .lines()
-            .next()
-            .unwrap()
-            .to_string()
+        remem(
+            &db,
+            &[
+                "remember",
+                "fact",
+                text,
+                "--agent",
+                "tester",
+                "--session",
+                "s1",
+            ],
+        )
+        .lines()
+        .next()
+        .unwrap()
+        .to_string()
     };
     let a = mk("hub toggle alpha");
     let b = mk("hub toggle beta");
