@@ -6,6 +6,7 @@
 //! holding the graph tables side by side with the relational, FTS5 and vec0
 //! tables owned by `remem-store`.
 
+use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 
@@ -177,6 +178,20 @@ pub struct MemoryEdge {
     pub to: String,
     pub rel: String,
     pub provenance: EdgeProvenance,
+}
+
+/// One discovered node of [`Graph::impact`]: the memory reached, the edge
+/// that found it, and the BFS depth from the seed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImpactHit {
+    /// Memory id of the reached node (never the seed).
+    pub id: String,
+    /// Relation of the discovering edge.
+    pub rel: String,
+    /// Provenance of the discovering edge.
+    pub provenance: EdgeProvenance,
+    /// BFS depth from the seed (first hop = 1).
+    pub depth: usize,
 }
 
 pub struct Graph {
@@ -752,6 +767,71 @@ impl Graph {
             });
         }
         Ok((nodes, edges))
+    }
+
+    /// Directional BFS over memory-to-memory edges from `seed` (donor:
+    /// graphify `affected.py::affected_nodes`): both edge directions, depth-
+    /// limited, optional relation filter. Incoming edges are dependents,
+    /// outgoing edges are dependencies; SUPERSEDES edges surface superseded
+    /// rows next to their live successors. The seed itself is never reported.
+    /// Unknown id -> empty node list. Deterministic: breadth-first, discovery
+    /// order within a depth follows `memory_edges()` rowid order.
+    pub fn impact(&self, seed: &str, depth: usize, rel: Option<&str>) -> Result<Vec<ImpactHit>> {
+        let edges = self.memory_edges()?;
+        let mut adj: HashMap<&str, Vec<&MemoryEdge>> = HashMap::new();
+        for e in &edges {
+            if rel.is_some_and(|r| e.rel != r) {
+                continue;
+            }
+            adj.entry(e.from.as_str()).or_default().push(e);
+            adj.entry(e.to.as_str()).or_default().push(e);
+        }
+        let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        seen.insert(seed);
+        let mut frontier: Vec<(&str, &MemoryEdge)> = Vec::new();
+        if let Some(first) = adj.get(seed) {
+            for e in first {
+                let next = if e.from == seed {
+                    e.to.as_str()
+                } else {
+                    e.from.as_str()
+                };
+                if seen.insert(next) {
+                    frontier.push((next, e));
+                }
+            }
+        }
+        let mut out = Vec::new();
+        let mut current = frontier;
+        let mut d = 1usize;
+        while d <= depth && !current.is_empty() {
+            let mut next_wave: Vec<(&str, &MemoryEdge)> = Vec::new();
+            for (id, edge) in &current {
+                out.push(ImpactHit {
+                    id: (*id).to_string(),
+                    rel: edge.rel.clone(),
+                    provenance: edge.provenance,
+                    depth: d,
+                });
+            }
+            d += 1;
+            for (id, _) in &current {
+                if let Some(hood) = adj.get(*id) {
+                    for e in hood {
+                        let next = if e.from == *id {
+                            e.to.as_str()
+                        } else {
+                            e.from.as_str()
+                        };
+                        if seen.insert(next) {
+                            next_wave.push((next, e));
+                        }
+                    }
+                }
+            }
+            current = next_wave;
+        }
+        Ok(out)
     }
 
     /// Node/edge counts, for `remem stats`.

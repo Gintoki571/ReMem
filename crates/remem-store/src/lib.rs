@@ -131,6 +131,20 @@ impl Store {
             .optional()
     }
 
+    /// Fetch any row by id, including soft-deleted and superseded ones.
+    /// Impact/trace paths need superseded rows: their graph nodes stay, but
+    /// `get` hides them. Unknown id -> None.
+    pub fn get_any(&self, id: &str) -> rusqlite::Result<Option<MemoryItem>> {
+        self.conn
+            .query_row(
+                "SELECT id, kind, content, tags, agent_id, session_id, importance, created_at, updated_at, occurred_at, ended, rowid AS m_rowid
+                 FROM memories WHERE id = ?1",
+                params![id],
+                row_to_item,
+            )
+            .optional()
+    }
+
     /// Update content/metadata. Keeps id and created_at.
     pub fn update(&self, item: &MemoryItem) -> rusqlite::Result<()> {
         self.conn.execute(

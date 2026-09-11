@@ -1106,3 +1106,97 @@ fn cli_supersede_creates_correction_chain() {
 
     let _ = std::fs::remove_file(&db);
 }
+
+/// impact: indented tree over memory edges — chain + fan-out, depth + rel
+/// filters, unknown id empty.
+#[test]
+fn cli_impact_tree() {
+    let db = std::env::temp_dir().join(format!("remem-cli-impact-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let mk = |text: &str| {
+        remem(&db, &["remember", "fact", text])
+            .lines()
+            .next()
+            .unwrap()
+            .to_string()
+    };
+    // chain: old <- mid <- new via `correct` (SUPERSEDES, correction-chain)
+    let old = mk("deploy port is 8080");
+    let mid = remem(&db, &["correct", &old, "fact", "deploy port is 9090"])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+    let new = remem(&db, &["correct", &mid, "fact", "deploy port is 9443"])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+    // fan-out: two dependents of `new`, one of them with a deeper dependent
+    let dep1 = mk("client a reads the deploy port");
+    let dep2 = mk("client b reads the deploy port");
+    let deep = mk("dashboard aggregates client a");
+    remem(&db, &["link", &dep1, &new, "--rel", "USES"]);
+    remem(&db, &["link", &dep2, &new, "--rel", "USES"]);
+    remem(&db, &["link", &deep, &dep1, "--rel", "USES"]);
+
+    let out = remem(&db, &["impact", &old]);
+    let lines: Vec<&str> = out.lines().collect();
+    // root line first, then tree
+    assert!(lines[0].starts_with(&old) && lines[0].contains("deploy port is 8080"));
+    // default depth 3: chain tail + direct dependents, but the deep node is
+    // four hops out (deep -> dep1 -> new -> mid -> old) and stays hidden
+    for id in [&mid, &new, &dep1, &dep2] {
+        assert!(out.contains(id), "{id} must appear: {out}");
+    }
+    assert!(
+        !out.contains(&deep),
+        "default depth 3 hides the 4th hop: {out}"
+    );
+    // explicit depth reaches it
+    let deep_out = remem(&db, &["impact", &old, "--depth", "4"]);
+    assert!(deep_out.contains(&deep), "depth 4 reaches the deep node");
+    assert!(
+        out.contains("SUPERSEDES (correction-chain)"),
+        "provenance shown"
+    );
+    // mid sits one hop out (indent 2), new two hops (indent 4)
+    let mid_line = lines.iter().find(|l| l.contains(&mid)).unwrap();
+    assert!(mid_line.starts_with("  <- "), "depth-1 indent: {mid_line}");
+    let new_line = lines.iter().find(|l| l.contains(&new)).unwrap();
+    assert!(
+        new_line.starts_with("    <- "),
+        "depth-2 indent: {new_line}"
+    );
+
+    // depth 1 cuts the fan-out's second hop and the chain tail beyond one hop
+    let shallow = remem(&db, &["impact", &old, "--depth", "1"]);
+    assert!(shallow.contains(&mid));
+    assert!(
+        !shallow.contains(&new),
+        "depth 1 stops at one hop: {shallow}"
+    );
+
+    // rel filter keeps only SUPERSEDES
+    let only_chain = remem(&db, &["impact", &old, "--rel", "SUPERSEDES"]);
+    assert!(only_chain.contains(&mid) && only_chain.contains(&new));
+    assert!(
+        !only_chain.contains(&dep1),
+        "rel filter drops USES: {only_chain}"
+    );
+
+    // impact from the tip walks back to superseded rows
+    let back = remem(&db, &["impact", &new]);
+    assert!(
+        back.contains(&old) && back.contains(&mid),
+        "both directions: {back}"
+    );
+
+    // unknown id -> bare root line, no error
+    let empty = remem(&db, &["impact", "no-such-id"]);
+    assert_eq!(empty, "no-such-id  []  \n");
+
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}

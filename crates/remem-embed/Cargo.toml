@@ -28,3 +28,4 @@ required-features = ["cuda"]
 [[example]]
 name = "gemm_probe"
 required-features = ["cuda"]
+required-features = ["cuda"]
