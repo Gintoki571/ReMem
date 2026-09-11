@@ -1200,3 +1200,78 @@ fn cli_impact_tree() {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
 }
+
+/// graph --html export: agent/session hubs and BELONGS_TO_* edges are
+/// excluded by default; --with-hubs restores them. Summary line reports
+/// hub-node count.
+#[test]
+fn cli_graph_html_hub_toggle() {
+    let db = std::env::temp_dir().join(format!("remem-cli-graph-hub-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    let mk = |text: &str| {
+        remem(
+            &db,
+            &[
+                "remember",
+                "fact",
+                text,
+                "--agent",
+                "tester",
+                "--session",
+                "s1",
+            ],
+        )
+        .lines()
+        .next()
+        .unwrap()
+        .to_string()
+    };
+    let a = mk("hub toggle alpha");
+    let b = mk("hub toggle beta");
+    remem(&db, &["link", &a, &b, "--rel", "RELATES_TO"]);
+
+    let out = std::env::temp_dir().join(format!("remem-graph-hub-{}.html", std::process::id()));
+    let summary_default = remem(&db, &["graph", "--html", out.to_str().unwrap()]);
+    let doc_default = std::fs::read_to_string(&out).unwrap();
+    assert!(
+        !doc_default.contains("agent:") && !doc_default.contains("session:"),
+        "default export must exclude hub nodes"
+    );
+    assert!(
+        !doc_default.contains("BELONGS_TO"),
+        "default export must exclude BELONGS_TO_* edges"
+    );
+    assert!(
+        doc_default.contains("RELATES_TO"),
+        "semantic edges stay in default export"
+    );
+
+    let summary_hubs = remem(
+        &db,
+        &["graph", "--html", out.to_str().unwrap(), "--with-hubs"],
+    );
+    let doc_hubs = std::fs::read_to_string(&out).unwrap();
+    assert!(
+        doc_hubs.contains("agent:"),
+        "--with-hubs must include hub nodes"
+    );
+    assert!(
+        doc_hubs.contains("BELONGS_TO"),
+        "--with-hubs must include BELONGS_TO_* edges"
+    );
+
+    // Summary line: hub count only in --with-hubs run (2 hubs: 1 agent + 1 session)
+    assert!(
+        !summary_default.contains("2 hubs"),
+        "default summary has no hub count: {summary_default}"
+    );
+    assert!(
+        summary_hubs.contains("2 hubs"),
+        "--with-hubs summary reports hub-node count: {summary_hubs}"
+    );
+
+    let _ = std::fs::remove_file(&out);
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
+    }
+}

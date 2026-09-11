@@ -210,6 +210,10 @@ enum Cmd {
         /// Output file path
         #[arg(long)]
         html: PathBuf,
+        /// Include agent/session hub nodes and BELONGS_TO_* edges
+        /// (excluded by default: hub spokes drown the semantic edges)
+        #[arg(long)]
+        with_hubs: bool,
     },
     /// Database and graph counts
     Stats,
@@ -684,7 +688,7 @@ fn main() -> Result<()> {
                 println!("{id}");
             }
         }
-        Cmd::Graph { html } => {
+        Cmd::Graph { html, with_hubs } => {
             let eng = engine(&cli.db)?;
             let g = eng.graph().context("engine has no graph open")?;
             let (nodes, edges) = g.edges().map_err(|e| anyhow!("graph edges: {e}"))?;
@@ -704,6 +708,24 @@ fn main() -> Result<()> {
                     })
                     .unwrap_or_default()
             };
+            let hub = |id: &str| {
+                id.starts_with(remem_graph::AGENT_PREFIX)
+                    || id.starts_with(remem_graph::SESSION_PREFIX)
+            };
+            let nodes: Vec<_> = if with_hubs {
+                nodes
+            } else {
+                nodes.into_iter().filter(|n| !hub(&n.id)).collect()
+            };
+            let hub_count = nodes.iter().filter(|n| hub(&n.id)).count();
+            let edges: Vec<_> = if with_hubs {
+                edges
+            } else {
+                edges
+                    .into_iter()
+                    .filter(|e| !hub(&e.from) && !hub(&e.to))
+                    .collect()
+            };
             let node_json: Vec<_> = nodes
                 .iter()
                 .map(|n| {
@@ -721,10 +743,15 @@ fn main() -> Result<()> {
                 &serde_json::to_value(&edge_json)?,
             )?;
             std::fs::write(&html, doc).with_context(|| format!("write {}", html.display()))?;
+            let hubs = if with_hubs {
+                format!(", {} hubs", hub_count)
+            } else {
+                String::new()
+            };
             println!(
-                "wrote {} ({} nodes, {} edges)",
+                "wrote {} ({} nodes{hubs}, {} edges)",
                 html.display(),
-                nodes.len(),
+                nodes.len() - hub_count,
                 edges.len()
             );
         }
