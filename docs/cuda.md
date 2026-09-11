@@ -1,74 +1,71 @@
 # CUDA / GPU embedding (crates/remem-embed)
 
-Status: **GPU build broken on this machine** (2026-09-09). CPU path is the default and works.
+Status: **WORKING** (lane-gpu). `cargo test -p remem-embed --features cuda` passes on-device;
+the `cuda` feature uses a hand-rolled cudarc backend that bypasses candle-kernels entirely.
 
 ## Machine
 
 - GPU: GTX 1660 Ti (Turing, sm_75), driver 610.57.04
-- Toolkit: CUDA 13.3 (`/opt/cuda`, nvcc V13.3.73), Arch Linux `cuda 13.3.1-1`
-- candle 0.11.0 / candle-kernels 0.11.0 / cudarc 0.19.8
+- Toolkit: CUDA 13.3 (`/opt/cuda`, nvcc V13.3.73)
+- cudarc 0.19.9, feature pin `cuda-13030` (required — cudarc must match the toolkit
+  version or its build script fails); dynamic linking, no cudnn, no nvcc at build time
+  beyond feature selection (PTX is compiled at runtime via libnvrtc).
 
-## What works
+## Why not candle-cuda
 
-- `cargo test -p remem-embed` (CPU, default features): 4 passed, 1 ignored (`gpu_embed_smoke`).
-- cublas/cublasLt present: `/opt/cuda/lib64/libcublas.so.13` (ldconfig finds it).
-- cudnn is NOT installed and is NOT needed: remem-embed's `cuda` feature enables
-  `candle-core/cuda`, which pulls cudarc with `cublas,cublaslt,curand,driver,nvrtc`
-  (dynamic linking) — no cudnn. cudnn would only be pulled by candle's separate
-  `cudnn` feature, which remem-embed does not use. Missing libcudnn is not the blocker.
+candle-kernels 0.11 cannot compile against CUDA 13.x on sm_75 (`__hmax_nan`/`__hmin_nan`
+redefinition, docs/cuda-unblock.md). The `cuda` feature here does NOT enable
+`candle-core/cuda`; instead `src/cuda.rs` implements the BERT forward directly on cudarc:
+cublas sgemm for all projections + small custom PTX kernels (nvrtc at load time,
+`compute_75`) for layernorm, masked softmax, gelu, bias add, residual add, embedding
+gather, mean-pool, L2 rows.
 
-## What fails
+## Design notes (hard-won, keep)
 
-`cargo check -p remem-embed --features cuda` (exit 101) fails in `candle-kernels`' build
-script, compiling its CUDA kernels with nvcc 13.3:
+- BERT here is **post-LN**: `x = LN(x + attn_out)`, `x = LN(x + ffn_out)`. LN weights are
+  `attention.output.LayerNorm` / `output.LayerNorm`; do not "optimize" into pre-norm.
+- proj layout: three dense `[n*w, h]` row-major blocks (q at 0, k at `n*w*h`, v at
+  `2*n*w*h`). gemm_bias writes dense blocks; earlier interleaved q|k|v per-row layout
+  was the source of silent garbage.
+- cublas operand orientation (col-major): for row-major `W [od, id]` and row-major
+  `A [rows, id]`, use `transa=T lda=id, transb=N ldb=id, C ldc=od` — element (d, r) at
+  `r*od + d` equals row-major `out[r, d]`.
+- **cublas tt-kernel bug**: `transa=T, transb=T` with `k=3072` (any m/n) on sm_75 +
+  CUDA 13.3 faults (`volta_sgemm_128x32_tt` reads OOB, 100s of invalid accesses).
+  `transb=N` computes the identical values for our layout and is used everywhere.
+- softmax mask is per-document u32 (`1` = keep); attention scores are masked by adding
+  `-1e9` for mask==0 tokens. The kernel takes `const unsigned int*` — reading u32 mask
+  bits as f32 yields ~0 and silently masks every token (uniform 1/9 attention).
+- Mean-pool then L2: normalize AFTER dividing by count, not before (dividing the sum by
+  count after normalizing the sum scales the result by 1/count).
 
-    src/compatibility.cuh(11): error: function "__hmax_nan(__half, __half)" has already been
-    defined (previous definition at line 3309 of /opt/cuda/.../include/cuda_fp16.hpp)
-    src/compatibility.cuh(14): error: function "__hmin_nan(__half, __half)" has already been
-    defined (previous definition at line 3326 of ...)
+## Verified
 
-Root cause: `candle-kernels-0.11.0/src/compatibility.cuh` defines `__hmax_nan`/`__hmin_nan`
-under `#if __CUDA_ARCH__ < 800` (true for sm_75). CUDA 13.x's `cuda_fp16.hpp` now defines
-both unconditionally (via NV_IF_ELSE_TARGET), so on any sub-sm_80 arch with CUDA 13 the
-definitions collide. Upstream candle `main` has the same code (unfixed); candle CI only
-exercises sm_80+ so it does not catch this.
+- `cargo test -p remem-embed` (CPU): 8 passed, 1 ignored.
+- `cargo test -p remem-embed --features cuda`: 8 passed + 4 cuda tests on device
+  (load/dims, L2 norm, GPU-vs-CPU cosine > 0.999, empty batch).
+- GPU vs CPU reference (numpy) layer-0 activations match to fp32 rounding; final
+  embeddings match CPU candle to cosine 0.99999+ including mixed-length padded batches.
 
-## Fix options (pick one)
+## Timings (release, `examples/bench`)
 
-1. Build with a CUDA 12.x toolkit (least code, no repo change). Install side-by-side
-   without touching system packages:
+**Caveat: this GPU is power-capped to 10 W of 80 W (P8, SW power/thermal slowdown
+active) and cannot be raised without root (`nvidia-smi -pl 80`). Every CUDA launch
+costs ~0.9 ms under this cap, which dominates; the numbers below are launch-bound,
+not compute-bound.**
 
-       wget https://developer.download.nvidia.com/compute/cuda/12.6.3/local_installers/cuda_12.6.3_560.35.05_linux.run
-       sh cuda_12.6.3_560.35.05_linux.run --silent --toolkit --toolkitpath=$HOME/cuda-12.6
+| batch | GPU (cudarc) | CPU (candle) |
+|-------|--------------|--------------|
+| 1     | 254 ms       | 86 ms        |
+| 4     | 420 ms       | 169 ms       |
+| 32    | 2.62 s       | 0.93 s       |
 
-   Then build/test with the 12.x toolkit:
+Per-layer time is a flat ~17.5 ms regardless of batch size — pure launch overhead
+(~100 launches/embed). With a normal power limit, expect the GPU path to win by a
+large margin; re-bench after `nvidia-smi -pl 80` and removing the cap.
 
-       CUDA_HOME=$HOME/cuda-12.6 cargo check -p remem-embed --features cuda
-       CUDA_HOME=$HOME/cuda-12.6 cargo test -p remem-embed --features cuda -- --ignored gpu_embed_smoke
+## Deprecation
 
-   Note `cuda-version-from-build-system` in cudarc: it links against the toolkit that
-   nvcc reports, so with a 12.x prefix the runtime must find the 12.x libs:
-
-       export LD_LIBRARY_PATH=$HOME/cuda-12.6/lib64:$LD_LIBRARY_PATH
-
-2. Fork candle-kernels and guard the two definitions with the toolkit version, then add
-   to the workspace `Cargo.toml` (outside remem-embed, needs maintainer sign-off):
-
-       [patch.crates-io]
-       candle-kernels = { git = "https://github.com/<you>/candle", branch = "cuda13-half-fix" }
-
-   Patch = wrap both functions in `#if !defined(__CUDACC_VER_MAJOR__) || __CUDACC_VER_MAJOR__ < 13`.
-   Do NOT force `-arch=compute_80`: PTX for sm_80 will not JIT on sm_75.
-
-## Environment summary (for a working CUDA build)
-
-- Build: `CUDA_HOME` must point at a toolkit whose version is compatible with
-  candle-kernels (<= 12.x as of candle 0.11.0).
-- Run: `LD_LIBRARY_PATH` must contain that toolkit's `lib64` (dynamic cudarc linking);
-  current shell already has `/opt/cuda/lib64`.
-
-## Timings CPU vs GPU
-
-N/A — GPU build blocked (see above). Re-measure after the fix:
-
-    cargo test -p remem-embed --features cuda -- --ignored gpu_embed_smoke --nocapture
+The cudarc backend is a stopgap. Remove it (and the `cuda` feature) once candle ships
+huggingface/candle#3909 (see docs/cuda-unblock.md re-check procedure) — then switch
+`load()` back to `Device::cuda_if_available` and candle-kernels.

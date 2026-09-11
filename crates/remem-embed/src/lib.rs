@@ -1,7 +1,7 @@
 //! Local embedding runtime: BERT mean-pool + L2 norm (matches v2 behavior).
-//! GPU first via `Device::cuda_if_available`, CPU fallback that always works.
-//! Enable the `cuda` feature for a CUDA-capable build; without it every
-//! load resolves to CPU.
+//! Default: candle CPU forward. With the `cuda` feature, loads prefer the cudarc
+//! GPU backend (`cuda.rs`, sm_75 / CUDA 13.x — DEPRECATED stopgap, see docs/cuda.md)
+//! and fall back to CPU on any CUDA error.
 
 use std::path::{Path, PathBuf};
 
@@ -181,7 +181,7 @@ fn load_from_with_device(dir: &Path, device: Device) -> Result<LocalEmbedder> {
 }
 
 /// Direct candle load, bypassing the cudarc backend (CPU reference path).
-fn load_candle(dir: &Path, device: Device) -> Result<LocalEmbedder> {
+pub fn load_candle(dir: &Path, device: Device) -> Result<LocalEmbedder> {
     let config: Config = serde_json::from_str(
         &std::fs::read_to_string(dir.join("config.json")).context("read config.json")?,
     )

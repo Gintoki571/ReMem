@@ -80,6 +80,57 @@ extern "C" __global__ void ctx_gather(const float* tmp, float* out, int total, i
     out[idx] = tmp[b * heads * whk + head * whk + i * hk + d];
 }
 
+// embedding gather: out[(b*w+c)*h + d] = wte[id*h+d] + wpe[c*h+d] + tok_type[d]
+extern "C" __global__ void emb_gather(const int* ids, const unsigned int* mask, const float* wte,
+                                      const float* wpe, const float* tok_type, float* out,
+                                      int total, int w, int h) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= total) return;
+    int b = idx / (w * h);
+    int r = idx % (w * h);
+    int c = r / h;
+    int d = r % h;
+    int id = ids[b * w + c];
+    out[idx] = wte[id * h + d] + wpe[c * h + d] + tok_type[d];
+    if (mask[b * w + c] == 0) out[idx] = 0.0f;
+}
+
+// masked mean-pool: out[b*h+d] = sum_c mask*(hidden) / count; then row L2 norm by block per row.
+extern "C" __global__ void mean_pool(const float* hidden, const unsigned int* mask, float* out,
+                                     int n, int w, int h) {
+    int b = blockIdx.x;
+    int d = threadIdx.x;
+    if (b >= n || d >= h) return;
+    float acc = 0.0f;
+    int count = 0;
+    for (int c = 0; c < w; c++) {
+        if (mask[b * w + c] != 0) {
+            acc += hidden[(b * w + c) * h + d];
+            count += 1;
+        }
+    }
+    acc /= (count > 0 ? count : 1);
+    out[b * h + d] = acc;
+}
+
+// L2-normalize each row: one block per row, thread d scales out[b*h+d].
+extern "C" __global__ void l2_rows(float* out, int n, int h) {
+    int b = blockIdx.x;
+    int d = threadIdx.x;
+    if (b >= n || d >= h) return;
+    __shared__ float s_norm;
+    if (d == 0) {
+        float s = 0.0f;
+        for (int e = 0; e < h; e++) {
+            float v = out[b * h + e];
+            s += v * v;
+        }
+        s_norm = rsqrtf(fmaxf(s, 1e-12f));
+    }
+    __syncthreads();
+    out[b * h + d] *= s_norm;
+}
+
 // rowwise masked softmax over [rows, s]; grid = rows, dynamic smem = s floats.
 // row = ((b * heads + head) * w + qrow); mask is [n, s] indexed by (b, qrow).
 extern "C" __global__ void softmax_masked(const float* x, const unsigned int* mask, float* y,
@@ -290,6 +341,9 @@ pub struct CudaEmbedder {
 }
 
 struct Kernels {
+    emb_gather: cudarc::driver::CudaFunction,
+    mean_pool: cudarc::driver::CudaFunction,
+    l2_rows: cudarc::driver::CudaFunction,
     ctx_gather: cudarc::driver::CudaFunction,
     add_bias: cudarc::driver::CudaFunction,
     add_resid: cudarc::driver::CudaFunction,
@@ -299,6 +353,9 @@ struct Kernels {
 }
 
 struct DevTensors {
+    wte: CudaSlice<f32>,
+    wpe: CudaSlice<f32>,
+    tok_type: CudaSlice<f32>,
     emb_ln_w: CudaSlice<f32>,
     emb_ln_b: CudaSlice<f32>,
     layers: Vec<DevLayer>,
@@ -339,6 +396,9 @@ impl CudaEmbedder {
         let ptx = compile_ptx_with_opts(PTX_SRC, opts).map_err(|e| anyhow!("nvrtc: {e}"))?;
         let module = ctx.load_module(ptx)?;
         let fns = Kernels {
+            emb_gather: module.load_function("emb_gather")?,
+            mean_pool: module.load_function("mean_pool")?,
+            l2_rows: module.load_function("l2_rows")?,
             ctx_gather: module.load_function("ctx_gather")?,
             add_bias: module.load_function("add_bias")?,
             add_resid: module.load_function("add_resid")?,
@@ -351,6 +411,9 @@ impl CudaEmbedder {
         let tokenizer = tokenizers::Tokenizer::from_file(dir.join("tokenizer.json"))
             .map_err(|e| anyhow!("load tokenizer.json: {e}"))?;
         let dev = DevTensors {
+            wte: upload(&stream, &weights.wte)?,
+            wpe: upload(&stream, &weights.wpe)?,
+            tok_type: upload(&stream, &weights.tok_type)?,
             emb_ln_w: upload(&stream, &weights.emb_ln_w)?,
             emb_ln_b: upload(&stream, &weights.emb_ln_b)?,
             layers: weights
@@ -399,7 +462,14 @@ impl CudaEmbedder {
     }
 
     /// Full BERT forward on GPU; returns final hidden states [n * width * 768] host-side.
-    fn forward(&self, n: usize, width: usize, ids: &[u32], mask: &[u32]) -> Result<Vec<f32>> {
+    fn forward(
+        &self,
+        n: usize,
+        width: usize,
+        ids: &[u32],
+        mask: &[u32],
+        mask_dev: &CudaSlice<u32>, // same contents as `mask`, already on device
+    ) -> Result<CudaSlice<f32>> {
         let h = self.weights.h;
         let heads = self.weights.heads;
         let hk = h / heads;
@@ -407,22 +477,34 @@ impl CudaEmbedder {
         let total = n * width * h;
         let eps = 1e-12f32;
 
-        // Embeddings: gather on host (cheap), single H2D copy.
-        let mut emb = vec![0.0f32; total];
-        for r in 0..n {
-            for c in 0..width {
-                let id = ids[r * width + c] as usize;
-                if id >= self.weights.v || c >= self.weights.p {
-                    return Err(anyhow!("token id {id} or position {c} out of range"));
-                }
-                let dst = (r * width + c) * h;
-                emb[dst..dst + h].copy_from_slice(&self.weights.wte[id * h..id * h + h]);
-                for (i, xx) in emb[dst..dst + h].iter_mut().enumerate() {
-                    *xx += self.weights.wpe[c * h + i] + self.weights.tok_type[i];
-                }
+        // Validate ids on host (cheap), then gather embeddings on GPU.
+        for &id in ids {
+            if id as usize >= self.weights.v {
+                return Err(anyhow!("token id {id} out of range"));
             }
         }
-        let mut x = self.stream.clone_htod(&emb)?;
+        if width > self.weights.p {
+            return Err(anyhow!("sequence width {width} exceeds position limit"));
+        }
+        let ids_dev = self.stream.clone_htod(ids)?;
+        let mask_dev = self.stream.clone_htod(mask)?;
+        let mut x = self.stream.alloc_zeros::<f32>(total)?;
+        {
+            let total_i = total as i32;
+            let w_i = width as i32;
+            let h_i = h as i32;
+            let mut b = self.stream.launch_builder(&self.fns.emb_gather);
+            b.arg(&ids_dev);
+            b.arg(&mask_dev);
+            b.arg(&self.dev.wte);
+            b.arg(&self.dev.wpe);
+            b.arg(&self.dev.tok_type);
+            b.arg(&mut x);
+            b.arg(&total_i);
+            b.arg(&w_i);
+            b.arg(&h_i);
+            unsafe { b.launch(launch_cfg(total as u32, 256))? };
+        }
         self.layernorm(
             &mut x,
             &self.dev.emb_ln_w,
@@ -441,10 +523,12 @@ impl CudaEmbedder {
         let mut ff = self.stream.alloc_zeros::<f32>(n * width * ff_dim)?;
         let mut ctx_tmp = self.stream.alloc_zeros::<f32>(total)?;
         let mut probs = self.stream.alloc_zeros::<f32>(n * heads * width * width)?;
-        let mask_dev = self.stream.clone_htod(mask)?;
 
         let nwh = n * width * h;
+        let t0 = std::time::Instant::now();
+        let mut layer_times = Vec::new();
         for (li, dl) in self.dev.layers.iter().enumerate() {
+            let lt = std::time::Instant::now();
             let f1out = self.weights.layers[li].ff1.out;
             // post-LN BERT block: attention reads x directly, LN after each residual add.
             self.stream.memcpy_dtod(&x, &mut resid)?;
@@ -480,9 +564,14 @@ impl CudaEmbedder {
             self.gemm_bias(&ff, n * width, f1out, &dl.f2w, &dl.f2b, &mut x, 0)?;
             self.add_resid(&mut x, &resid, total)?;
             self.layernorm(&mut x, &dl.ln2w, &dl.ln2b, n * width, h, eps)?;
+            self.stream.synchronize()?;
+            layer_times.push(lt.elapsed());
         }
         self.stream.synchronize()?;
-        Ok(self.stream.clone_dtoh(&x)?)
+        if std::env::var_os("REMEM_CUDA_TIMING").is_some() {
+            eprintln!("[timing] layers: {:?}", layer_times);
+        }
+        Ok(x)
     }
 
     /// Attention: scores[b, head, j, i] = scale * q.k; masked softmax over i; ctx = P @ V.
@@ -747,34 +836,44 @@ impl Embedder for CudaEmbedder {
             ids.extend(std::iter::repeat_n(0u32, width - take));
             mask.extend(std::iter::repeat_n(0u32, width - take));
         }
-        let hidden = self.forward(n, width, &ids, &mask)?;
-        // mean-pool + L2 on host (CPU cost negligible vs 12 encoder layers)
+        // mean-pool + L2 on GPU; only n*h floats cross D2H.
         let h = self.weights.h;
-        let mut out = Vec::with_capacity(n);
-        for r in 0..n {
-            let mut acc = vec![0.0f32; h];
-            let mut count = 0.0f32;
-            for c in 0..width {
-                if mask[r * width + c] == 0 {
-                    continue;
-                }
-                let src = (r * width + c) * h;
-                for (a, &xx) in acc.iter_mut().zip(&hidden[src..src + h]) {
-                    *a += xx;
-                }
-                count += 1.0;
-            }
-            let count = count.max(1.0);
-            for a in acc.iter_mut() {
-                *a /= count;
-            }
-            let norm = acc.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-12);
-            for a in acc.iter_mut() {
-                *a /= norm;
-            }
-            out.push(acc);
+        let mask_dev = self.stream.clone_htod(&mask)?;
+        let hidden = self.forward(n, width, &ids, &mask, &mask_dev)?;
+        let mut pooled = self.stream.alloc_zeros::<f32>(n * h)?;
+        {
+            let n_i = n as i32;
+            let w_i = width as i32;
+            let h_i = h as i32;
+            let mut b = self.stream.launch_builder(&self.fns.mean_pool);
+            b.arg(&hidden);
+            b.arg(&mask_dev);
+            b.arg(&mut pooled);
+            b.arg(&n_i);
+            b.arg(&w_i);
+            b.arg(&h_i);
+            unsafe {
+                b.launch(LaunchConfig {
+                    grid_dim: (n as u32, 1, 1),
+                    block_dim: (h as u32, 1, 1),
+                    shared_mem_bytes: 0,
+                })?
+            };
+            let mut b = self.stream.launch_builder(&self.fns.l2_rows);
+            b.arg(&mut pooled);
+            b.arg(&n_i);
+            b.arg(&h_i);
+            unsafe {
+                b.launch(LaunchConfig {
+                    grid_dim: (n as u32, 1, 1),
+                    block_dim: (h as u32, 1, 1),
+                    shared_mem_bytes: 0,
+                })?
+            };
         }
-        Ok(out)
+        self.stream.synchronize()?;
+        let host = self.stream.clone_dtoh(&pooled)?;
+        Ok(host.chunks(h).map(|c| c.to_vec()).collect())
     }
 
     fn dims(&self) -> usize {
