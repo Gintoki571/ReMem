@@ -164,6 +164,8 @@ enum Cmd {
         #[arg(long)]
         rel: Option<String>,
     },
+    /// recall-suggested edge candidates (accept with `link --rel`)
+    Suggestions {},
     /// Top memories by graph PageRank as `id  score` lines
     Central {
         /// Max memories to show (default: 10)
@@ -586,6 +588,19 @@ fn main() -> Result<()> {
             hits.sort();
             for (nid, r, p) in hits {
                 println!("{nid}  {r}  {p}");
+            }
+        }
+        Cmd::Suggestions {} => {
+            let eng = engine(&cli.db)?;
+            let rows = eng.store().suggestions()?;
+            if rows.is_empty() {
+                println!("no suggestions");
+            }
+            for r in rows {
+                println!(
+                    "{}  {} -> {}  rank {}  count {}  {}",
+                    r.id, r.from_id, r.to_id, r.rank, r.count, r.query
+                );
             }
         }
         Cmd::Central { limit } => {

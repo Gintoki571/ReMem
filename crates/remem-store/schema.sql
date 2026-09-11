@@ -75,3 +75,19 @@ CREATE VIRTUAL TABLE IF NOT EXISTS merges_fts USING fts5(survivor_id UNINDEXED, 
 CREATE TRIGGER IF NOT EXISTS merges_ai AFTER INSERT ON merges BEGIN
   INSERT INTO merges_fts(rowid, survivor_id, absorbed_content) VALUES (new.absorbed_id, new.survivor_id, new.absorbed_content);
 END;
+
+-- recall-suggested edge candidates (issue #15 follow-up): the recall engine
+-- records (from_id, to_id, query, rank) when a graph edge fuses a hit in.
+-- Suggestion ONLY: accepting a candidate is a manual `remem link --rel`;
+-- nothing auto-links. One row per pair (upsert refreshes query/rank/created_at).
+CREATE TABLE IF NOT EXISTS suggested_edges (
+  id INTEGER PRIMARY KEY,
+  from_id TEXT NOT NULL,
+  to_id TEXT NOT NULL,
+  query TEXT NOT NULL,
+  rank INTEGER NOT NULL,
+  count INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_suggested_edges_pair
+  ON suggested_edges(from_id, to_id);

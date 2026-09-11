@@ -604,6 +604,9 @@ impl RecallEngine {
         // Graph expansion: neighbours of the top fts+vector seeds, fused as a
         // third list so linked-but-not-matched memories can surface.
         let mut edge_prov: HashMap<String, EdgeProvenance> = HashMap::new();
+        // recall-suggested candidates (issue #15 follow-up): seed that pulled
+        // each graph-fused id in (first seed wins).
+        let mut edge_from: HashMap<String, String> = HashMap::new();
         let graph_ids: Vec<String> = if let Some(g) = &self.shared.graph {
             let seeds = fuse(
                 &[
@@ -632,6 +635,7 @@ impl RecallEngine {
                     }
                     if allowed.contains(&n.id) && seen.insert(n.id.clone()) {
                         edge_prov.insert(n.id.clone(), n.provenance);
+                        edge_from.insert(n.id.clone(), seed.id.clone());
                         nbrs.push(n.id);
                     }
                 }
@@ -738,6 +742,25 @@ impl RecallEngine {
             Some(max) => pack_by_budget(hits, max),
             None => hits,
         };
+        // recall-suggested edge candidates (issue #15 follow-up): when a graph
+        // edge fused a hit in, record the (seed -> hit) pair + query + rank as
+        // a candidate for the agent to accept with `link --rel`. SUGGESTION
+        // ONLY: never auto-links (that regressed once). Failures are non-fatal.
+        if !edge_from.is_empty() {
+            for (pos, h) in hits.iter().enumerate() {
+                if h.reasons.iter().any(|r| r.starts_with("graph#")) {
+                    if let Some(from) = edge_from.get(&h.item.id) {
+                        let _ = self.shared.store.record_suggestion(
+                            from,
+                            &h.item.id,
+                            text,
+                            (pos + 1) as i64,
+                        );
+                    }
+                }
+            }
+            let _ = self.shared.store.prune_suggestions();
+        }
         Ok(hits)
     }
 
