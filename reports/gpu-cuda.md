@@ -21,6 +21,29 @@ Upstream fix: PR huggingface/candle#3909 (unmerged as of 2026-09-10).
 
 ## 2. cuda backend design
 
+**Chosen: cudarc (nvrtc PTX + cublas sgemm), not candle-cuda, not hand-written cubin.**
+
+1. candle-cuda is blocked by candle-kernels vs CUDA 13.3/sm_75 (see §1); patching candle-kernels
+   or a CUDA 12.6 side-install is env surgery this lane cannot own.
+2. cudarc 0.19.9 is already in Cargo.lock (via candle), needs no new dependency, and does NOT run
+   nvcc on any candle kernel — it compiles small PTX strings with libnvrtc at runtime.
+3. BERT forward needs only: cublas sgemm/strided-batched (all matmuls) + 7 tiny f32 kernels
+   (layernorm, gelu, elementwise add, add-bias, masked softmax, 2 head permutes). ~400 lines of
+   Rust + ~120 lines of CUDA-in-string, far less than porting candle's kernel suite.
+
+Design:
+- `crates/remem-embed/src/cuda.rs` (feature `cuda` = `dep:cudarc`; candle cuda features removed
+  from the feature — the documented `--features cuda` flag now builds the working path).
+- Weights: manual safetensors parse (8-byte len + serde_json header + f32 blob), upload once.
+- Forward: f32 BERT encoder, batch-major, attention via `gemm_strided_batched` with the
+  row-major recipe `C[M,N] = A[M,K]·Bop` → cublas(m=N,n=M,k=K,opN,opN, B-slot=A, ldb=K, ldc=N).
+  Attention scale folded into gemm alpha (1/sqrt(hk)).
+- Pooled mean + L2 on host after final hidden copy (CPU cost negligible vs 12 layers).
+- Runtime fallback: `load()` tries CUDA when built with `cuda`, on ANY error logs and returns the
+  candle CPU embedder. Without the feature, pure candle CPU (unchanged default).
+
+## 2b. RED status
+
 PENDING.
 
 ## 3. Bench (768d batch, GPU vs CPU)
