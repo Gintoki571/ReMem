@@ -11,7 +11,7 @@ pub use rank::{
 pub use stub::StubEmbedder;
 
 use anyhow::{anyhow, Context, Result};
-use remem_graph::{EdgeProvenance, Graph, MEMORY_LABEL};
+use remem_graph::{EdgeProvenance, Graph, MemoryEdge, MEMORY_LABEL};
 use remem_store::{content_hash, Store};
 use remem_types::{MemoryItem, RecallHit, RecallQuery};
 use std::collections::{HashMap, HashSet};
@@ -115,6 +115,35 @@ impl Default for Weights {
 /// ([`RecallEngine::with_half_life_days`], [`RecallEngine::with_min_score`],
 /// [`RecallEngine::with_recency_off`]) derive a re-tuned engine from `&self`
 /// without re-opening store or graph. The construction-time builders
+/// One node of an [`RecallEngine::impact`] walk: a memory reached over one
+/// memory-to-memory edge, with the edge and BFS position that found it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImpactNode {
+    /// Memory id.
+    pub id: String,
+    /// Memory kind string (e.g. `fact`), empty when the graph node has no
+    /// store row (forgotten memory kept only in the graph).
+    pub kind: String,
+    /// Relation on the discovering edge (`SUPERSEDES`, `USES`, ...).
+    pub rel: String,
+    /// Provenance of the discovering edge.
+    pub provenance: EdgeProvenance,
+    /// BFS depth from the seed (first hop = 1).
+    pub depth: usize,
+}
+
+/// Result of a directional BFS over memory-to-memory edges from a seed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImpactReport {
+    /// The seed memory id.
+    pub root: String,
+    /// Discovered nodes, breadth-first (depth ascending, discovery order
+    /// within a depth). The root itself is not listed.
+    pub nodes: Vec<ImpactNode>,
+}
+
+pub(crate) const DEFAULT_IMPACT_DEPTH: usize = 3;
+
 /// ([`RecallEngine::with_graph`], [`RecallEngine::with_weights`]) still consume
 /// `self`: they shape the engine, not a recall variant of it.
 pub struct RecallEngine {
@@ -393,6 +422,61 @@ impl RecallEngine {
 
     pub fn list(&self) -> Result<Vec<MemoryItem>> {
         Ok(self.shared.store.list(false)?)
+    }
+
+    /// Impact of changing `id`: BFS over memory edges to depth 3, all
+    /// relations. See [`Self::impact_filtered`].
+    pub fn impact(&self, id: &str) -> Result<ImpactReport> {
+        self.impact_filtered(id, DEFAULT_IMPACT_DEPTH, None)
+    }
+
+    /// Impact with an explicit depth limit.
+    pub fn impact_depth(&self, id: &str, depth: usize) -> Result<ImpactReport> {
+        self.impact_filtered(id, depth, None)
+    }
+
+    /// Directional BFS over memory-to-memory edges (donor: graphify
+    /// `affected.py::affected_nodes`): visit both edge directions, filter by
+    /// relation when `rel` is set, stop at `depth` hops. Incoming edges are
+    /// dependents (what breaks if this memory changes); outgoing edges are
+    /// its own dependencies. SUPERSEDES edges surface superseded rows next
+    /// to their live successors in either direction. Unknown id -> empty
+    /// report (mirrors related/path emptiness).
+    pub fn impact_filtered(
+        &self,
+        id: &str,
+        depth: usize,
+        rel: Option<&str>,
+    ) -> Result<ImpactReport> {
+        let g = self
+            .shared
+            .graph
+            .as_ref()
+            .ok_or_else(|| anyhow!("engine has no graph open"))?;
+        let hits = g
+            .impact(id, depth, rel)
+            .map_err(|e| anyhow!("graph impact: {e}"))?;
+        // Kind comes from the store; superseded rows are hidden from list()
+        // but their graph nodes remain, so per-id get is required. A graph
+        // node with no row (forgotten memory) degrades to an empty kind.
+        let mut nodes = Vec::with_capacity(hits.len());
+        for n in hits {
+            let kind = match self.shared.store.get_any(&n.id)? {
+                Some(item) => item.kind.as_str().to_string(),
+                None => String::new(),
+            };
+            nodes.push(ImpactNode {
+                id: n.id,
+                kind,
+                rel: n.rel,
+                provenance: n.provenance,
+                depth: n.depth,
+            });
+        }
+        Ok(ImpactReport {
+            root: id.to_string(),
+            nodes,
+        })
     }
 
     /// Combined counts for `remem stats`.
@@ -852,19 +936,14 @@ mod impact_tests {
         let eng = test_engine(path);
         let mut ids = Vec::new();
         let mut prev: Option<MemoryItem> = None;
-        for (i, content) in [
+        for content in [
             "deploy runs on port 8080",
             "deploy runs on port 9090",
             "deploy runs on port 9443",
-        ]
-        .into_iter()
-        .enumerate()
-        {
+        ] {
             let mut m = item(MemoryKind::Fact, content, &["deploy"]);
             if let Some(old) = &prev {
-                let new_id = eng
-                    .supersede(&old.id, &m)
-                    .expect("supersede succeeds");
+                let new_id = eng.supersede(&old.id, &m).expect("supersede succeeds");
                 ids.push(new_id.clone());
                 m.id = new_id;
             } else {
@@ -901,7 +980,10 @@ mod impact_tests {
             "newest successor sits two hops out: {:?}",
             report.nodes
         );
-        assert!(!walked.contains(&ids[3].as_str()), "unrelated memory stays out");
+        assert!(
+            !walked.contains(&ids[3].as_str()),
+            "unrelated memory stays out"
+        );
         let sup = report
             .nodes
             .iter()
@@ -931,25 +1013,41 @@ mod impact_tests {
     fn fan_out_links_report_each_dependent_breadth_first() {
         let db = tmp_db("fanout");
         let eng = test_engine(&db);
-        let base = item(MemoryKind::Decision, "api base url is https://api.example.com", &["api"]);
+        let base = item(
+            MemoryKind::Decision,
+            "api base url is https://api.example.com",
+            &["api"],
+        );
         eng.remember(&base).expect("remember succeeds");
         let mut dependents = Vec::new();
         for content in [
-            "client a uses the api base url",
-            "client b uses the api base url",
-            "client c uses the api base url",
+            "client a calls the payments endpoint",
+            "client b calls the shipments endpoint",
+            "client c calls the audit endpoint",
         ] {
             let m = item(MemoryKind::Fact, content, &["api"]);
             eng.remember(&m).expect("remember succeeds");
-            eng.link(&m.id, &base.id, Some("USES")).expect("link succeeds");
+            eng.link(&m.id, &base.id, Some("USES"))
+                .expect("link succeeds");
             dependents.push(m.id);
         }
-        let deep = item(MemoryKind::Fact, "client a retry uses the api base url too", &["api"]);
+        let deep = item(
+            MemoryKind::Fact,
+            "retry wrapper wraps the payments caller",
+            &["api"],
+        );
         eng.remember(&deep).expect("remember succeeds");
-        eng.link(&deep.id, &dependents[0], Some("USES")).expect("link succeeds");
+        eng.link(&deep.id, &dependents[0], Some("USES"))
+            .expect("link succeeds");
 
         let report = eng.impact(&base.id).expect("impact succeeds");
-        let get = |id: &str| report.nodes.iter().find(|n| n.id == id).unwrap_or_else(|| panic!("{id} missing: {:?}", report.nodes));
+        let get = |id: &str| {
+            report
+                .nodes
+                .iter()
+                .find(|n| n.id == id)
+                .unwrap_or_else(|| panic!("{id} missing: {:?}", report.nodes))
+        };
         for d in &dependents {
             assert_eq!(get(d).depth, 1, "direct dependents at depth 1");
         }
