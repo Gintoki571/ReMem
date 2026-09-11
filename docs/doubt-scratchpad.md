@@ -22,5 +22,7 @@ challenge with a number.
    recall on the real db). No daemon/serve mode exists; a `remem serve` would
    amortize it. Decide when CLI latency actually blocks a workflow.
 4. **Adversarial pass margin at the shipped floor is thin**: junk pre-boost
-   0.0161 vs floor 0.017 at k=30 (~5%). Consider a pinned-margin adversarial
-   test so a floor/k recalibration that eats the margin fails loudly.
+   0.0161 vs floor 0.017 at k=30 (~5%). Pinned by
+   `crates/remem-recall/tests/pinned_margin.rs` (junk ceiling < floor with
+   >= 5% relative margin), so a floor/k recalibration that eats the margin
+   fails loudly.
