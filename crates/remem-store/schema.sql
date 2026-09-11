@@ -56,3 +56,22 @@ CREATE TRIGGER memories_au AFTER UPDATE OF content, tags ON memories BEGIN
 END;
 
 CREATE VIRTUAL TABLE IF NOT EXISTS mem_vec USING vec0(embedding FLOAT[768]);
+
+-- Traceable corroboration merges (issue #14): remember() records the absorbed
+-- phrasing here on the merge path (exactly one corroborating near neighbour).
+-- absorbed_id is the rowid (autoincrement); survivor_id points at the row
+-- that absorbed the write.
+CREATE TABLE IF NOT EXISTS merges (
+  absorbed_id INTEGER PRIMARY KEY,
+  survivor_id TEXT NOT NULL,
+  absorbed_content TEXT NOT NULL,
+  absorbed_at INTEGER NOT NULL
+);
+
+-- FTS aux over the merges audit trail (issue #14): absorbed phrasings stay
+-- searchable with the same porter tokenizer as memories_fts. merges is
+-- append-only (no delete/update triggers needed).
+CREATE VIRTUAL TABLE IF NOT EXISTS merges_fts USING fts5(survivor_id UNINDEXED, absorbed_content, content='merges', content_rowid='absorbed_id', tokenize='porter unicode61');
+CREATE TRIGGER IF NOT EXISTS merges_ai AFTER INSERT ON merges BEGIN
+  INSERT INTO merges_fts(rowid, survivor_id, absorbed_content) VALUES (new.absorbed_id, new.survivor_id, new.absorbed_content);
+END;

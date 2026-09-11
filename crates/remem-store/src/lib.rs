@@ -535,6 +535,74 @@ fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// One recorded corroboration merge (issue #14): the absorbed phrasing and
+/// when it was merged into the survivor.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MergedRow {
+    pub survivor_id: String,
+    pub absorbed_content: String,
+    pub absorbed_at: i64,
+}
+
+impl Store {
+    /// Record a corroboration merge: `content` was absorbed into survivor
+    /// `survivor_id` at unix second `at` (issue #14).
+    pub fn insert_merge(&self, survivor_id: &str, content: &str, at: i64) -> rusqlite::Result<()> {
+        self.conn.execute(
+            "INSERT INTO merges (survivor_id, absorbed_content, absorbed_at) VALUES (?1, ?2, ?3)",
+            params![survivor_id, content, at],
+        )?;
+        Ok(())
+    }
+
+    /// Merge rows recorded against a survivor, oldest first.
+    pub fn merges_for(&self, survivor_id: &str) -> rusqlite::Result<Vec<MergedRow>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT survivor_id, absorbed_content, absorbed_at FROM merges
+             WHERE survivor_id = ?1 ORDER BY absorbed_id",
+        )?;
+        let rows = stmt
+            .query_map(params![survivor_id], |r| {
+                Ok(MergedRow {
+                    survivor_id: r.get(0)?,
+                    absorbed_content: r.get(1)?,
+                    absorbed_at: r.get(2)?,
+                })
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    /// FTS match over recorded absorbed phrasings, returning (survivor_id,
+    /// bm25 rank). More negative = better. Same porter tokenizer as
+    /// memories_fts, so stemming matches the main index.
+    pub fn fts_search_merges(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> rusqlite::Result<Vec<(String, f32)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT survivor_id, bm25(merges_fts) AS rank FROM merges_fts
+             WHERE merges_fts MATCH ?1 ORDER BY rank LIMIT ?2",
+        )?;
+        let rows = stmt
+            .query_map(params![fts_quote(query), clamp_limit(limit)], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)? as f32))
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    /// Absorbed phrasings under a survivor, oldest first (trace view).
+    pub fn merge_trace(&self, survivor_id: &str) -> rusqlite::Result<Vec<String>> {
+        Ok(self
+            .merges_for(survivor_id)?
+            .into_iter()
+            .map(|m| m.absorbed_content)
+            .collect())
+    }
+}
+
 /// sha256(kind + normalized content). Normalization: trim, collapse
 /// whitespace runs to one space, lowercase.
 pub fn content_hash(kind: &MemoryKind, content: &str) -> String {

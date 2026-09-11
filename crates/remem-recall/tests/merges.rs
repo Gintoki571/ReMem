@@ -124,6 +124,7 @@ fn recall_finds_absorbed_phrasing() {
     let hits = e
         .recall(&remem_types::RecallQuery {
             text: "listens on 8080".into(),
+            k: 5,
             ..Default::default()
         })
         .unwrap();
@@ -145,8 +146,11 @@ fn trace_lists_merges_under_survivor() {
             ("The parser service listens on 8080", 0),
         ]),
     );
-    let (id1, _) = e.remember(&item("Parser runs on port 8080", &["parser"])).unwrap();
-    e.remember(&item("The parser service listens on 8080", &["parser"])).unwrap();
+    let (id1, _) = e
+        .remember(&item("Parser runs on port 8080", &["parser"]))
+        .unwrap();
+    e.remember(&item("The parser service listens on 8080", &["parser"]))
+        .unwrap();
 
     let out = e.store().merge_trace(&id1).unwrap();
     assert_eq!(out.len(), 1, "one absorbed row under survivor: {out:?}");

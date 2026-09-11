@@ -277,7 +277,14 @@ impl RecallEngine {
         if corroborating.len() == 1 {
             // Merge: the existing row already says this; no insert, no graph
             // node, keep the old (original) id.
-            return Ok((corroborating.into_iter().next().expect("len == 1"), similar));
+            let survivor = corroborating.into_iter().next().expect("len == 1");
+            // Traceable merges (issue #14): keep the absorbed phrasing so
+            // recall and `remem trace` can still surface it.
+            self.shared
+                .store
+                .insert_merge(&survivor, &item.content, MemoryItem::now())
+                .context("record merge")?;
+            return Ok((survivor, similar));
         }
         let id = self.shared.store.insert(item).context("store insert")?;
         self.shared
@@ -444,6 +451,17 @@ impl RecallEngine {
             .map(|(m, _bm25)| m.id)
             .filter(|id| allowed.contains(id))
             .collect();
+
+        // Traceable merges (issue #14): absorbed phrasings are searchable
+        // too. Survivors whose merged-in content matched enter the lexical
+        // list AFTER the direct fts hits, so direct matches keep their rank
+        // and the eval ordering cannot regress from a merge hit alone.
+        let mut fts = fts;
+        for (sid, _rank) in self.shared.store.fts_search_merges(text, depth)? {
+            if allowed.contains(&sid) && !fts.contains(&sid) {
+                fts.push(sid);
+            }
+        }
 
         let qvec = self.embed_one(text)?;
 
