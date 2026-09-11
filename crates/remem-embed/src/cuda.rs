@@ -15,7 +15,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
-use cudarc::cublas::safe::{CudaBlas, Gemm, StridedBatchedConfig};
+use cudarc::cublas::safe::{CudaBlas, Gemm, GemmConfig, StridedBatchedConfig};
 use cudarc::cublas::sys::cublasOperation_t;
 use cudarc::driver::{CudaContext, CudaSlice, CudaStream, LaunchConfig, PushKernelArg};
 use cudarc::nvrtc::{compile_ptx_with_opts, CompileOptions};
@@ -28,9 +28,9 @@ extern "C" __global__ void add_bias(float* x, const float* b, int total, int wid
     if (i < total) x[i] += b[i % width];
 }
 
-extern "C" __global__ void add_resid(float* y, const float* x, const float* r, int n) {
+extern "C" __global__ void add_resid(float* y, const float* r, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < n) y[i] = x[i] + r[i];
+    if (i < n) y[i] += r[i];
 }
 
 extern "C" __global__ void gelu(float* x, int n) {
@@ -66,27 +66,44 @@ extern "C" __global__ void layernorm(const float* x, const float* gamma, const f
     y[row * width + t] = (v - mean) * inv_std * gamma[t] + beta[t];
 }
 
+// ctx_tmp[b, head, j, d] -> out[b, j, head, d]; one thread per output element.
+// ctx_tmp[b, head, j, d] -> out[b, j, head, d]; one thread per output element.
+extern "C" __global__ void ctx_gather(const float* tmp, float* out, int total, int hk, int h,
+                                      int whk, int heads) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= total) return;
+    int b = idx / (heads * whk);
+    int r = idx % (heads * whk);
+    int i = r / h;
+    int head = (r % h) / hk;
+    int d = r % hk;
+    out[idx] = tmp[b * heads * whk + head * whk + i * hk + d];
+}
+
 // rowwise masked softmax over [rows, s]; grid = rows, dynamic smem = s floats.
 // row = ((b * heads + head) * w + qrow); mask is [n, s] indexed by (b, qrow).
-extern "C" __global__ void softmax_masked(const float* x, const float* mask, float* y,
-                                          int rows, int s, int qrows) {
+extern "C" __global__ void softmax_masked(const float* x, const unsigned int* mask, float* y,
+                                          int rows, int s, int qrows, int hpq) {
     int row = blockIdx.x;
     if (row >= rows) return;
-    int b = row / qrows;
+    int b = row / hpq; // document index
     int qrow = row % qrows;
-    const float* mrow = mask + b * s;
+    const unsigned int* mrow = mask + b * s;
     extern __shared__ float red[];
-    float local_max = -INFINITY;
     for (int i = threadIdx.x; i < s; i += blockDim.x) {
-        float m = mrow[qrow * s + i];
-        float v = x[row * s + i] + (m > 0.0f ? 0.0f : -1e9f);
-        red[i] = v;
-        if (v > local_max) local_max = v;
+        float m = mrow[i]; // attention mask is per document, same for every query row
+        red[i] = x[row * s + i] + (m > 0.0f ? 0.0f : -1e9f);
     }
     __shared__ float row_max, row_sum;
-    if (threadIdx.x == 0) { row_max = -INFINITY; row_sum = 0.0f; }
     __syncthreads();
-    atomicMax((int*)&row_max, __float_as_int(local_max));
+    // red[] is fully written above; tiny s (<=512), so a single-thread max is cheap and
+    // avoids the signed-atomicMax float-ordering trap.
+    if (threadIdx.x == 0) {
+        float mx = red[0];
+        for (int i = 1; i < s; i++) mx = fmaxf(mx, red[i]);
+        row_max = mx;
+        row_sum = 0.0f;
+    }
     __syncthreads();
     float local_sum = 0.0f;
     for (int i = threadIdx.x; i < s; i += blockDim.x) {
@@ -273,6 +290,7 @@ pub struct CudaEmbedder {
 }
 
 struct Kernels {
+    ctx_gather: cudarc::driver::CudaFunction,
     add_bias: cudarc::driver::CudaFunction,
     add_resid: cudarc::driver::CudaFunction,
     gelu: cudarc::driver::CudaFunction,
@@ -321,6 +339,7 @@ impl CudaEmbedder {
         let ptx = compile_ptx_with_opts(PTX_SRC, opts).map_err(|e| anyhow!("nvrtc: {e}"))?;
         let module = ctx.load_module(ptx)?;
         let fns = Kernels {
+            ctx_gather: module.load_function("ctx_gather")?,
             add_bias: module.load_function("add_bias")?,
             add_resid: module.load_function("add_resid")?,
             gelu: module.load_function("gelu")?,
@@ -414,24 +433,25 @@ impl CudaEmbedder {
         )?;
 
         let ff_dim = self.weights.layers[0].ff1.out;
-        let mut proj = self.stream.alloc_zeros::<f32>(total * 3)?; // qkv concat [n*w, 3h]
+        // q|k|v dense blocks [n*w, h] each
+        let mut proj = self.stream.alloc_zeros::<f32>(total * 3)?;
         let mut attn = self.stream.alloc_zeros::<f32>(total)?; // attention context [n*w, h]
         let mut scores = self.stream.alloc_zeros::<f32>(n * heads * width * width)?;
         let mut resid = self.stream.alloc_zeros::<f32>(total)?;
         let mut ff = self.stream.alloc_zeros::<f32>(n * width * ff_dim)?;
+        let mut ctx_tmp = self.stream.alloc_zeros::<f32>(total)?;
+        let mut probs = self.stream.alloc_zeros::<f32>(n * heads * width * width)?;
         let mask_dev = self.stream.clone_htod(mask)?;
 
+        let nwh = n * width * h;
         for (li, dl) in self.dev.layers.iter().enumerate() {
             let f1out = self.weights.layers[li].ff1.out;
-            // resid <- x (device-to-device)
+            // post-LN BERT block: attention reads x directly, LN after each residual add.
             self.stream.memcpy_dtod(&x, &mut resid)?;
-            // pre-norm: x <- LN(x)
-            self.layernorm(&mut x, &dl.ln1w, &dl.ln1b, n * width, h, eps)?;
-
             // qkv projection: x [n*w, h] @ [h, out]^T + bias, q/k/v side by side in proj
             self.gemm_bias(&x, n * width, h, &dl.qw, &dl.qb, &mut proj, 0)?;
-            self.gemm_bias(&x, n * width, h, &dl.kw, &dl.kb, &mut proj, h)?;
-            self.gemm_bias(&x, n * width, h, &dl.vw, &dl.vb, &mut proj, 2 * h)?;
+            self.gemm_bias(&x, n * width, h, &dl.kw, &dl.kb, &mut proj, nwh)?;
+            self.gemm_bias(&x, n * width, h, &dl.vw, &dl.vb, &mut proj, 2 * nwh)?;
 
             // scores[b,head,j,i] (j = query row) = scale * q . k ; softmax over i; ctx = P @ V
             self.attention(
@@ -444,27 +464,29 @@ impl CudaEmbedder {
                 &mut scores,
                 &mut attn,
                 &mask_dev,
+                &mut ctx_tmp,
+                &mut probs,
             )?;
 
             // attn output projection + bias, then residual
             self.gemm_bias(&attn, n * width, h, &dl.aw, &dl.ab, &mut x, 0)?;
             self.add_resid(&mut x, &resid, total)?;
+            self.layernorm(&mut x, &dl.ln1w, &dl.ln1b, n * width, h, eps)?;
 
             // FFN
             self.stream.memcpy_dtod(&x, &mut resid)?;
-            self.layernorm(&mut x, &dl.ln2w, &dl.ln2b, n * width, h, eps)?;
             self.gemm_bias(&x, n * width, h, &dl.f1w, &dl.f1b, &mut ff, 0)?;
             self.gelu(&mut ff, n * width * f1out)?;
             self.gemm_bias(&ff, n * width, f1out, &dl.f2w, &dl.f2b, &mut x, 0)?;
             self.add_resid(&mut x, &resid, total)?;
+            self.layernorm(&mut x, &dl.ln2w, &dl.ln2b, n * width, h, eps)?;
         }
         self.stream.synchronize()?;
         Ok(self.stream.clone_dtoh(&x)?)
     }
 
-    /// scores[b, head, j, i]: for each (b, head) pair, a [w, w] tile = q_tile @ k_tile^T * scale.
-    /// proj row (b,i): [q(h) | k(h) | v(h)]; q tile of (b,head): proj[b*w*3h + i*3h + head*hk ..+hk]
-    /// batch = b*heads + head; stride_a/b between heads = hk (uniform!), batch_size = n*heads.
+    /// Attention: scores[b, head, j, i] = scale * q.k; masked softmax over i; ctx = P @ V.
+    /// proj holds three dense [n*w, h] blocks: q at 0, k at n*w*h, v at 2*n*w*h.
     fn attention(
         &self,
         n: usize,
@@ -476,28 +498,36 @@ impl CudaEmbedder {
         scores: &mut CudaSlice<f32>,
         out: &mut CudaSlice<f32>,
         mask_dev: &CudaSlice<u32>,
+        ctx_tmp: &mut CudaSlice<f32>,
+        probs: &mut CudaSlice<f32>,
     ) -> Result<()> {
         let h = self.weights.h;
-        let h3 = 3 * h;
         let w = width;
-        // One strided-batched gemm per document: batch = heads, stride hk (uniform within
-        // a document); documents looped over (n small). scores[b, head] tiles [w, w].
+        // scores[b, head, j, i] = q[j] . k[i] * scale, one strided-batched gemm per doc:
+        // batch = heads, stride_a/b = hk between head tiles.
+        // proj holds three dense [n*w, h] blocks: q at 0, k at n*w*h, v at 2*n*w*h
+        // (gemm_bias writes dense row-major blocks, so attention indexes accordingly).
+        let nwh = n * w * h;
         for b in 0..n {
-            let base = b * w * h3;
-            // k tiles: base + h; q tiles: base; v tiles: base + 2h
-            let a = proj.slice(base + h..base + h + w * h3); // k [w, h], head d at offset head*hk
-            let bt = proj.slice(base..base + w * h3); // q
+            let base = b * w * h;
+            // A = k block: op(A)[i, c] = k[i, head, c]; transa=T reads stored col-major
+            // [hk, w] element (c, i) at i*lda + c -> lda=h; head g at +g*hk.
+            let a = proj.slice(nwh + base..);
+            // B = q block: op(B)[c, j] = q[j, head, c]; transb=N, ldb=h; head g at +g*hk.
+            let bt = proj.slice(base..);
             let mut c = scores.slice_mut(b * heads * w * w..(b + 1) * heads * w * w);
             let cfgb = StridedBatchedConfig::<f32> {
-                gemm: cudarc::cublas::safe::GemmConfig {
-                    transa: cublasOperation_t::CUBLAS_OP_N,
-                    transb: cublasOperation_t::CUBLAS_OP_T,
+                gemm: GemmConfig {
+                    // op(A)[i, c] = k[i, c]: stored M(c, i) = k[i, c] col-major [hk, w]
+                    // with row-stride lda=h3 inside the qkv concat, so transa=T.
+                    transa: cublasOperation_t::CUBLAS_OP_T,
+                    transb: cublasOperation_t::CUBLAS_OP_N,
                     m: w as i32,
                     n: w as i32,
                     k: hk as i32,
                     alpha: scale,
-                    lda: h3 as i32,
-                    ldb: h3 as i32,
+                    lda: h as i32,
+                    ldb: h as i32,
                     beta: 0.0,
                     ldc: w as i32,
                 },
@@ -508,18 +538,20 @@ impl CudaEmbedder {
             };
             unsafe { self.blas.gemm_strided_batched(cfgb, &a, &bt, &mut c)? };
         }
-        // softmax over last dim of each [w, w] tile (mask applies per document row)
+        // softmax over i (last dim) of each [j, i] tile; mask per doc row.
         {
             let rows = (n * heads * w) as i32;
             let w_i = w as i32;
             let qrows = w as i32;
+            let hpq = (heads * w) as i32;
             let mut b = self.stream.launch_builder(&self.fns.softmax);
             b.arg(&*scores);
             b.arg(&*mask_dev);
-            b.arg(&mut *out);
+            b.arg(&mut *probs);
             b.arg(&rows);
             b.arg(&w_i);
             b.arg(&qrows);
+            b.arg(&hpq);
             let cfgl = LaunchConfig {
                 grid_dim: (rows as u32, 1, 1),
                 block_dim: (256, 1, 1),
@@ -527,40 +559,53 @@ impl CudaEmbedder {
             };
             unsafe { b.launch(cfgl)? };
         }
-        // ctx = P @ V per (b, head): P [w, w] row-major (query j, key i), V tiles [w, hk].
-        // C[j, d] = sum_i P[j, i] V[i, d]; col-major: C^T[d, j] = sum_i V^T[d, i] P^T[i, j]
-        // opA = V tiles [w, hk] transa=T -> [hk, w]; opB = P [w, w] transb=N? B[d, j] with ldb...
-        // cublas: C[m, n] col-major = opA[m, k] opB[k, n]. Set C^T[d, j]: m = hk, n = w, k = w.
-        // opA[d, i] = V[i, d] -> A = V tiles [w, hk] with transa = T, lda = h3
-        // opB[i, j] = P[j, i] -> B = P tiles row-major [w(w_query), w(w_key)] i.e. B = scores tile,
-        //   interpreted col-major as [w_key, w_query]: B[i, j] = scores[j, i] -> transb = N, ldb = w
-        // C = ctx^T col-major [hk, w] -> ldc = hk, out tile d-major: ctx[b,i,head,d] at
-        //   b*w*h3 + i*3h + 2h + head*hk + d -> C col-major element (d, j) at j*ldc + d =
-        //   matches row j=i of ctx when ldc = h3 and base = b*w*h3 + 2h + head*hk. head stride hk.
+        // ctx = P @ V: single strided-batched gemm into a contiguous temp laid out
+        // [b, head, j, d] (ldc=hk, strideC=w*hk — non-overlapping), then a gather kernel
+        // reorders it into `out` as [b, i, head, d] rows of width h.
+        // A op(A)[d, i] = V[i, head, d]: v tiles (i, d) at base + 2h + i*3h + d -> col-major
+        // (r=d, c=i), lda=h3, strideA=hk between heads. B op(B)[i, j] = P[j, i] = scores[j, i],
+        // ldb=w, strideB=w*w.
         for b in 0..n {
-            let base = b * w * h3;
-            let a = proj.slice(base + 2 * h..base + 2 * h + w * h3); // v tiles
-            let bt = scores.slice(b * heads * w * w..(b + 1) * heads * w * w);
-            let mut c = out.slice_mut(base + 2 * h..base + 2 * h + w * h3);
+            let base = b * w * h;
+            let a = proj.slice(2 * nwh + base..);
+            let bt = probs.slice(b * heads * w * w..(b + 1) * heads * w * w);
+            let mut c = ctx_tmp.slice_mut(b * heads * w * hk..(b + 1) * heads * w * hk);
             let cfgb = StridedBatchedConfig::<f32> {
-                gemm: cudarc::cublas::safe::GemmConfig {
-                    transa: cublasOperation_t::CUBLAS_OP_T,
+                gemm: GemmConfig {
+                    transa: cublasOperation_t::CUBLAS_OP_N,
                     transb: cublasOperation_t::CUBLAS_OP_N,
                     m: hk as i32,
                     n: w as i32,
                     k: w as i32,
                     alpha: 1.0,
-                    lda: h3 as i32,
+                    lda: h as i32,
                     ldb: w as i32,
                     beta: 0.0,
-                    ldc: h3 as i32,
+                    ldc: hk as i32,
                 },
                 batch_size: heads as i32,
                 stride_a: hk as i64,
                 stride_b: (w * w) as i64,
-                stride_c: hk as i64,
+                stride_c: (w * hk) as i64,
             };
             unsafe { self.blas.gemm_strided_batched(cfgb, &a, &bt, &mut c)? };
+        }
+        // gather ctx_tmp [b, head, j, d] -> out [b, j, head, d]
+        {
+            let total = (n * w * h) as i32;
+            let hk_i = hk as i32;
+            let h_i = h as i32;
+            let whk_i = (w * hk) as i32;
+            let heads_i = heads as i32;
+            let mut b2 = self.stream.launch_builder(&self.fns.ctx_gather);
+            b2.arg(ctx_tmp);
+            b2.arg(&mut *out);
+            b2.arg(&total);
+            b2.arg(&hk_i);
+            b2.arg(&h_i);
+            b2.arg(&whk_i);
+            b2.arg(&heads_i);
+            unsafe { b2.launch(launch_cfg((n * w * h) as u32, 256))? };
         }
         Ok(())
     }
@@ -596,9 +641,13 @@ impl CudaEmbedder {
         let rows_i = rows as i32;
         let width_i = width as i32;
         let mut builder = self.stream.launch_builder(&self.fns.layernorm);
-        builder.arg(x);
+        // in-place: pass the same device pointer twice (src and dst)
+        let src_handle = x.try_clone()?;
+        let src_view = src_handle.slice(..);
+        builder.arg(&src_view);
         builder.arg(w);
         builder.arg(bb);
+        builder.arg(&mut *x);
         builder.arg(&rows_i);
         builder.arg(&width_i);
         builder.arg(&eps);
@@ -611,10 +660,8 @@ impl CudaEmbedder {
         Ok(())
     }
 
-    /// out[.., off..off+od] = a[.., id] @ W[od, id]^T + b ; W row-major [od, id].
-    /// Row-major C = A @ W^T is col-major C^T = W @ A^T: m = od, n = rows, k = id;
-    /// opA = W [od, id] transa=N, lda=id; opB = A [rows, id] transb=T, ldb=id;
-    /// C col-major [od, rows], ldc=od -> element (d, r) at r*od + d = row-major C[r, d].
+    /// out[.., off..off+od] = a[.., rows*id] @ W[od, id]^T + b; W row-major [od, id].
+    /// C written col-major [m=od, n=rows] with ldc=od == row-major out[r, d] slice.
     fn gemm_bias(
         &self,
         a: &CudaSlice<f32>,
@@ -626,12 +673,13 @@ impl CudaEmbedder {
         out_col_offset: usize,
     ) -> Result<()> {
         let od = w.len() / in_dim;
-        let n_i = rows as i32;
-        let _ = n_i;
         // single non-batched gemm
         let cfg = cudarc::cublas::safe::GemmConfig::<f32> {
-            transa: cublasOperation_t::CUBLAS_OP_N,
-            transb: cublasOperation_t::CUBLAS_OP_T,
+            // transb=N: B is row-major [rows, in_dim], identical memory to the col-major
+            // [in_dim, rows] interpretation. N also avoids a cublas tt-kernel OOB bug on
+            // sm_75 + CUDA 13.3 with k=3072 (volta_sgemm_128x32_tt reads past B).
+            transa: cublasOperation_t::CUBLAS_OP_T,
+            transb: cublasOperation_t::CUBLAS_OP_N,
             m: od as i32,
             n: rows as i32,
             k: in_dim as i32,
@@ -717,10 +765,10 @@ impl Embedder for CudaEmbedder {
                 count += 1.0;
             }
             let count = count.max(1.0);
-            let norm = acc.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-12);
             for a in acc.iter_mut() {
                 *a /= count;
             }
+            let norm = acc.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-12);
             for a in acc.iter_mut() {
                 *a /= norm;
             }

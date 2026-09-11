@@ -112,6 +112,10 @@ impl Embedder for LocalEmbedder {
 
 impl LocalEmbedder {
     pub fn device_name(&self) -> String {
+        #[cfg(feature = "cuda")]
+        if let Some(g) = &self.gpu {
+            return g.device_name();
+        }
         format!("{:?}", self.device)
     }
 
@@ -173,6 +177,11 @@ fn load_from_with_device(dir: &Path, device: Device) -> Result<LocalEmbedder> {
     if let Some(g) = try_cuda(dir) {
         return Ok(g);
     }
+    load_candle(dir, device)
+}
+
+/// Direct candle load, bypassing the cudarc backend (CPU reference path).
+fn load_candle(dir: &Path, device: Device) -> Result<LocalEmbedder> {
     let config: Config = serde_json::from_str(
         &std::fs::read_to_string(dir.join("config.json")).context("read config.json")?,
     )
@@ -298,9 +307,13 @@ mod cuda_tests {
             load().map_err(|e| format!("{e:#}"))
         });
         match r {
-            Ok(m) if m.device_name().contains("Cuda") => Some(m),
+            Ok(m) if m.gpu.is_some() => Some(m),
             _ => None,
         }
+    }
+
+    fn load_cpu_only() -> anyhow::Result<LocalEmbedder> {
+        load_candle(&model_dir(), Device::Cpu)
     }
 
     fn cos(a: &[f32], b: &[f32]) -> f32 {
