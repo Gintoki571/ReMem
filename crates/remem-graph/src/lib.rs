@@ -13,6 +13,49 @@ use graphqlite::{Connection as GqlConnection, Graph as GqlGraph};
 use remem_types::{MemoryItem, MemoryKind};
 use serde_json::{json, Value as JsonValue};
 
+/// Edge property key carrying [`EdgeProvenance`]. Memory-to-memory edges get
+/// it at write time; hub edges and pre-provenance rows have no value and read
+/// back as [`EdgeProvenance::Manual`].
+pub const PROVENANCE_KEY: &str = "provenance";
+
+/// Where a graph edge came from (issue #15). Stored as a text edge property;
+/// accepted values are exactly the three below — anything else is rejected at
+/// the write API so a typo cannot silently become a fourth provenance.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EdgeProvenance {
+    /// Hand-made via `link` (the default).
+    Manual,
+    /// A future recall-time proposer (accepted and stored, no producer yet).
+    RecallSuggested,
+    /// Written by a correction-chain / supersede operation.
+    CorrectionChain,
+}
+
+impl EdgeProvenance {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            EdgeProvenance::Manual => "manual",
+            EdgeProvenance::RecallSuggested => "recall-suggested",
+            EdgeProvenance::CorrectionChain => "correction-chain",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "manual" => Some(EdgeProvenance::Manual),
+            "recall-suggested" => Some(EdgeProvenance::RecallSuggested),
+            "correction-chain" => Some(EdgeProvenance::CorrectionChain),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for EdgeProvenance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Label of memory nodes. Properties: `mid` (memory id), `kind`.
 pub const MEMORY_LABEL: &str = "Memory";
 /// Label of agent hub nodes. Node id is `agent:<aid>`, property `aid`.
@@ -57,6 +100,8 @@ pub enum Error {
     MissingNode(String),
     /// A memory id using a reserved hub prefix (`agent:`/`session:`).
     ReservedPrefix(String),
+    /// `link_with_provenance_str` got a value outside the three known ones.
+    UnknownProvenance(String),
     /// `params_json` was not a JSON object.
     InvalidParams(String),
 }
@@ -72,6 +117,10 @@ impl fmt::Display for Error {
                 "reserved id prefix: {id} (memory ids may not start with `agent:` or `session:`)"
             ),
             Error::InvalidParams(e) => write!(f, "invalid params: {e}"),
+            Error::UnknownProvenance(s) => write!(
+                f,
+                "unknown provenance: {s} (manual|recall-suggested|correction-chain)"
+            ),
         }
     }
 }
@@ -96,10 +145,21 @@ pub struct Neighbor {
     /// Business key of the neighbouring node: `mid`, or `aid`/`sid` for hubs.
     pub id: String,
     pub rel: String,
+    /// Edge provenance; rows written before provenance existed read as manual.
+    pub provenance: EdgeProvenance,
     /// True when the edge points at `id` (outgoing from the queried node).
     pub outgoing: bool,
     /// Node labels of the neighbour, e.g. `["Memory"]` or `["Agent"]`.
     pub labels: Vec<String>,
+}
+
+/// One memory-to-memory edge in stored orientation (both ends are Memory
+/// nodes; hub edges excluded).
+pub struct MemoryEdge {
+    pub from: String,
+    pub to: String,
+    pub rel: String,
+    pub provenance: EdgeProvenance,
 }
 
 pub struct Graph {
@@ -203,6 +263,7 @@ impl Graph {
                 &item.id,
                 &hub_id(AGENT_PREFIX, &item.agent_id),
                 BELONGS_TO_AGENT,
+                None,
             )?;
         }
         if !item.session_id.is_empty() {
@@ -211,6 +272,7 @@ impl Graph {
                 &item.id,
                 &hub_id(SESSION_PREFIX, &item.session_id),
                 BELONGS_TO_SESSION,
+                None,
             )?;
         }
         Ok(())
@@ -226,14 +288,41 @@ impl Graph {
     /// re-linking the same pair updates the existing edge (MERGE semantics).
     /// Non-identifier characters in `rel` are replaced with `_` by graphqlite,
     /// so read back the type from [`neighbors`](Self::neighbors) rather than
-    /// assuming the input spelling.
+    /// assuming the input spelling. Records [`EdgeProvenance::Manual`].
     pub fn link(&self, from: &str, to: &str, rel: &str) -> Result<()> {
+        self.link_with_provenance(from, to, rel, EdgeProvenance::Manual)
+    }
+
+    /// Directed edge with an explicit provenance. Unknown provenance strings
+    /// are rejected (see [`link_with_provenance_str`](Self::link_with_provenance_str)).
+    pub fn link_with_provenance(
+        &self,
+        from: &str,
+        to: &str,
+        rel: &str,
+        provenance: EdgeProvenance,
+    ) -> Result<()> {
         for id in [from, to] {
             if !self.inner.has_node(id)? {
                 return Err(Error::MissingNode(id.to_string()));
             }
         }
-        self.link_unchecked(from, to, rel)
+        self.link_unchecked(from, to, rel, Some(provenance))
+    }
+
+    /// [`link_with_provenance`](Self::link_with_provenance) from a raw string
+    /// (CLI/MCP input): `"manual" | "recall-suggested" | "correction-chain"`.
+    pub fn link_with_provenance_str(
+        &self,
+        from: &str,
+        to: &str,
+        rel: &str,
+        provenance: &str,
+    ) -> Result<()> {
+        match EdgeProvenance::parse(provenance) {
+            Some(p) => self.link_with_provenance(from, to, rel, p),
+            None => Err(Error::UnknownProvenance(provenance.to_string())),
+        }
     }
 
     /// Edge with [`DEFAULT_REL`].
@@ -242,9 +331,29 @@ impl Graph {
     }
 
     /// MERGE without the existence pre-check (callers own node creation).
-    fn link_unchecked(&self, from: &str, to: &str, rel: &str) -> Result<()> {
-        let empty: [(&str, graphqlite::PropertyValue); 0] = [];
-        self.inner.upsert_edge(from, to, empty, rel)?;
+    /// `None` writes no provenance (hub edges); memory edges pass `Some`.
+    fn link_unchecked(
+        &self,
+        from: &str,
+        to: &str,
+        rel: &str,
+        provenance: Option<EdgeProvenance>,
+    ) -> Result<()> {
+        match provenance {
+            Some(p) => self.inner.upsert_edge(
+                from,
+                to,
+                [(
+                    PROVENANCE_KEY,
+                    graphqlite::PropertyValue::Text(p.to_string()),
+                )],
+                rel,
+            )?,
+            None => {
+                let empty: [(&str, graphqlite::PropertyValue); 0] = [];
+                self.inner.upsert_edge(from, to, empty, rel)?;
+            }
+        }
         Ok(())
     }
 
@@ -273,6 +382,7 @@ impl Graph {
             .cypher_builder(
                 "MATCH (n {id: $id})-[r]-(m) \
                  RETURN id(n) AS nid, startNode(r) AS src, type(r) AS rel, \
+                        r.provenance AS prov, \
                         m.mid AS mid, m.aid AS aid, m.sid AS sid, \
                         labels(m) AS labels",
             )
@@ -294,9 +404,16 @@ impl Graph {
                 .find_map(|k| row.get_value(k).and_then(|v| v.as_str()))
                 .unwrap_or_default()
                 .to_string();
+            let provenance = match row.get_value("prov") {
+                Some(graphqlite::Value::String(s)) => {
+                    EdgeProvenance::parse(s).unwrap_or(EdgeProvenance::Manual)
+                }
+                _ => EdgeProvenance::Manual,
+            };
             out.push(Neighbor {
                 id,
                 rel: row.get("rel").unwrap_or_default(),
+                provenance,
                 outgoing: src == nid,
                 labels,
             });
@@ -322,11 +439,71 @@ impl Graph {
             Ok(rows) => out.extend(rows),
             Err(e) => return vec![format!("validation query failed: {e}")],
         }
+        match self.unreviewed_edges() {
+            Ok(rows) => out.extend(rows),
+            Err(e) => out.push(format!("validation query failed: {e}")),
+        }
         match self.orphan_memories() {
             Ok(rows) => out.extend(rows),
             Err(e) => out.push(format!("validation query failed: {e}")),
         }
         out
+    }
+
+    /// Every memory-to-memory edge in stored orientation with its provenance.
+    /// Rows written before provenance existed read as manual. Ordered by edge
+    /// rowid (deterministic).
+    pub fn memory_edges(&self) -> Result<Vec<MemoryEdge>> {
+        let mut stmt = self.sqlite().prepare(
+            "SELECT e.source_id, e.target_id, e.type, p.value              FROM edges e              LEFT JOIN edge_props_text p ON p.edge_id = e.id                AND p.key_id = (SELECT id FROM property_keys WHERE key = 'provenance')              ORDER BY e.id",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, i64>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, Option<String>>(3)?,
+            ))
+        })?;
+        let names = self.node_names()?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (src, dst, rel, prov) = row?;
+            let (Some(from), Some(to)) = (names.get(&src), names.get(&dst)) else {
+                continue; // dangling end: covered by dangling_edges()
+            };
+            if !hub_id_is_memory(from) || !hub_id_is_memory(to) {
+                continue; // hub edges carry no provenance
+            }
+            out.push(MemoryEdge {
+                from: from.clone(),
+                to: to.clone(),
+                rel,
+                provenance: prov
+                    .as_deref()
+                    .and_then(EdgeProvenance::parse)
+                    .unwrap_or(EdgeProvenance::Manual),
+            });
+        }
+        Ok(out)
+    }
+
+    /// Lines for memory edges whose provenance is not manual, e.g.
+    /// `unreviewed edge: m1 -[:SUPERSEDES]-> m2 (provenance: correction-chain)`.
+    /// Rows without a provenance value (pre-feature, hub edges) read as manual
+    /// and stay silent, so old databases validate clean.
+    fn unreviewed_edges(&self) -> Result<Vec<String>> {
+        Ok(self
+            .memory_edges()?
+            .into_iter()
+            .filter(|e| e.provenance != EdgeProvenance::Manual)
+            .map(|e| {
+                format!(
+                    "unreviewed edge: {} -[:{}]-> {} (provenance: {})",
+                    e.from, e.rel, e.to, e.provenance
+                )
+            })
+            .collect())
     }
 
     /// Lines for edges with a missing end, e.g.
