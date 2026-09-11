@@ -8,6 +8,19 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 const SCHEMA: &str = include_str!("../schema.sql");
 
+/// One recall-suggested edge candidate (issue #15 follow-up). Suggestion only:
+/// accepting it is a manual `remem link --rel`, nothing auto-links.
+#[derive(Debug, Clone)]
+pub struct SuggestedEdge {
+    pub id: i64,
+    pub from_id: String,
+    pub to_id: String,
+    pub query: String,
+    pub rank: i64,
+    pub count: i64,
+    pub created_at: i64,
+}
+
 static REGISTER_VEC: Once = Once::new();
 
 /// Load the sqlite-vec extension into every future connection.
@@ -163,6 +176,76 @@ impl Store {
                 content_hash(&item.kind, &item.content),
                 item.ended,
             ],
+        )?;
+        Ok(())
+    }
+
+    /// Record a recall-suggested edge candidate (issue #15 follow-up).
+    /// Upsert per (from_id, to_id) pair: refresh query/rank/created_at, bump
+    /// count. Runs the 30-day prune. Suggestion only; the caller links.
+    pub fn record_suggestion(
+        &self,
+        from_id: &str,
+        to_id: &str,
+        query: &str,
+        rank: i64,
+    ) -> rusqlite::Result<()> {
+        self.prune_suggestions()?;
+        // The graph walks edges both ways, so the same pair can arrive in
+        // either direction; dedup is per unordered pair (canonical order).
+        let (from_id, to_id) = if from_id <= to_id {
+            (from_id, to_id)
+        } else {
+            (to_id, from_id)
+        };
+        self.conn.execute(
+            "INSERT INTO suggested_edges (from_id, to_id, query, rank, count, created_at)
+             VALUES (?1, ?2, ?3, ?4, 1, ?5)
+             ON CONFLICT(from_id, to_id) DO UPDATE SET
+               query = excluded.query, rank = excluded.rank,
+               count = count + 1, created_at = excluded.created_at",
+            params![from_id, to_id, query, rank, MemoryItem::now()],
+        )?;
+        Ok(())
+    }
+
+    /// Drop candidates older than 30 days. Public so CLI/list paths can
+    /// prune too; harmless when nothing is old.
+    pub fn prune_suggestions(&self) -> rusqlite::Result<usize> {
+        self.conn.execute(
+            "DELETE FROM suggested_edges WHERE created_at < ?1",
+            params![MemoryItem::now() - 30 * 86_400],
+        )
+    }
+
+    /// Suggestion candidates, newest first.
+    pub fn suggestions(&self) -> rusqlite::Result<Vec<SuggestedEdge>> {
+        self.conn
+            .prepare(
+                "SELECT id, from_id, to_id, query, rank, count, created_at
+                 FROM suggested_edges ORDER BY created_at DESC, id DESC",
+            )?
+            .query_map([], |r| {
+                Ok(SuggestedEdge {
+                    id: r.get(0)?,
+                    from_id: r.get(1)?,
+                    to_id: r.get(2)?,
+                    query: r.get(3)?,
+                    rank: r.get(4)?,
+                    count: r.get(5)?,
+                    created_at: r.get(6)?,
+                })
+            })?
+            .collect()
+    }
+
+    /// Test hook: backdate every candidate so the 30-day prune can be
+    /// exercised without sleeping.
+    #[doc(hidden)]
+    pub fn age_suggestions_for_test(&self, created_at: i64) -> rusqlite::Result<()> {
+        self.conn.execute(
+            "UPDATE suggested_edges SET created_at = ?1",
+            params![created_at],
         )?;
         Ok(())
     }

@@ -91,8 +91,16 @@ fn suggestion_recorded_on_graph_fused_hit() {
     assert!(sat_hit.reasons.iter().any(|r| r.starts_with("graph#")));
     let rows = e.store().suggestions().unwrap();
     assert_eq!(rows.len(), 1);
-    assert_eq!(rows[0].from_id, hub_id);
-    assert_eq!(rows[0].to_id, sat_id);
+    // Edge direction is recorded, but the pair may be canonicalized either
+    // way (graph walks both directions); the set must match.
+    assert_eq!(
+        [rows[0].from_id.as_str(), rows[0].to_id.as_str()]
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>(),
+        [hub_id.as_str(), sat_id.as_str()]
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+    );
     assert_eq!(rows[0].query, "database tuning notes");
     // rank = the position of the hit in the returned list (1-based)
     assert!(rows[0].rank >= 1);
@@ -123,9 +131,20 @@ fn suggestions_dedup_upserts_per_pair() {
     e.recall(&q("database tuning notes", 5)).unwrap();
     e.recall(&q("database tuning notes again", 5)).unwrap();
     let rows = e.store().suggestions().unwrap();
+    // One row per pair: the graph is walked in both directions, so across the
+    // two recalls both (hub->sat) and (sat->hub) fuse hits; the pair is
+    // canonicalized and the count accumulates every graph# recording.
     assert_eq!(rows.len(), 1, "one row per memory pair");
     assert_eq!(rows[0].query, "database tuning notes again");
-    assert_eq!(rows[0].count, 2);
+    assert!(
+        rows[0].count >= 2,
+        "count accumulates per graph-fused recording"
+    );
+    assert_eq!([rows[0].from_id.as_str(), rows[0].to_id.as_str()], {
+        let mut p = [hub_id.as_str(), sat_id.as_str()];
+        p.sort();
+        p
+    });
     cleanup(&path);
 }
 
@@ -160,6 +179,7 @@ fn suggestions_do_not_auto_link() {
     e.remember(&sat).unwrap();
     let hits = e.recall(&q("database tuning notes", 5)).unwrap();
     assert!(hits.len() == 1 && hits[0].item.id == hub_id);
+    assert!(hits.iter().all(|h| h.item.id != sat_id));
     // No graph edge, no suggestion (nothing fused through graph).
     assert!(e.store().suggestions().unwrap().is_empty());
     assert!(e.graph().unwrap().neighbors(&hub_id).unwrap().is_empty());
