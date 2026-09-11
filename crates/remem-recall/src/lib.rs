@@ -323,7 +323,102 @@ impl RecallEngine {
         if let Some(g) = &self.shared.graph {
             g.attach(item).map_err(|e| anyhow!("graph attach: {e}"))?;
         }
+        self.link_temporal_near(&id, item)?;
         Ok((id, similar))
+    }
+
+    /// Temporal proximity edges (Hindsight pattern): after insert, link the
+    /// new memory to every live memory whose occurred_at is within 24h of
+    /// this one's, nearest first. Weight decays linearly, floor 0.3. At most
+    /// 20 TEMPORAL_NEAR edges per memory in total: the new node writes at
+    /// most 20, and candidates already at 20 (either direction) are skipped.
+    /// Pure SQL time comparison, no embedding, no LLM. Skipped when
+    /// occurred_at is NULL.
+    fn link_temporal_near(&self, id: &str, item: &MemoryItem) -> Result<()> {
+        let g = match &self.shared.graph {
+            Some(g) => g,
+            None => return Ok(()),
+        };
+        let Some(t) = item.occurred_at else {
+            return Ok(());
+        };
+        const WINDOW_SECS: i64 = 24 * 3600;
+        const CAP: i64 = 20;
+        let sql = "SELECT c.mid, c.gap FROM (\
+            SELECT m.id AS mid, ABS(m.occurred_at - ?1) AS gap \
+            FROM memories m \
+            WHERE m.id != ?2 AND m.occurred_at IS NOT NULL \
+              AND m.deleted = 0 AND m.superseded_at IS NULL \
+              AND ABS(m.occurred_at - ?1) <= ?3 \
+            ORDER BY gap ASC) c \
+            JOIN nodes n ON n.id = (\
+            SELECT n2.id FROM nodes n2 \
+            JOIN node_props_text p ON p.node_id = n2.id \
+            JOIN property_keys k ON k.id = p.key_id \
+            WHERE k.key = 'id' AND p.value = c.mid) \
+            WHERE (SELECT COUNT(*) FROM edges e \
+                   WHERE e.type = 'TEMPORAL_NEAR' \
+                   AND (e.source_id = n.id OR e.target_id = n.id)) < ?4 \
+            LIMIT ?4";
+        let conn = self.shared.store.connection();
+        let mut stmt = conn.prepare(sql)?;
+        let neighbours: Vec<(String, i64)> = stmt
+            .query_map(rusqlite::params![t, id, WINDOW_SECS, CAP], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?
+            .collect::<std::result::Result<_, _>>()?;
+        drop(stmt);
+        if neighbours.is_empty() {
+            return Ok(());
+        }
+        // graphqlite's Cypher write API is text-props only; the decay weight
+        // goes into edge_props_real via raw SQL so ranking can use it later.
+        let key_id: i64 = g
+            .sqlite()
+            .query_row(
+                "INSERT INTO property_keys (key) VALUES ('weight') \
+                 ON CONFLICT DO NOTHING RETURNING id",
+                [],
+                |r| r.get(0),
+            )
+            .or_else(|_| {
+                g.sqlite().query_row(
+                    "SELECT id FROM property_keys WHERE key = 'weight'",
+                    [],
+                    |r| r.get(0),
+                )
+            })
+            .map_err(|e| anyhow!("weight key: {e}"))?;
+        for (other, gap) in neighbours {
+            let weight = (1.0 - gap as f64 / WINDOW_SECS as f64).max(0.3);
+            g.link_with_provenance(id, &other, "TEMPORAL_NEAR", EdgeProvenance::RecallSuggested)
+                .map_err(|e| anyhow!("temporal link: {e}"))?;
+            let edge_id: i64 = g
+                .sqlite()
+                .query_row(
+                    "SELECT e.id FROM edges e \
+                     WHERE e.type = 'TEMPORAL_NEAR' \
+                     AND e.source_id = (SELECT n.id FROM nodes n \
+                        JOIN node_props_text p ON p.node_id = n.id \
+                        JOIN property_keys k ON k.id = p.key_id \
+                        WHERE k.key = 'id' AND p.value = ?1) \
+                     AND e.target_id = (SELECT n.id FROM nodes n \
+                        JOIN node_props_text p ON p.node_id = n.id \
+                        JOIN property_keys k ON k.id = p.key_id \
+                        WHERE k.key = 'id' AND p.value = ?2)",
+                    rusqlite::params![id, other],
+                    |r| r.get(0),
+                )
+                .map_err(|e| anyhow!("temporal edge lookup: {e}"))?;
+            g.sqlite()
+                .execute(
+                    "INSERT OR REPLACE INTO edge_props_real (edge_id, key_id, value) \
+                     VALUES (?1, ?2, ?3)",
+                    rusqlite::params![edge_id, key_id, weight],
+                )
+                .map_err(|e| anyhow!("weight write: {e}"))?;
+        }
+        Ok(())
     }
 
     /// Remove a memory from store and graph.

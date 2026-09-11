@@ -180,11 +180,11 @@ fn temporal_edges_capped_at_20_per_memory() {
         let n = edges.iter().filter(|(f, t)| f == id || t == id).count();
         assert!(n <= 20, "memory {id} has {n} temporal edges, cap is 20");
     }
-    // Every pair is within the window, so early memories saturate the cap.
+    // Cap binds: the earliest memory receives links until it saturates at 20.
     assert_eq!(
-        edges.iter().filter(|(f, _)| f == &ids[24]).count(),
+        edges.iter().filter(|(_, t)| t == &ids[0]).count(),
         20,
-        "last memory links back to exactly 20 (cap)"
+        "earliest memory saturates at the 20-edge cap"
     );
     cleanup(&path);
 }
