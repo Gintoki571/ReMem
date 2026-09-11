@@ -175,6 +175,16 @@ enum Cmd {
         /// Id of any version in the chain
         id: String,
     },
+    /// Replace a memory with a corrected version (soft-supersede + back-pointer)
+    Supersede {
+        /// Id of the memory to replace
+        old_id: String,
+        /// Memory kind of the replacement: fact|decision|mistake|preference|event|note
+        kind: String,
+        /// Replacement content (joined with spaces)
+        #[arg(required = true)]
+        text: Vec<String>,
+    },
     /// Shortest memory-to-memory path as `from` .. `to` lines (empty if unreachable)
     Path {
         /// Id of the start memory
@@ -322,9 +332,24 @@ fn main() -> Result<()> {
             if let Some(when) = occurred_at.as_deref() {
                 item.occurred_at = Some(parse_time(when)?);
             }
-            let (id, similar) = engine(&cli.db)?.remember(&item)?;
+            let eng = engine(&cli.db)?;
+            // Check before the write: an existing row with the same hash means
+            // insert() will dedup (merged), not insert (split).
+            let hash_dup = eng
+                .store()
+                .find_by_hash(&remem_store::content_hash(&kind, &item.content))
+                .is_some();
+            let (id, similar) = eng.remember(&item)?;
             // Line 1 stays the bare id: eval.sh and scripts take stdout line 0.
             println!("{id}");
+            // A merge returns an id that already existed before this write
+            // (exact hash dup via find_by_hash, or an absorbed near-duplicate
+            // whose old id is among the similar candidates); a split is new.
+            if hash_dup || similar.iter().any(|(sid, _)| *sid == id) {
+                eprintln!("merged: {id}");
+            } else {
+                eprintln!("split: {id}");
+            }
             if !similar.is_empty() {
                 let list: Vec<String> = similar
                     .iter()
@@ -566,6 +591,20 @@ fn main() -> Result<()> {
                 };
                 println!("{id}  {score:.6}  {show}");
             }
+        }
+        Cmd::Supersede { old_id, kind, text } => {
+            let kind = MemoryKind::parse(&kind).ok_or_else(|| {
+                anyhow!("unknown kind '{kind}' (fact|decision|mistake|preference|event|note)")
+            })?;
+            let eng = engine(&cli.db)?;
+            let mut item = MemoryItem::new(kind, text.join(" "));
+            // Carry forward the agent/session ownership of the old row.
+            if let Some(old) = eng.store().get(&old_id)? {
+                item.agent_id = old.agent_id;
+                item.session_id = old.session_id;
+            }
+            let id = eng.store().supersede(&old_id, &item).context("supersede")?;
+            println!("{id}");
         }
         Cmd::Trace { id } => {
             // Unknown id -> empty chain, mirroring related/path emptiness.

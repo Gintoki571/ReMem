@@ -17,6 +17,24 @@ fn remem(db: &std::path::Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&out.stdout).to_string()
 }
 
+/// (stdout, stderr) pair for tests that assert on stderr chatter.
+fn remem_err(db: &std::path::Path, args: &[&str]) -> (String, String) {
+    let out = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args(["--db", db.to_str().unwrap()])
+        .args(args)
+        .output()
+        .expect("run remem");
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    (
+        String::from_utf8_lossy(&out.stdout).to_string(),
+        String::from_utf8_lossy(&out.stderr).to_string(),
+    )
+}
+
 #[test]
 fn cli_roundtrip() {
     let db = std::env::temp_dir().join(format!("remem-cli-{}.db", std::process::id()));
@@ -949,4 +967,135 @@ fn cli_recall_json_importance_defaults_stored() {
     for suffix in ["", "-wal", "-shm"] {
         let _ = std::fs::remove_file(PathBuf::from(format!("{}{}", db.display(), suffix)));
     }
+}
+
+/// Task 1 regression: the `embedder: Cpu (768d)` banner (and any other engine
+/// chatter) must stay on stderr; stdout line 0 is the bare id that scripts and
+/// eval.sh parse. A near-duplicate write prints the merged id, still bare.
+#[test]
+fn cli_stdout_stays_bare_id_banner_on_stderr() {
+    let db = std::env::temp_dir().join(format!("remem-cli-banner-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+
+    let out = remem(&db, &["remember", "fact", "banner purity check alpha"]);
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(lines.len(), 1, "stdout must be exactly the id: {lines:?}");
+    assert!(!lines[0].is_empty());
+    assert!(!out.contains("embedder:"), "banner leaked to stdout");
+
+    // Near-duplicate merge path keeps stdout clean too.
+    let out2 = remem(&db, &["remember", "fact", "banner purity check alpha"]);
+    assert_eq!(out2.lines().count(), 1, "merge stdout: {out2:?}");
+}
+
+/// Task 2: `remember` prints a `merged:`/`split:` suffix on stderr so the
+/// agent (and dogfooding) can tell which write path fired. Merged = absorbed
+/// into an existing near-duplicate row (returned id is the old id); split =
+/// new row inserted. Stdout stays the bare id either way.
+#[test]
+fn cli_remember_prints_merge_split_suffix_on_stderr() {
+    let db = std::env::temp_dir().join(format!("remem-cli-suffix-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+
+    let (_, err1) = remem_err(&db, &["remember", "fact", "ci runs via github actions"]);
+    assert!(
+        err1.contains("split:"),
+        "first write must split, stderr: {err1}"
+    );
+
+    let (_, err2) = remem_err(&db, &["remember", "fact", "ci runs via github actions"]);
+    assert!(
+        err2.contains("merged:"),
+        "near-dup must merge, stderr: {err2}"
+    );
+
+    let (_, err3) = remem_err(&db, &["remember", "preference", "prefer ripgrep over grep"]);
+    assert!(
+        err3.contains("split:"),
+        "distinct write must split, stderr: {err3}"
+    );
+}
+
+/// Task 3: `--k` is an accepted alias for recall's top-k flag (clap alias,
+/// so `--k 3` and `-k 3` behave like `--k-count`). Keeps scripts written
+/// against the documented synopsis working.
+#[test]
+fn cli_recall_accepts_k_alias() {
+    let db = std::env::temp_dir().join(format!("remem-cli-kalias-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+    remem(
+        &db,
+        &[
+            "remember",
+            "fact",
+            "alias check memory about postgres tuning",
+        ],
+    );
+    let long = remem(&db, &["recall", "postgres", "tuning"]);
+    let alias = remem(&db, &["recall", "postgres", "tuning", "--k", "1"]);
+    assert!(!alias.is_empty(), "alias --k must work: {alias}");
+    let _ = long;
+}
+
+/// Task 4: `remem supersede <old-id> <kind> <text...>` soft-supersedes the old
+/// row and inserts the replacement with a `supersedes` back-pointer, so
+/// `trace <any-id>` walks the correction chain. Unknown/deleted/already
+/// superseded old id -> non-zero exit.
+#[test]
+fn cli_supersede_creates_correction_chain() {
+    let db = std::env::temp_dir().join(format!("remem-cli-supersede-{}.db", std::process::id()));
+    let _ = std::fs::remove_file(&db);
+
+    let v1 = remem(&db, &["remember", "fact", "deploy uses port 8080"])
+        .lines()
+        .next()
+        .unwrap()
+        .to_string();
+
+    let out = remem(&db, &["supersede", &v1, "fact", "deploy uses port 9090"]);
+    let v2 = out.lines().next().unwrap().to_string();
+    assert!(
+        !v2.is_empty() && v2 != v1,
+        "supersede prints the new id: {out}"
+    );
+
+    // Old row hidden from recall/list; chain walkable from both ends.
+    let trace_tail = remem(&db, &["trace", &v1]);
+    assert!(
+        trace_tail.contains(&v1) && trace_tail.contains(&v2),
+        "trace from old id must reach new id: {trace_tail}"
+    );
+    let trace_head = remem(&db, &["trace", &v2]);
+    assert!(
+        trace_head.contains(&v1) && trace_head.contains(&v2),
+        "trace from new id must reach old id: {trace_head}"
+    );
+
+    // Cannot supersede an already-superseded id.
+    let bad = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args([
+            "--db",
+            db.to_str().unwrap(),
+            "supersede",
+            &v1,
+            "fact",
+            "again",
+        ])
+        .output()
+        .expect("run remem");
+    assert!(!bad.status.success());
+    let unknown = Command::new(env!("CARGO_BIN_EXE_remem"))
+        .args([
+            "--db",
+            db.to_str().unwrap(),
+            "supersede",
+            "nope",
+            "fact",
+            "x",
+        ])
+        .output()
+        .expect("run remem");
+    assert!(!unknown.status.success());
+
+    let _ = std::fs::remove_file(&db);
 }
