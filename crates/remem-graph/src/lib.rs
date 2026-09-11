@@ -155,6 +155,7 @@ pub struct Neighbor {
 
 /// One memory-to-memory edge in stored orientation (both ends are Memory
 /// nodes; hub edges excluded).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MemoryEdge {
     pub from: String,
     pub to: String,

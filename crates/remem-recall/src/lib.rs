@@ -11,10 +11,10 @@ pub use rank::{
 pub use stub::StubEmbedder;
 
 use anyhow::{anyhow, Context, Result};
-use remem_graph::Graph;
+use remem_graph::{EdgeProvenance, Graph, MEMORY_LABEL};
 use remem_store::{content_hash, Store};
 use remem_types::{MemoryItem, RecallHit, RecallQuery};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Distinctive objects of a memory (issue #11 corroboration): the tags, plus
 /// identifier spans (all-digit tokens, e.g. "8080", "v3"), plus proper nouns
@@ -300,15 +300,95 @@ impl RecallEngine {
     }
 
     /// Directed edge between two memories. Nodes must already be attached.
+    /// Records `manual` provenance.
     pub fn link(&self, from: &str, to: &str, rel: Option<&str>) -> Result<()> {
+        self.link_with_provenance(from, to, rel, EdgeProvenance::Manual.as_str())
+    }
+
+    /// Directed edge with an explicit provenance
+    /// (`manual | recall-suggested | correction-chain`); anything else errors.
+    pub fn link_with_provenance(
+        &self,
+        from: &str,
+        to: &str,
+        rel: Option<&str>,
+        provenance: &str,
+    ) -> Result<()> {
         let g = self
             .shared
             .graph
             .as_ref()
             .ok_or_else(|| anyhow!("engine has no graph open"))?;
         let rel = rel.unwrap_or(remem_graph::DEFAULT_REL);
-        g.link(from, to, rel)
+        let prov = EdgeProvenance::parse(provenance).ok_or_else(|| {
+            anyhow!("unknown provenance: {provenance} (manual|recall-suggested|correction-chain)")
+        })?;
+        g.link_with_provenance(from, to, rel, prov)
             .map_err(|e| anyhow!("graph link: {e}"))
+    }
+
+    /// Correction write (issue #15): supersede the old row in the store, then
+    /// project the replacement onto the graph with a `correction-chain`
+    /// `SUPERSEDES` edge from the new version to the old one. The old graph
+    /// node stays (trace/audit), like its store row.
+    pub fn supersede(&self, old_id: &str, replacement: &MemoryItem) -> Result<String> {
+        let id = self
+            .shared
+            .store
+            .supersede(old_id, replacement)
+            .context("store supersede")?;
+        if let Some(g) = &self.shared.graph {
+            g.attach(replacement)
+                .map_err(|e| anyhow!("graph attach: {e}"))?;
+            g.link_with_provenance(
+                &replacement.id,
+                old_id,
+                "SUPERSEDES",
+                EdgeProvenance::CorrectionChain,
+            )
+            .map_err(|e| anyhow!("graph link: {e}"))?;
+        }
+        Ok(id)
+    }
+
+    /// `SUPERSEDES` edges whose live endpoints share no tags, e.g.
+    /// `suspect SUPERSEDES: m1 -> m2 (no shared tags)`. A correction should
+    /// share its topic markers; a cross-topic link is the report's mis-link
+    /// probe and is surfaced here instead of silently fusing. Genuine
+    /// corrections never appear: their old row is superseded (hidden from
+    /// `get`), so only live-live edges are judged. Both-untagged pairs carry
+    /// no signal and stay silent.
+    pub fn suspect_supersedes(&self) -> Result<Vec<String>> {
+        let g = self
+            .shared
+            .graph
+            .as_ref()
+            .ok_or_else(|| anyhow!("engine has no graph open"))?;
+        let edges = g.memory_edges().map_err(|e| anyhow!("graph edges: {e}"))?;
+        let mut out = Vec::new();
+        for e in edges {
+            if e.rel != "SUPERSEDES" {
+                continue;
+            }
+            let (Some(a), Some(b)) = (
+                self.shared.store.get(&e.from)?,
+                self.shared.store.get(&e.to)?,
+            ) else {
+                continue;
+            };
+            let (ta, tb): (HashSet<&str>, HashSet<&str>) = (
+                a.tags.iter().map(String::as_str).collect(),
+                b.tags.iter().map(String::as_str).collect(),
+            );
+            if !ta.is_disjoint(&tb) || (ta.is_empty() && tb.is_empty()) {
+                continue;
+            }
+            out.push(format!(
+                "suspect SUPERSEDES: {} -> {} (no shared tags)",
+                e.from, e.to
+            ));
+        }
+        Ok(out)
     }
 
     pub fn list(&self) -> Result<Vec<MemoryItem>> {
@@ -421,6 +501,7 @@ impl RecallEngine {
 
         // Graph expansion: neighbours of the top fts+vector seeds, fused as a
         // third list so linked-but-not-matched memories can surface.
+        let mut edge_prov: HashMap<String, EdgeProvenance> = HashMap::new();
         let graph_ids: Vec<String> = if let Some(g) = &self.shared.graph {
             let seeds = fuse(
                 &[
@@ -440,12 +521,16 @@ impl RecallEngine {
             let mut seen = HashSet::new();
             let mut nbrs = Vec::new();
             for seed in seeds.iter().take(k.min(GRAPH_EXPANSION_SEEDS)) {
-                for (nid, _rel) in g
-                    .neighbors(&seed.id)
+                for n in g
+                    .neighbors_detail(&seed.id)
                     .map_err(|e| anyhow!("graph neighbors: {e}"))?
                 {
-                    if allowed.contains(&nid) && seen.insert(nid.clone()) {
-                        nbrs.push(nid);
+                    if !n.labels.iter().any(|l| l == MEMORY_LABEL) {
+                        continue;
+                    }
+                    if allowed.contains(&n.id) && seen.insert(n.id.clone()) {
+                        edge_prov.insert(n.id.clone(), n.provenance);
+                        nbrs.push(n.id);
                     }
                 }
             }
@@ -491,6 +576,14 @@ impl RecallEngine {
                 1.0
             };
             let mut reasons = entry.reasons;
+            // Issue #15: a graph-fused hit names the provenance of the edge
+            // that pulled it in (`prov:manual`, ...). Always present on graph#
+            // hits so callers can distrust non-manual evidence at a glance.
+            if reasons.iter().any(|r| r.starts_with("graph#")) {
+                if let Some(p) = edge_prov.get(&entry.id) {
+                    reasons.push(format!("prov:{}", p.as_str()));
+                }
+            }
             if self.recency_enabled && recency > 0.9 {
                 reasons.push("recent".to_string());
             }
