@@ -129,7 +129,7 @@ enum Cmd {
         /// Relation label (default: RELATES_TO)
         #[arg(long)]
         rel: Option<String>,
-        /// Edge provenance: manual|recall-suggested|correction-chain (default: manual)
+        /// Edge provenance: manual|recall-suggested|correction-chain|temporal (default: manual)
         #[arg(long)]
         provenance: Option<String>,
     },

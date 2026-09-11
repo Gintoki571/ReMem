@@ -1,7 +1,7 @@
 //! Temporal proximity edges at remember() (Hindsight pattern): memories with
 //! occurred_at within 24h of the new memory get a TEMPORAL_NEAR edge,
 //! weight = max(0.3, 1.0 - gap_hours/24.0), cap 20 per memory,
-//! provenance recall-suggested. Skip when occurred_at is NULL. RED-first.
+//! provenance temporal. Skip when occurred_at is NULL. RED-first.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -120,7 +120,7 @@ fn temporal_edges_link_within_24h_only() {
         .into_iter()
         .find(|e| e.rel == "TEMPORAL_NEAR")
         .unwrap();
-    assert_eq!(me.provenance, EdgeProvenance::RecallSuggested);
+    assert_eq!(me.provenance, EdgeProvenance::Temporal);
     let w: f64 = e
         .graph()
         .unwrap()

@@ -30,6 +30,8 @@ pub enum EdgeProvenance {
     RecallSuggested,
     /// Written by a correction-chain / supersede operation.
     CorrectionChain,
+    /// Written automatically from time proximity (Hindsight pattern).
+    Temporal,
 }
 
 impl EdgeProvenance {
@@ -38,6 +40,7 @@ impl EdgeProvenance {
             EdgeProvenance::Manual => "manual",
             EdgeProvenance::RecallSuggested => "recall-suggested",
             EdgeProvenance::CorrectionChain => "correction-chain",
+            EdgeProvenance::Temporal => "temporal",
         }
     }
 
@@ -46,6 +49,7 @@ impl EdgeProvenance {
             "manual" => Some(EdgeProvenance::Manual),
             "recall-suggested" => Some(EdgeProvenance::RecallSuggested),
             "correction-chain" => Some(EdgeProvenance::CorrectionChain),
+            "temporal" => Some(EdgeProvenance::Temporal),
             _ => None,
         }
     }
@@ -120,7 +124,7 @@ impl fmt::Display for Error {
             Error::InvalidParams(e) => write!(f, "invalid params: {e}"),
             Error::UnknownProvenance(s) => write!(
                 f,
-                "unknown provenance: {s} (manual|recall-suggested|correction-chain)"
+                "unknown provenance: {s} (manual|recall-suggested|correction-chain|temporal)"
             ),
         }
     }
@@ -343,7 +347,7 @@ impl Graph {
     }
 
     /// [`link_with_provenance`](Self::link_with_provenance) from a raw string
-    /// (CLI/MCP input): `"manual" | "recall-suggested" | "correction-chain"`.
+    /// (CLI/MCP input): `"manual" | "recall-suggested" | "correction-chain" | "temporal"`.
     pub fn link_with_provenance_str(
         &self,
         from: &str,

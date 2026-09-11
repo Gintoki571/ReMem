@@ -391,7 +391,7 @@ impl RecallEngine {
             .map_err(|e| anyhow!("weight key: {e}"))?;
         for (other, gap) in neighbours {
             let weight = (1.0 - gap as f64 / WINDOW_SECS as f64).max(0.3);
-            g.link_with_provenance(id, &other, "TEMPORAL_NEAR", EdgeProvenance::RecallSuggested)
+            g.link_with_provenance(id, &other, "TEMPORAL_NEAR", EdgeProvenance::Temporal)
                 .map_err(|e| anyhow!("temporal link: {e}"))?;
             let edge_id: i64 = g
                 .sqlite()
@@ -437,7 +437,7 @@ impl RecallEngine {
     }
 
     /// Directed edge with an explicit provenance
-    /// (`manual | recall-suggested | correction-chain`); anything else errors.
+    /// (`manual | recall-suggested | correction-chain | temporal`); anything else errors.
     pub fn link_with_provenance(
         &self,
         from: &str,
@@ -452,7 +452,7 @@ impl RecallEngine {
             .ok_or_else(|| anyhow!("engine has no graph open"))?;
         let rel = rel.unwrap_or(remem_graph::DEFAULT_REL);
         let prov = EdgeProvenance::parse(provenance).ok_or_else(|| {
-            anyhow!("unknown provenance: {provenance} (manual|recall-suggested|correction-chain)")
+            anyhow!("unknown provenance: {provenance} (manual|recall-suggested|correction-chain|temporal)")
         })?;
         g.link_with_provenance(from, to, rel, prov)
             .map_err(|e| anyhow!("graph link: {e}"))
