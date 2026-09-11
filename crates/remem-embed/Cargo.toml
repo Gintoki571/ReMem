@@ -11,7 +11,12 @@ candle-transformers = "0.11"
 tokenizers = "0.22"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+cudarc = { version = "0.19", optional = true, default-features = false, features = ["std", "driver", "nvrtc", "cublas", "cuda-13030", "fallback-dynamic-loading"] }
 
 [features]
 default = []
-cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
+# CUDA 13.x / sm_75 GPU path: cudarc (nvrtc PTX + cublas), bypasses candle-kernels
+# (which cannot compile against CUDA 13.3 on sub-sm_80; see docs/cuda-unblock.md).
+# DEPRECATED: remove this backend once candle natively supports sm_75 on CUDA 13.x
+# (upstream PR huggingface/candle#3909 or equivalent lands in a candle release).
+cuda = ["dep:cudarc"]
