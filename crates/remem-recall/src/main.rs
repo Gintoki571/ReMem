@@ -618,6 +618,10 @@ fn main() -> Result<()> {
             for cid in eng.store().trace(&id).context("trace")? {
                 println!("{cid}");
             }
+            // Traceable merges (issue #14): absorbed rows under the survivor.
+            for content in eng.store().merge_trace(&id).context("trace merges")? {
+                println!("merged: {content}");
+            }
         }
         Cmd::Path { from, to } => {
             let eng = engine(&cli.db)?;

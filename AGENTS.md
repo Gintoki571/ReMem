@@ -25,7 +25,7 @@ TDD: add/update the failing test first, then the fix; never commit a red workspa
 ### Layout (6 crates)
 
 - `crates/remem-types` - shared domain types (MemoryKind/Item, RecallQuery/Hit). Additive changes only.
-- `crates/remem-store` - rusqlite bundled + sqlite-vec **=0.1.9** (0.1.10-alpha.4 does not compile: missing sqlite-vec-diskann.c). Schema in `schema.sql`.
+- `crates/remem-store` - rusqlite bundled + sqlite-vec **=0.1.9** (0.1.10-alpha.4 does not compile: missing sqlite-vec-diskann.c). Schema in `schema.sql`. Also records corroboration merges (issue #14) in the `merges` table (FTS aux `merges_fts` over absorbed content).
 - `crates/remem-graph` - graphqlite 0.8 over the same file. Hub ids `agent:`/`session:` namespaced; `neighbors()` returns Memory mids only.
 - `crates/remem-embed` - candle BERT (cadet-embed-base-v1), GPU via `--features cuda`, CPU fallback default. Tests skip when model dir absent (CI).
 - `crates/remem-recall` - RRF fusion + `remem` binary. Real embedder wired in `main.rs` with stub fallback.
@@ -36,7 +36,7 @@ TDD: add/update the failing test first, then the fix; never commit a red workspa
 - `remember <kind> <text> [--tags t1,t2] [--agent a] [--session s] [--importance f] [--occurred-at secs|YYYY-MM-DD]`
 - `recall <query> [--k n] [--json] [--agent a] [--session s] [--since x] [--until y] [--max-chars n] [--min-score f] [--no-recency] [--half-life-days d]`
 - `graph --html <file>` — export the whole knowledge graph as a self-contained HTML file (canvas spring layout, click node for content, kind filter; no CDN/server; data via remem-graph `Graph::edges()`)
-- `list [--json]` | `link <from> <to> [--rel r] [--provenance manual|recall-suggested|correction-chain]` (default manual) | `correct <old-id> <kind> <text>` (supersede + correction-chain SUPERSEDES edge) | `forget <id>` | `purge <id>` | `stats` | `validate` (exit 1 on health: dangling/unreviewed/suspect-SUPERSEDES/ghost/missing-node; orphans via `--show-orphans`, exit 0) | `related <id>` (id/rel/provenance) | `central` (id/score/provenance-summary) | `path <from> <to>` | `trace <id>` (correction chain, oldest->newest; empty if unknown)` | `supersede <old-id> <kind> <text...>` (soft-supersede + replacement row with `supersedes` back-pointer; prints the new id; errors on unknown/deleted/already-superseded)
+- `list [--json]` | `link <from> <to> [--rel r] [--provenance manual|recall-suggested|correction-chain]` (default manual) | `correct <old-id> <kind> <text>` (supersede + correction-chain SUPERSEDES edge) | `forget <id>` | `purge <id>` | `stats` | `validate` (exit 1 on health: dangling/unreviewed/suspect-SUPERSEDES/ghost/missing-node; orphans via `--show-orphans`, exit 0) | `related <id>` (id/rel/provenance) | `central` (id/score/provenance-summary) | `path <from> <to>` | `trace <id>` (correction chain, oldest->newest, then `merged: <absorbed content>` lines; empty if unknown)` | `supersede <old-id> <kind> <text...>` (soft-supersede + replacement row with `supersedes` back-pointer; prints the new id; errors on unknown/deleted/already-superseded)
 - Edge provenance: missing prop reads as manual (old DBs validate clean); graph-fused recall hits carry `prov:<value>` reasons.
 
 ### Tests per crate
