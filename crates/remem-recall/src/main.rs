@@ -708,6 +708,14 @@ fn main() -> Result<()> {
             let eng = engine(&cli.db)?;
             let g = eng.graph().context("engine has no graph open")?;
             let (nodes, edges) = g.edges().map_err(|e| anyhow!("graph edges: {e}"))?;
+            // Provenance for the export: memory_edges() carries it; hub edges
+            // carry none by design and read as manual.
+            let provs: std::collections::HashMap<(String, String, String), &str> = g
+                .memory_edges()
+                .map_err(|e| anyhow!("graph memory edges: {e}"))?
+                .into_iter()
+                .map(|m| ((m.from, m.to, m.rel), m.provenance.as_str()))
+                .collect();
             // Content snippets from the store; hub nodes have no memory row.
             let items = eng.store().list(false).context("list memories")?;
             let by_id: std::collections::HashMap<&str, &MemoryItem> =
@@ -752,7 +760,10 @@ fn main() -> Result<()> {
                 .collect();
             let edge_json: Vec<_> = edges
                 .iter()
-                .map(|e| serde_json::json!({"from": e.from, "rel": e.rel, "to": e.to}))
+                .map(|e| {
+                    let prov = provs.get(&(e.from.clone(), e.to.clone(), e.rel.clone())).copied().unwrap_or("manual");
+                    serde_json::json!({"from": e.from, "rel": e.rel, "to": e.to, "prov": prov})
+                })
                 .collect();
             let doc = html::graph_html(
                 &serde_json::to_value(&node_json)?,
@@ -815,7 +826,8 @@ mod html_tests {
             {"id": "agent:a1", "kind": "Agent", "snippet": "hub agent:a1"}
         ]);
         let edges = serde_json::json!([
-            {"from": "m1", "rel": "BELONGS_TO_AGENT", "to": "agent:a1"}
+            {"from": "m1", "rel": "BELONGS_TO_AGENT", "to": "agent:a1", "prov": "manual"},
+            {"from": "m1", "rel": "references", "to": "m2", "prov": "extracted"}
         ]);
         let html = graph_html(&nodes, &edges)?;
         // self-contained: no external references, data embedded as JSON
@@ -824,6 +836,7 @@ mod html_tests {
         assert!(html.contains("agent:a1"));
         assert!(html.contains("<canvas"));
         assert!(html.contains("filter")); // kind filter control
+        assert!(html.contains("extracted")); // edge provenance exported
         Ok(())
     }
 }

@@ -25,8 +25,8 @@ One SQLite file (`~/.remem/remem.db` by default) holds four things at once:
 
 A recall runs keyword search and vector search in parallel, fuses the two
 rankings (RRF + recency/importance), then applies a gated tag boost and a
-score floor that drops junk. Measured on 40 fixtures: **35/37 top-1, 37/37
-top-5**, and 3/3 adversarial queries correctly return nothing.
+score floor that drops junk. Measured on 40 fixtures: **35/37 top-1, 36/37
+top-5** (corroboration merges; see docs/eval.md), and 3/3 adversarial queries correctly return nothing.
 
 ## Install
 

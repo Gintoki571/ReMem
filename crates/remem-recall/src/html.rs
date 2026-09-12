@@ -5,7 +5,7 @@ use anyhow::Result;
 use serde_json::Value as JsonValue;
 
 /// Build the single-file HTML document with node/edge JSON embedded.
-/// `nodes`: [{id, kind, snippet}], `edges`: [{from, rel, to}].
+/// `nodes`: [{id, kind, snippet}], `edges`: [{from, rel, to, prov}].
 pub fn graph_html(nodes: &JsonValue, edges: &JsonValue) -> Result<String> {
     let nodes = serde_json::to_string(nodes)?;
     let edges = serde_json::to_string(edges)?;
@@ -72,7 +72,7 @@ function draw(){{
     if(!a||!b||!visible(idx[e.from])||!visible(idx[e.to]))continue;
     ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
     ctx.fillStyle='#888';ctx.font='9px sans-serif';
-    ctx.fillText(e.rel,(a.x+b.x)/2,(a.y+b.y)/2);
+    ctx.fillText(e.rel+(e.prov&&e.prov!=='manual'?' ('+e.prov+')':''),(a.x+b.x)/2,(a.y+b.y)/2);
   }}
   for(let i=0;i<NODES.length;i++){{
     if(!visible(i))continue;const p=pos[i];
