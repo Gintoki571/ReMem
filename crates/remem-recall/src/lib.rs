@@ -347,7 +347,7 @@ impl RecallEngine {
         &self,
         from: &str,
         content: &str,
-        g: &Graph,
+        g: &remem_graph::Graph,
     ) -> Result<()> {
         static REF: OnceLock<regex::Regex> = OnceLock::new();
         let re = REF.get_or_init(|| {
@@ -378,6 +378,9 @@ impl RecallEngine {
             }
             g.link_with_provenance(from, &target, "references", EdgeProvenance::Extracted)
                 .map_err(|e| anyhow!("graph link: {e}"))?;
+        }
+        Ok(())
+    }
 
     /// Temporal proximity edges (Hindsight pattern): after insert, link the
     /// new memory to every live memory whose occurred_at is within 24h of
@@ -471,6 +474,7 @@ impl RecallEngine {
                 .map_err(|e| anyhow!("weight write: {e}"))?;
         }
         Ok(())
+    }
 
     /// Write-time auto-link: run the freshly-inserted embedding against
     /// existing memories (vec0 kNN, top-3) and gate on precision. Exactly one
