@@ -52,7 +52,23 @@ impl Db {
     fn init(conn: rusqlite::Connection) -> Result<Db> {
         conn.busy_timeout(std::time::Duration::from_secs(5))?;
         // journal_mode returns a row, so it cannot go through execute_batch.
-        let _: String = conn.query_row("PRAGMA journal_mode=WAL", [], |r| r.get(0))?;
+        // Switching a brand-new file to WAL ignores busy_timeout, so two
+        // processes opening it at once need an explicit retry.
+        let mut tries = 0;
+        loop {
+            match conn.query_row("PRAGMA journal_mode=WAL", [], |r| r.get::<_, String>(0)) {
+                Err(rusqlite::Error::SqliteFailure(e, _))
+                    if e.code == rusqlite::ErrorCode::DatabaseBusy && tries < 100 =>
+                {
+                    tries += 1;
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                r => {
+                    r?;
+                    break;
+                }
+            }
+        }
         conn.execute_batch("PRAGMA foreign_keys=ON; PRAGMA synchronous=NORMAL;")?;
         let g = graphqlite::Connection::from_rusqlite(conn)?;
         let db = Db { g };

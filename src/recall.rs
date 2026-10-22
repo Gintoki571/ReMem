@@ -6,7 +6,7 @@ use crate::engine::{
     RecallOutput,
 };
 use crate::{extract, graph, kg, rank, temporal, text, Result};
-use rusqlite::{params, params_from_iter};
+use rusqlite::{params, params_from_iter, OptionalExtension};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -93,17 +93,14 @@ fn fetch_rows(db: &Db, ids: &[i64]) -> Result<HashMap<i64, MemoryRow>> {
 }
 
 fn fetch_vectors(db: &Db, ids: &[i64]) -> Result<HashMap<i64, Vec<f32>>> {
+    // vec0 serves `rowid = ?` as a point lookup but `rowid IN (...)` as a full
+    // scan of the table, so fetch one row at a time.
     let mut out = HashMap::new();
-    for chunk in ids.chunks(400) {
-        let marks = std::iter::repeat_n("?", chunk.len())
-            .collect::<Vec<_>>()
-            .join(",");
-        let sql = format!("SELECT rowid,embedding FROM memories_vec WHERE rowid IN ({marks})");
-        let mut st = db.sql().prepare(&sql)?;
-        let mut rows = st.query(params_from_iter(chunk.iter()))?;
-        while let Some(r) = rows.next()? {
-            let id: i64 = r.get(0)?;
-            let blob: Vec<u8> = r.get(1)?;
+    let mut st = db
+        .sql()
+        .prepare_cached("SELECT embedding FROM memories_vec WHERE rowid = ?1")?;
+    for &id in ids {
+        if let Some(blob) = st.query_row([id], |r| r.get::<_, Vec<u8>>(0)).optional()? {
             out.insert(id, blob_vec(blob));
         }
     }
@@ -424,12 +421,22 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     let mut time_ids: Vec<i64> = Vec::new();
     if let Some(w) = &window {
         let mut st = engine.db.sql().prepare(
-            "SELECT id FROM memories WHERE valid_from < ?1 AND (valid_to IS NULL OR valid_to > ?2)
-             ORDER BY valid_from DESC LIMIT 5000",
+            // Happened/started inside the window (an older fact that is still
+            // open is not "in" last week). Newest 400, plus the in-window
+            // members of the vector list so wide windows keep relevance.
+            "SELECT id FROM memories WHERE valid_from >= ?1 AND valid_from < ?2
+             ORDER BY valid_from DESC LIMIT 400",
         )?;
-        let candidates: Vec<i64> = st
-            .query_map(params![w.end, w.start], |r| r.get::<_, i64>(0))?
+        let mut candidates: Vec<i64> = st
+            .query_map(params![w.start, w.end], |r| r.get::<_, i64>(0))?
             .collect::<rusqlite::Result<_>>()?;
+        let seen: HashSet<i64> = candidates.iter().copied().collect();
+        candidates.extend(vec_ids.iter().copied().filter(|id| {
+            !seen.contains(id)
+                && rows
+                    .get(id)
+                    .is_some_and(|row| row.9 >= w.start && row.9 < w.end)
+        }));
         let missing: Vec<i64> = candidates
             .iter()
             .copied()
