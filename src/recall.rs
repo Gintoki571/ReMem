@@ -6,9 +6,12 @@ use crate::engine::{
     RecallOutput,
 };
 use crate::{extract, graph, kg, rank, temporal, text, Result};
-use rusqlite::params;
+use rusqlite::{params, params_from_iter};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+
+const MEMORY_COLUMNS: &str =
+    "id,content,kind,tags,importance,scope,source,session,created_at,valid_from,valid_to,expired_at,superseded_by";
 
 #[allow(clippy::chunks_exact_to_as_chunks)]
 fn blob_vec(blob: Vec<u8>) -> Vec<f32> {
@@ -53,18 +56,79 @@ type MemoryRow = (
     Option<i64>,
 );
 
+fn read_row(r: &rusqlite::Row) -> rusqlite::Result<MemoryRow> {
+    Ok((
+        r.get(0)?,
+        r.get(1)?,
+        r.get(2)?,
+        r.get(3)?,
+        r.get(4)?,
+        r.get(5)?,
+        r.get(6)?,
+        r.get(7)?,
+        r.get(8)?,
+        r.get(9)?,
+        r.get(10)?,
+        r.get(11)?,
+        r.get(12)?,
+    ))
+}
+
+/// Fetch rows only for the ids a channel actually produced.
+fn fetch_rows(db: &Db, ids: &[i64]) -> Result<HashMap<i64, MemoryRow>> {
+    let mut out = HashMap::new();
+    for chunk in ids.chunks(400) {
+        let marks = std::iter::repeat_n("?", chunk.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        let sql = format!("SELECT {MEMORY_COLUMNS} FROM memories WHERE id IN ({marks})");
+        let mut st = db.sql().prepare(&sql)?;
+        let mut rows = st.query(params_from_iter(chunk.iter()))?;
+        while let Some(r) = rows.next()? {
+            let row = read_row(r)?;
+            out.insert(row.0, row);
+        }
+    }
+    Ok(out)
+}
+
+fn fetch_vectors(db: &Db, ids: &[i64]) -> Result<HashMap<i64, Vec<f32>>> {
+    let mut out = HashMap::new();
+    for chunk in ids.chunks(400) {
+        let marks = std::iter::repeat_n("?", chunk.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        let sql = format!("SELECT rowid,embedding FROM memories_vec WHERE rowid IN ({marks})");
+        let mut st = db.sql().prepare(&sql)?;
+        let mut rows = st.query(params_from_iter(chunk.iter()))?;
+        while let Some(r) = rows.next()? {
+            let id: i64 = r.get(0)?;
+            let blob: Vec<u8> = r.get(1)?;
+            out.insert(id, blob_vec(blob));
+        }
+    }
+    Ok(out)
+}
+
+/// World-time end of a memory (valid_to reached) or system retirement.
+fn is_ended(row: &MemoryRow, cutoff: i64) -> bool {
+    row.10.is_some_and(|x| x <= cutoff) || row.11.is_some()
+}
+
 fn eligible(
     row: &MemoryRow,
-    _now: i64,
     as_of: Option<i64>,
     history: bool,
     input: &RecallInput,
+    since: Option<i64>,
+    until: Option<i64>,
 ) -> bool {
     let (_, _, kind, tags, _, scope, source, session, _, from, to, expired, superseded) = row;
+    // Forgotten memories (expired without a successor) are never returned.
     if expired.is_some() && superseded.is_none() {
         return false;
     }
-    if expired.is_some() && superseded.is_some() && !history {
+    if expired.is_some() && !history {
         return false;
     }
     if let Some(t) = as_of {
@@ -92,6 +156,9 @@ fn eligible(
     {
         return false;
     }
+    if since.is_some_and(|x| *from < x) || until.is_some_and(|x| *from >= x) {
+        return false;
+    }
     true
 }
 
@@ -100,12 +167,142 @@ fn parse_bound(s: Option<&str>, clock: &temporal::Clock) -> Result<Option<i64>> 
         .transpose()
 }
 
+fn structured_filters(
+    input: &RecallInput,
+    since: Option<i64>,
+    until: Option<i64>,
+    as_of: Option<i64>,
+) -> bool {
+    !input.kinds.is_empty()
+        || !input.tags.is_empty()
+        || input.scope.is_some()
+        || input.source.is_some()
+        || input.session.is_some()
+        || since.is_some()
+        || until.is_some()
+        || as_of.is_some()
+}
+
+/// Every entity an alias names (an alias may belong to several entities).
+fn alias_entities(db: &Db, names: &[String]) -> Result<Vec<i64>> {
+    let mut out = HashSet::new();
+    for chunk in names.chunks(400) {
+        let marks = std::iter::repeat_n("?", chunk.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        let sql =
+            format!("SELECT DISTINCT entity_id FROM entity_aliases WHERE alias_norm IN ({marks})");
+        let mut st = db.sql().prepare(&sql)?;
+        let rows = st.query_map(params_from_iter(chunk.iter()), |r| r.get::<_, i64>(0))?;
+        for row in rows {
+            out.insert(row?);
+        }
+    }
+    let mut ids: Vec<i64> = out.into_iter().collect();
+    ids.sort_unstable();
+    Ok(ids)
+}
+
+fn relation_visible(
+    valid_from: i64,
+    valid_to: Option<i64>,
+    expired: Option<i64>,
+    now: i64,
+    history: bool,
+) -> bool {
+    if valid_from > now {
+        return false;
+    }
+    if history {
+        return true;
+    }
+    valid_to.is_none_or(|v| now < v) && expired.is_none()
+}
+
+/// Relation-fact seeds: `relations_fts` hits and `relations_vec` KNN, both
+/// endpoints get half of the relation's score.
+fn relation_seeds(
+    db: &Db,
+    query: &str,
+    query_vec: &[f32],
+    now: i64,
+    history: bool,
+    prefix_min: usize,
+) -> Result<Vec<(i64, f64)>> {
+    let mut out = Vec::new();
+    if let Some(q) = text::fts_query_with(query, &[], prefix_min) {
+        let mut st = db.sql().prepare(
+            "SELECT r.src,r.dst FROM relations_fts JOIN relations r ON r.id=relations_fts.rowid
+             WHERE relations_fts MATCH ?1 AND r.valid_from<=?2
+               AND (?3=1 OR ((r.valid_to IS NULL OR r.valid_to>?2) AND r.expired_at IS NULL))
+             ORDER BY bm25(relations_fts,1.0,1.0) LIMIT 10",
+        )?;
+        let hits: Vec<(i64, i64)> = st
+            .query_map(params![q, now, i64::from(history)], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
+        for (rank, (src, dst)) in hits.iter().enumerate() {
+            let score = 0.5 / (1.0 + rank as f64);
+            out.push((*src, score));
+            out.push((*dst, score));
+        }
+    }
+    {
+        let mut st = db.sql().prepare(
+            "SELECT rowid,1-distance FROM relations_vec
+             WHERE embedding MATCH ?1 AND k=10 ORDER BY distance",
+        )?;
+        let hits: Vec<(i64, f32)> = st
+            .query_map([crate::db::vec_blob(query_vec)], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
+        let ids: Vec<i64> = hits
+            .iter()
+            .filter(|(_, cosine)| *cosine >= 0.5)
+            .map(|(id, _)| *id)
+            .collect();
+        if !ids.is_empty() {
+            let marks = std::iter::repeat_n("?", ids.len())
+                .collect::<Vec<_>>()
+                .join(",");
+            let sql = format!(
+                "SELECT id,src,dst,valid_from,valid_to,expired_at FROM relations WHERE id IN ({marks})"
+            );
+            let mut st = db.sql().prepare(&sql)?;
+            let mut rows = st.query(params_from_iter(ids.iter()))?;
+            let mut visible = HashMap::new();
+            while let Some(r) = rows.next()? {
+                let id: i64 = r.get(0)?;
+                let src: i64 = r.get(1)?;
+                let dst: i64 = r.get(2)?;
+                let vf: i64 = r.get(3)?;
+                let vt: Option<i64> = r.get(4)?;
+                let expired: Option<i64> = r.get(5)?;
+                if relation_visible(vf, vt, expired, now, history) {
+                    visible.insert(id, (src, dst));
+                }
+            }
+            for (id, cosine) in hits {
+                if let Some(&(src, dst)) = visible.get(&id) {
+                    let score = f64::from(cosine) * 0.5;
+                    out.push((src, score));
+                    out.push((dst, score));
+                }
+            }
+        }
+    }
+    Ok(out)
+}
+
 pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     engine.check_embedder()?;
     if input.query.trim().is_empty() {
         return Err(crate::err!("query must not be empty"));
     }
     let clock = engine.clock();
+    let now = clock.now;
     let as_of = parse_bound(input.as_of.as_deref(), &clock)?;
     let since = parse_bound(input.since.as_deref(), &clock)?;
     let until = parse_bound(input.until.as_deref(), &clock)?;
@@ -115,118 +312,241 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     let k = input.k.unwrap_or(8).clamp(1, 50);
     let budget = input.budget.unwrap_or(1200);
     let query_vec = engine.emb.embed(&[&input.query], Mode::Query)?.remove(0);
-    let extra = input.keywords.clone();
-    let fts = text::fts_query(&input.query, &extra);
-    let mut rows = Vec::new();
-    let mut st = engine.db.sql().prepare("SELECT id,content,kind,tags,importance,scope,source,session,created_at,valid_from,valid_to,expired_at,superseded_by FROM memories")?;
-    for r in st.query_map([], |r| {
-        Ok((
-            r.get(0)?,
-            r.get(1)?,
-            r.get(2)?,
-            r.get(3)?,
-            r.get(4)?,
-            r.get(5)?,
-            r.get(6)?,
-            r.get(7)?,
-            r.get(8)?,
-            r.get(9)?,
-            r.get(10)?,
-            r.get(11)?,
-            r.get(12)?,
-        ))
-    })? {
-        let row = r?;
-        if !eligible(&row, clock.now, as_of, history, input)
-            || since.is_some_and(|x| row.9 < x)
-            || until.is_some_and(|x| row.9 >= x)
-        {
-            continue;
-        }
-        rows.push(row);
-    }
-    let allowed: HashSet<i64> = rows.iter().map(|r| r.0).collect();
-    let mut bm25 = Vec::new();
-    if let Some(q) = fts {
-        let mut s = engine.db.sql().prepare(
-            "SELECT rowid FROM memories_fts WHERE memories_fts MATCH ?1 ORDER BY bm25(memories_fts,1.0,2.0) LIMIT ?2",
-        )?;
-        for x in s.query_map(params![q, (5 * k).max(50) as i64], |r| r.get::<_, i64>(0))? {
-            let id = x?;
-            if allowed.contains(&id) {
-                bm25.push(id);
-            }
-        }
-    }
-    let mut vec_scores = HashMap::new();
-    let mut vec_ranked = Vec::new();
-    let mut vs = engine
-        .db
-        .sql()
-        .prepare("SELECT rowid,embedding FROM memories_vec")?;
-    for x in vs.query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Vec<u8>>(1)?)))? {
-        let (id, blob) = x?;
-        if allowed.contains(&id) {
-            let score = rank::cosine(&query_vec, &blob_vec(blob)) as f64;
-            vec_scores.insert(id, score);
-            vec_ranked.push((id, score));
-        }
-    }
-    vec_ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-    vec_ranked.truncate((5 * k).max(50));
-    let vec_ids: Vec<i64> = vec_ranked.iter().map(|x| x.0).collect();
+    let depth = (5 * k).max(50);
+    // Filtered channels need headroom: the KNN/BM25 depth is applied before
+    // eligibility, so oversample when structured filters are present.
+    let fetch_depth = if structured_filters(input, since, until, as_of) {
+        (depth * 4).min(2000)
+    } else {
+        depth
+    };
+    let mut rows: HashMap<i64, MemoryRow> = HashMap::new();
 
+    // ------------------------------------------------------------ bm25
+    let mut bm25_scored: Vec<(i64, f64)> = Vec::new();
+    if let Some(q) = text::fts_query_with(&input.query, &input.keywords, engine.cfg.fts_prefix_min)
+    {
+        let mut st = engine.db.sql().prepare(
+            "SELECT rowid,bm25(memories_fts,1.0,2.0) FROM memories_fts
+             WHERE memories_fts MATCH ?1 ORDER BY bm25(memories_fts,1.0,2.0) LIMIT ?2",
+        )?;
+        for row in st.query_map(params![q, fetch_depth as i64], |r| {
+            Ok((r.get::<_, i64>(0)?, r.get::<_, f64>(1)?))
+        })? {
+            bm25_scored.push(row?);
+        }
+    }
+    let missing: Vec<i64> = bm25_scored
+        .iter()
+        .map(|(id, _)| *id)
+        .filter(|id| !rows.contains_key(id))
+        .collect();
+    rows.extend(fetch_rows(&engine.db, &missing)?);
+    let bm25_scored: Vec<(i64, f64)> = bm25_scored
+        .into_iter()
+        .filter(|(id, _)| {
+            rows.get(id)
+                .is_some_and(|row| eligible(row, as_of, history, input, since, until))
+        })
+        .collect();
+    let best_bm25 = bm25_scored
+        .iter()
+        .map(|(_, score)| score.abs())
+        .fold(0.0f64, f64::max);
+    let bm25: Vec<i64> = bm25_scored
+        .into_iter()
+        .filter(|(_, score)| score.abs() >= engine.cfg.bm25_rel * best_bm25)
+        .map(|(id, _)| id)
+        .take(depth)
+        .collect();
+
+    // ---------------------------------------------------------- vector
+    let knn_sql = if history {
+        "SELECT rowid,1-distance FROM memories_vec
+         WHERE embedding MATCH ?1 AND k=?2 ORDER BY distance"
+    } else {
+        "SELECT rowid,1-distance FROM memories_vec
+         WHERE embedding MATCH ?1 AND k=?2 AND live=1 ORDER BY distance"
+    };
+    let mut st = engine.db.sql().prepare(knn_sql)?;
+    let knn: Vec<(i64, f32)> = st
+        .query_map(
+            params![crate::db::vec_blob(&query_vec), fetch_depth as i64],
+            |r| Ok((r.get::<_, i64>(0)?, r.get::<_, f32>(1)?)),
+        )?
+        .collect::<rusqlite::Result<_>>()?;
+    let missing: Vec<i64> = knn
+        .iter()
+        .map(|(id, _)| *id)
+        .filter(|id| !rows.contains_key(id))
+        .collect();
+    rows.extend(fetch_rows(&engine.db, &missing)?);
+    let mut vec_ranked: Vec<(i64, f64)> = knn
+        .into_iter()
+        .filter(|(id, _)| {
+            rows.get(id)
+                .is_some_and(|row| eligible(row, as_of, history, input, since, until))
+        })
+        .map(|(id, cosine)| (id, f64::from(cosine)))
+        .collect();
+    vec_ranked.truncate(depth);
+    let vec_ids: Vec<i64> = vec_ranked.iter().map(|(id, _)| *id).collect();
+
+    // ------------------------------------------------------- temporal
+    let mut time_ids: Vec<i64> = Vec::new();
+    if let Some(w) = &window {
+        let mut st = engine.db.sql().prepare(
+            "SELECT id FROM memories WHERE valid_from < ?1 AND (valid_to IS NULL OR valid_to > ?2)
+             ORDER BY valid_from DESC LIMIT 5000",
+        )?;
+        let candidates: Vec<i64> = st
+            .query_map(params![w.end, w.start], |r| r.get::<_, i64>(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        let missing: Vec<i64> = candidates
+            .iter()
+            .copied()
+            .filter(|id| !rows.contains_key(id))
+            .collect();
+        rows.extend(fetch_rows(&engine.db, &missing)?);
+        let in_window: Vec<i64> = candidates
+            .into_iter()
+            .filter(|id| {
+                rows.get(id)
+                    .is_some_and(|row| eligible(row, as_of, history, input, since, until))
+            })
+            .collect();
+        let vectors = fetch_vectors(&engine.db, &in_window)?;
+        let mut scored: Vec<(i64, f64)> = in_window
+            .into_iter()
+            .filter_map(|id| {
+                vectors
+                    .get(&id)
+                    .map(|v| (id, f64::from(rank::cosine(&query_vec, v))))
+            })
+            .collect();
+        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored.truncate(depth);
+        time_ids = scored.into_iter().map(|(id, _)| id).collect();
+    }
+
+    // ---------------------------------------------------------- graph
     let snap = snapshot(engine, as_of, history)?;
-    let mut seeds = Vec::new();
-    let names: Vec<String> = extract::ngrams(&input.query, 4)
+    let mut ent_seeds: HashMap<i64, f64> = HashMap::new();
+    let mut seed_entity = |id: i64, weight: f64| {
+        let entry = ent_seeds.entry(id).or_insert(0.0);
+        if weight > *entry {
+            *entry = weight;
+        }
+    };
+    // (a) exact alias hits in the query and in agent-supplied entities.
+    let mut names: Vec<String> = extract::ngrams(&input.query, 4)
         .into_iter()
         .map(|x| x.0)
-        .chain(input.entities.iter().map(|x| text::norm_name(x)))
         .collect();
-    for name in names {
-        if let Ok(id) = engine.db.sql().query_row(
-            "SELECT entity_id FROM entity_aliases WHERE alias_norm=?1 LIMIT 1",
-            [&name],
-            |r| r.get::<_, i64>(0),
-        ) {
-            if let Some(&node) = snap.ent_node.get(&id) {
-                let mentions: i64 = engine.db.sql().query_row(
-                    "SELECT COUNT(*) FROM mentions WHERE entity_id=?1",
-                    [id],
-                    |r| r.get(0),
-                )?;
-                seeds.push((node, 1.0 / (mentions.max(1) as f64)));
+    names.extend(input.entities.iter().map(|x| text::norm_name(x)));
+    names.sort();
+    names.dedup();
+    for id in alias_entities(&engine.db, &names)? {
+        seed_entity(id, 1.0);
+    }
+    // (b) entity KNN against the query vector.
+    {
+        let mut st = engine.db.sql().prepare(
+            "SELECT rowid,1-distance FROM entities_vec
+             WHERE embedding MATCH ?1 AND k=10 ORDER BY distance",
+        )?;
+        let hits: Vec<(i64, f32)> = st
+            .query_map([crate::db::vec_blob(&query_vec)], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })?
+            .collect::<rusqlite::Result<_>>()?;
+        for (id, cosine) in hits {
+            if cosine >= engine.cfg.entity_seed {
+                seed_entity(id, f64::from(cosine));
             }
         }
     }
-    for &(id, score) in vec_ranked.iter().take(20) {
-        if let Some(&node) = snap.mem_node.get(&id) {
-            seeds.push((node, score.max(0.0) * 0.05));
+    // (c) relation-fact hits.
+    for (id, weight) in relation_seeds(
+        &engine.db,
+        &input.query,
+        &query_vec,
+        now,
+        history,
+        engine.cfg.fts_prefix_min,
+    )? {
+        seed_entity(id, weight);
+    }
+    // Specificity: one GROUP BY, not one query per seed.
+    let seed_ids: Vec<i64> = ent_seeds.keys().copied().collect();
+    let mut specificity: HashMap<i64, i64> = HashMap::new();
+    for chunk in seed_ids.chunks(400) {
+        let marks = std::iter::repeat_n("?", chunk.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        let sql =
+            format!("SELECT entity_id,COUNT(*) FROM mentions WHERE entity_id IN ({marks}) GROUP BY entity_id");
+        let mut st = engine.db.sql().prepare(&sql)?;
+        let mut rows = st.query(params_from_iter(chunk.iter()))?;
+        while let Some(r) = rows.next()? {
+            specificity.insert(r.get(0)?, r.get(1)?);
+        }
+    }
+    for (id, weight) in ent_seeds.iter_mut() {
+        let mentions = specificity.get(id).copied().unwrap_or(0);
+        *weight /= mentions.max(1) as f64;
+    }
+    let mem_seeds: Vec<(i64, f64)> = vec_ranked
+        .iter()
+        .take(20)
+        .map(|(id, cosine)| (*id, cosine.max(0.0)))
+        .collect();
+    let ent_total: f64 = ent_seeds.values().sum();
+    let mem_total: f64 = mem_seeds.iter().map(|(_, w)| w).sum();
+    let mut seeds: Vec<(u32, f64)> = Vec::new();
+    if ent_total > 0.0 {
+        for (id, weight) in &ent_seeds {
+            if let Some(&node) = snap.ent_node.get(id) {
+                seeds.push((node, weight * 0.95 / ent_total));
+            }
+        }
+    }
+    if mem_total > 0.0 {
+        let target = if ent_total > 0.0 { 0.05 } else { 1.0 };
+        for (id, weight) in &mem_seeds {
+            if let Some(&node) = snap.mem_node.get(id) {
+                seeds.push((node, weight * target / mem_total));
+            }
         }
     }
     let ppr = graph::ppr_push(&snap.csr, &seeds, engine.cfg.alpha, engine.cfg.eps, 200_000);
-    let mut graph_ids = Vec::new();
-    let mut ppr_score = HashMap::new();
+    let mut graph_ids: Vec<i64> = Vec::new();
+    let mut ppr_score: HashMap<i64, f64> = HashMap::new();
     for (node, score) in ppr {
-        if let Some(('m', id)) = snap.node_kind.get(node as usize) {
-            if allowed.contains(id) {
-                graph_ids.push(*id);
+        match snap.node_kind.get(node as usize) {
+            Some(('m', id)) => graph_ids.push(*id),
+            Some(('e', id)) => {
+                ppr_score.insert(*id, score);
             }
-        }
-        if let Some((_, id)) = snap.node_kind.get(node as usize) {
-            ppr_score.insert(*id, score);
+            _ => {}
         }
     }
-    let mut time_ids: Vec<i64> = Vec::new();
-    if let Some(w) = &window {
-        let mut ranked_time: Vec<(i64, f64)> = rows
-            .iter()
-            .filter(|r| r.9 >= w.start && r.9 < w.end)
-            .filter_map(|r| vec_scores.get(&r.0).map(|s| (r.0, *s)))
-            .collect();
-        ranked_time.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        time_ids = ranked_time.into_iter().map(|x| x.0).collect();
-    }
+    graph_ids.truncate(fetch_depth);
+    let missing: Vec<i64> = graph_ids
+        .iter()
+        .copied()
+        .filter(|id| !rows.contains_key(id))
+        .collect();
+    rows.extend(fetch_rows(&engine.db, &missing)?);
+    let graph_ids: Vec<i64> = graph_ids
+        .into_iter()
+        .filter(|id| {
+            rows.get(id)
+                .is_some_and(|row| eligible(row, as_of, history, input, since, until))
+        })
+        .take(depth)
+        .collect();
+
     let channels = [
         rank::Channel {
             name: "bm25",
@@ -250,42 +570,33 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         },
     ];
     let fused = rank::rrf(&channels, engine.cfg.rrf_k);
+    let cutoff = as_of.unwrap_or(now);
     let mut candidates = Vec::new();
     for f in fused {
-        if let Some(row) = rows.iter().find(|r| r.0 == f.id) {
-            let mut score = f.score;
-            if row.11.is_some() && !history {
-                score *= engine.cfg.expired_penalty;
-            }
-            if window
-                .as_ref()
-                .is_some_and(|w| row.9 >= w.start && row.9 < w.end)
-            {
-                score *= 1.25;
-            }
-            let age = (clock.now - row.9).max(0) as f64 / 86_400.0;
-            score *= 0.9 + 0.1 * 2f64.powf(-age / engine.cfg.half_life_days);
-            score *= 0.9 + 0.2 * row.4;
-            candidates.push((f.id, score, f.ranks));
+        let Some(row) = rows.get(&f.id) else { continue };
+        let mut score = f.score;
+        if !history && is_ended(row, cutoff) {
+            score *= engine.cfg.expired_penalty;
         }
-    }
-    let mut vecs = HashMap::new();
-    for &(id, _, _) in &candidates {
-        if let Ok(blob) = engine.db.sql().query_row(
-            "SELECT embedding FROM memories_vec WHERE rowid=?1",
-            [id],
-            |r| r.get::<_, Vec<u8>>(0),
-        ) {
-            vecs.insert(id, blob_vec(blob));
+        if window
+            .as_ref()
+            .is_some_and(|w| row.9 >= w.start && row.9 < w.end)
+        {
+            score *= 1.25;
         }
+        let age = (now - row.9).max(0) as f64 / 86_400.0;
+        score *= 0.9 + 0.1 * 2f64.powf(-age / engine.cfg.half_life_days);
+        score *= 0.9 + 0.2 * row.4;
+        candidates.push((f.id, score, f.ranks));
     }
+    let mmr_ids: Vec<i64> = candidates.iter().map(|x| x.0).take(3 * k).collect();
+    let vecs = fetch_vectors(&engine.db, &mmr_ids)?;
     let mmr_input: Vec<(i64, f64)> = candidates.iter().map(|x| (x.0, x.1)).take(3 * k).collect();
     let selected = rank::mmr(&mmr_input, &vecs, engine.cfg.mmr_lambda, k);
     let costs: Vec<usize> = selected
         .iter()
         .map(|id| {
-            rows.iter()
-                .find(|r| r.0 == *id)
+            rows.get(id)
                 .map(|r| (r.1.len() + 12).div_ceil(4))
                 .unwrap_or(0)
         })
@@ -294,7 +605,7 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     let kept_ids: HashSet<i64> = kept.iter().map(|&i| selected[i]).collect();
     let mut memories = Vec::new();
     for id in &selected {
-        let row = rows.iter().find(|r| r.0 == *id).unwrap();
+        let Some(row) = rows.get(id) else { continue };
         let ranks = candidates
             .iter()
             .find(|x| x.0 == *id)
@@ -314,7 +625,7 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
                 content: row.1.clone(),
                 valid_from: row.9,
                 valid_to: row.10,
-                ended: row.10.is_some_and(|x| x <= clock.now) || row.11.is_some(),
+                ended: is_ended(row, cutoff),
                 superseded_by: row.12,
                 tags: row.3.split_whitespace().map(str::to_string).collect(),
                 score: candidates
@@ -334,7 +645,7 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         let sql = format!(
             "UPDATE memories SET access_count=access_count+1,last_access=?1 WHERE id IN ({marks})"
         );
-        let mut p: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(clock.now)];
+        let mut p: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(now)];
         p.extend(
             selected
                 .iter()
@@ -359,13 +670,7 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         .take(10)
         .map(|x| x.0)
         .collect();
-    let facts = facts_for(
-        engine,
-        &top_entities,
-        history,
-        as_of.unwrap_or(clock.now),
-        8,
-    )?;
+    let facts = facts_for(engine, &top_entities, history, cutoff, 8)?;
     let entities = top_entities
         .iter()
         .take(3)
@@ -421,7 +726,7 @@ fn facts_for(
     engine: &Engine,
     ids: &[i64],
     history: bool,
-    now: i64,
+    cutoff: i64,
     limit: usize,
 ) -> Result<Vec<FactHit>> {
     if ids.is_empty() {
@@ -445,11 +750,10 @@ fn facts_for(
         ))
     })? {
         let (id, src, dst, pred, fact, vf, vt, expired, source, target) = x?;
-        if (!set.contains(&src) && !set.contains(&dst))
-            || (!history && expired.is_some())
-            || vf > now
-            || vt.is_some_and(|v| now >= v) && !history
-        {
+        if (!set.contains(&src) && !set.contains(&dst)) || vf > cutoff {
+            continue;
+        }
+        if !history && (expired.is_some() || vt.is_some_and(|v| cutoff >= v)) {
             continue;
         }
         out.push(FactHit {
@@ -460,7 +764,7 @@ fn facts_for(
             fact,
             valid_from: vf,
             valid_to: vt,
-            ended: expired.is_some() || vt.is_some_and(|v| v <= now),
+            ended: expired.is_some() || vt.is_some_and(|v| v <= cutoff),
         });
     }
     out.truncate(limit);
@@ -508,14 +812,15 @@ pub fn entity(engine: &Engine, name: &str, limit: usize) -> Result<EntityOutput>
     let mut ts = engine.db.sql().prepare("SELECT id,kind,content,valid_from,valid_to,expired_at,superseded_by,tags,importance FROM memories WHERE id IN (SELECT memory_id FROM mentions WHERE entity_id=?1) AND NOT (expired_at IS NOT NULL AND superseded_by IS NULL) ORDER BY valid_from DESC LIMIT ?2")?;
     let timeline = ts
         .query_map(params![id, limit.max(1) as i64], |r| {
+            let valid_to: Option<i64> = r.get(4)?;
+            let expired: Option<i64> = r.get(5)?;
             Ok(MemoryHit {
                 id: r.get(0)?,
                 kind: r.get(1)?,
                 content: r.get(2)?,
                 valid_from: r.get(3)?,
-                valid_to: r.get(4)?,
-                ended: r.get::<_, Option<i64>>(5)?.is_some()
-                    || r.get::<_, Option<i64>>(4)?.is_some_and(|x| x <= now),
+                valid_to,
+                ended: expired.is_some() || valid_to.is_some_and(|x| x <= now),
                 superseded_by: r.get(6)?,
                 tags: r
                     .get::<_, String>(7)?

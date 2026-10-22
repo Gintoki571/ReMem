@@ -472,6 +472,12 @@ pub fn tokens(s: &str) -> Vec<String> {
 /// `extra`; prefix arm (`"tok"*`) for tokens >= 4 chars. None when nothing
 /// searchable remains. Never lets FTS5 syntax through.
 pub fn fts_query(q: &str, extra: &[String]) -> Option<String> {
+    fts_query_with(q, extra, 4)
+}
+
+/// `fts_query` with a tunable minimum token length for prefix arms.
+pub fn fts_query_with(q: &str, extra: &[String], prefix_min: usize) -> Option<String> {
+    let prefix_min = prefix_min.max(1);
     let mut kept: Vec<String> = Vec::new();
     let mut push = |token: String| {
         if token.chars().count() < 2 || is_stopword(&token) || kept.contains(&token) {
@@ -493,7 +499,7 @@ pub fn fts_query(q: &str, extra: &[String]) -> Option<String> {
     let arms: Vec<String> = kept
         .iter()
         .map(|token| {
-            if token.chars().count() >= 4 {
+            if token.chars().count() >= prefix_min {
                 format!("\"{token}\"*")
             } else {
                 format!("\"{token}\"")

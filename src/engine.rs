@@ -49,6 +49,11 @@ pub struct Config {
     pub mmr_lambda: f64,
     /// Recency half-life in days (applies to valid_from).
     pub half_life_days: f64,
+    /// Keep BM25 hits scoring at least this fraction of the best hit
+    /// (0.0 = keep every hit up to the channel depth).
+    pub bm25_rel: f64,
+    /// Shortest token length that gets a prefix arm in the FTS query.
+    pub fts_prefix_min: usize,
 }
 
 impl Default for Config {
@@ -68,6 +73,8 @@ impl Default for Config {
             expired_penalty: 0.35,
             mmr_lambda: 0.75,
             half_life_days: 90.0,
+            bm25_rel: 0.0,
+            fts_prefix_min: 4,
         }
     }
 }

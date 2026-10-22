@@ -468,38 +468,110 @@ fn cmd_import(globals: &Globals, args: &[String]) -> CmdResult {
 fn cmd_eval(globals: &Globals, args: &[String]) -> CmdResult {
     let path = args
         .first()
+        .filter(|x| !x.starts_with("--"))
         .ok_or_else(|| usage("eval needs a fixtures.json path"))?;
-    let ablation = args.iter().any(|x| x == "--ablation");
-    let engine = open_engine(globals)?;
-    let report =
-        neocortex::eval::run_eval(Path::new(path), Arc::clone(&engine.emb), engine.cfg.clone())
-            .map_err(runtime)?;
-    if globals.json {
-        let mut value = serde_json::to_value(&report).map_err(|e| Fail::Run(e.to_string()))?;
-        if ablation {
-            value["ablation"] = serde_json::to_value(neocortex::eval::ablation(
-                Path::new(path),
-                Arc::clone(&engine.emb),
-                engine.cfg,
-            ))
-            .map_err(|e| Fail::Run(e.to_string()))?;
+    let mut ablation = false;
+    let mut failures = false;
+    let mut sets: Vec<String> = Vec::new();
+    let mut sweep: Option<String> = None;
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--ablation" => ablation = true,
+            "--failures" => failures = true,
+            "--set" => {
+                let item = value(args, &mut i, "--set")?;
+                sets.push(item);
+            }
+            "--sweep" => {
+                let item = value(args, &mut i, "--sweep")?;
+                sweep = Some(item);
+            }
+            other if other.starts_with("--set=") => {
+                sets.push(other["--set=".len()..].to_string());
+            }
+            other if other.starts_with("--sweep=") => {
+                sweep = Some(other["--sweep=".len()..].to_string());
+            }
+            other => return Err(usage(format!("unknown eval flag: {other}"))),
         }
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&value).map_err(|e| Fail::Run(e.to_string()))?
-        );
-    } else {
-        print!("{}", neocortex::eval::render_report(&report));
-        if ablation {
-            for (name, result) in
-                neocortex::eval::ablation(Path::new(path), Arc::clone(&engine.emb), engine.cfg)
-            {
+        i += 1;
+    }
+    let engine = open_engine(globals)?;
+    let mut cfg = engine.cfg.clone();
+    for item in &sets {
+        let (key, val) = item
+            .split_once('=')
+            .ok_or_else(|| usage(format!("--set needs key=value, got '{item}'")))?;
+        neocortex::eval::set_config(&mut cfg, key, val).map_err(runtime)?;
+    }
+    let emb = Arc::clone(&engine.emb);
+    let path = Path::new(path);
+    if let Some(spec) = sweep {
+        let (key, values) = spec
+            .split_once('=')
+            .ok_or_else(|| usage(format!("--sweep needs key=v1,v2, got '{spec}'")))?;
+        let mut variants = Vec::new();
+        for val in list(values) {
+            let mut variant = cfg.clone();
+            neocortex::eval::set_config(&mut variant, key, &val).map_err(runtime)?;
+            variants.push((format!("{key}={val}"), variant));
+        }
+        if variants.is_empty() {
+            return Err(usage("--sweep needs at least one value"));
+        }
+        let rows = neocortex::eval::sweep(path, emb, cfg, variants).map_err(runtime)?;
+        if globals.json {
+            let value: Vec<serde_json::Value> = rows
+                .iter()
+                .map(|(name, report)| serde_json::json!({"variant":name,"report":report}))
+                .collect();
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&value).map_err(|e| Fail::Run(e.to_string()))?
+            );
+        } else {
+            print!("{}", neocortex::eval::sweep_table(&rows));
+        }
+        return Ok(());
+    }
+    if ablation {
+        let mut variants = vec![("full".to_string(), cfg.clone())];
+        variants.extend(neocortex::eval::ablation_variants(&cfg));
+        let rows = neocortex::eval::sweep(path, emb, cfg, variants).map_err(runtime)?;
+        if globals.json {
+            let mut value =
+                serde_json::to_value(&rows[0].1).map_err(|e| Fail::Run(e.to_string()))?;
+            let ablation: Vec<serde_json::Value> = rows[1..]
+                .iter()
+                .map(|(name, report)| {
+                    serde_json::json!({"name":name,"recall":report.recall,"mrr":report.mrr})
+                })
+                .collect();
+            value["ablation"] = serde_json::Value::Array(ablation);
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&value).map_err(|e| Fail::Run(e.to_string()))?
+            );
+        } else {
+            print!("{}", neocortex::eval::render_report(&rows[0].1, failures));
+            for (name, result) in &rows[1..] {
                 println!(
                     "ablation {name}: recall {:.3}, mrr {:.3}",
                     result.recall, result.mrr
                 );
             }
         }
+        return Ok(());
+    }
+    let report = neocortex::eval::run_eval(path, emb, cfg).map_err(runtime)?;
+    if globals.json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&report).map_err(|e| Fail::Run(e.to_string()))?
+        );
+    } else {
+        print!("{}", neocortex::eval::render_report(&report, failures));
     }
     Ok(())
 }
@@ -524,7 +596,8 @@ Commands:
   validate                 report integrity problems (exit 1 if any)
   cypher <query>           run read-only Cypher
   import-remem <path>      import a ReMem v3 SQLite file
-  eval <fixtures.json>     evaluate retrieval quality (--ablation)
+  eval <fixtures.json>     evaluate retrieval quality (--ablation --failures
+                           --set key=value --sweep key=v1,v2)
   mcp                      run the MCP stdio server
   help                     this text
   --version                print the version
