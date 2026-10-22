@@ -253,7 +253,6 @@ fn entity_invalidate_and_forget_through_mcp() {
 }
 
 #[test]
-#[ignore = "needs phase-2 engine"]
 fn stats_reports_counts() {
     let mut mcp = Mcp::start();
     mcp.initialize(PROTOCOLS[0]);

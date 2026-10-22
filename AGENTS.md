@@ -114,6 +114,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - `src/temporal.rs` - civil dates, instant/window parsing, query windows, history intent.
 - `src/extract.rs` - heuristic entity candidates, n-grams for alias lookup.
 - `src/graph.rs` - CSR + ACL push personalized PageRank. `src/rank.rs` - RRF, MMR, cosine, packing.
+- `src/remember.rs`, `src/resolve.rs`, `src/kg.rs` - write pipeline, entity/predicate resolution, and rebuildable graph projection.
 - `tests/fixtures/ultrabert_fixture.json` - authoritative embedding reference (sentence-transformers 6.2.0, fp32).
 
 ## Work Guidance
