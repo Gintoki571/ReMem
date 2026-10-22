@@ -1234,3 +1234,61 @@ fn stats_counts_the_workload() {
     assert_eq!(stats.predicates, 1);
     assert_eq!(stats.embedder, "hash");
 }
+
+#[test]
+fn memory_ends_when_all_its_facts_end() {
+    let engine = engine();
+    let rel = |target: &str| neocortex::engine::RelationIn {
+        source: "Alex".into(),
+        predicate: "lives in".into(),
+        target: target.into(),
+        exclusive: true,
+        ..Default::default()
+    };
+    let old = engine
+        .remember(RememberInput {
+            content: "Alex lives in Austin.".into(),
+            valid_from: Some("2025-11-15".into()),
+            relations: vec![rel("Austin")],
+            ..Default::default()
+        })
+        .unwrap()
+        .id;
+    let mixed = engine
+        .remember(RememberInput {
+            content: "Alex lives in Austin and works at Helio.".into(),
+            valid_from: Some("2025-11-16".into()),
+            relations: vec![
+                rel("Austin"),
+                neocortex::engine::RelationIn {
+                    source: "Alex".into(),
+                    predicate: "works at".into(),
+                    target: "Helio".into(),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        })
+        .unwrap()
+        .id;
+    engine
+        .remember(RememberInput {
+            content: "Alex moved to Denver.".into(),
+            valid_from: Some("2026-07-01".into()),
+            relations: vec![rel("Denver")],
+            ..Default::default()
+        })
+        .unwrap();
+    let valid_to = |id: i64| -> Option<i64> {
+        engine
+            .db
+            .sql()
+            .query_row("SELECT valid_to FROM memories WHERE id=?1", [id], |r| {
+                r.get(0)
+            })
+            .unwrap()
+    };
+    let denver = neocortex::temporal::parse_instant("2026-07-01", &clock()).unwrap();
+    assert_eq!(valid_to(old), Some(denver));
+    assert_eq!(valid_to(mixed), None, "still evidences a live fact");
+}

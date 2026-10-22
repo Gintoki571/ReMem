@@ -285,6 +285,9 @@ pub const CONFIG_KEYS: &[&str] = &[
     "half_life_days",
     "bm25_rel",
     "fts_prefix_min",
+    "mem_seed_share",
+    "mem_seed_top",
+    "history_boost",
 ];
 
 fn number(key: &str, value: &str) -> Result<f64> {
@@ -308,6 +311,9 @@ pub fn set_config(cfg: &mut Config, key: &str, value: &str) -> Result<()> {
         "half_life_days" => cfg.half_life_days = number(key, value)?,
         "bm25_rel" => cfg.bm25_rel = number(key, value)?,
         "fts_prefix_min" => cfg.fts_prefix_min = number(key, value)? as usize,
+        "mem_seed_share" => cfg.mem_seed_share = number(key, value)?,
+        "mem_seed_top" => cfg.mem_seed_top = number(key, value)? as usize,
+        "history_boost" => cfg.history_boost = number(key, value)?,
         other => {
             return Err(crate::err!(
                 "unknown config key '{other}'; valid: {}",

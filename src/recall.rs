@@ -498,7 +498,7 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     }
     let mem_seeds: Vec<(i64, f64)> = vec_ranked
         .iter()
-        .take(20)
+        .take(engine.cfg.mem_seed_top)
         .map(|(id, cosine)| (*id, cosine.max(0.0)))
         .collect();
     let ent_total: f64 = ent_seeds.values().sum();
@@ -507,12 +507,16 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     if ent_total > 0.0 {
         for (id, weight) in &ent_seeds {
             if let Some(&node) = snap.ent_node.get(id) {
-                seeds.push((node, weight * 0.95 / ent_total));
+                seeds.push((node, weight * (1.0 - engine.cfg.mem_seed_share) / ent_total));
             }
         }
     }
     if mem_total > 0.0 {
-        let target = if ent_total > 0.0 { 0.05 } else { 1.0 };
+        let target = if ent_total > 0.0 {
+            engine.cfg.mem_seed_share
+        } else {
+            1.0
+        };
         for (id, weight) in &mem_seeds {
             if let Some(&node) = snap.mem_node.get(id) {
                 seeds.push((node, weight * target / mem_total));
@@ -575,8 +579,13 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     for f in fused {
         let Some(row) = rows.get(&f.id) else { continue };
         let mut score = f.score;
-        if !history && is_ended(row, cutoff) {
-            score *= engine.cfg.expired_penalty;
+        if is_ended(row, cutoff) {
+            if !history {
+                score *= engine.cfg.expired_penalty;
+            } else if as_of.is_none() {
+                // "where did X live before": the past state is the answer.
+                score *= engine.cfg.history_boost;
+            }
         }
         if window
             .as_ref()
@@ -589,6 +598,7 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         score *= 0.9 + 0.2 * row.4;
         candidates.push((f.id, score, f.ranks));
     }
+    candidates.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
     let mmr_ids: Vec<i64> = candidates.iter().map(|x| x.0).take(3 * k).collect();
     let vecs = fetch_vectors(&engine.db, &mmr_ids)?;
     let mmr_input: Vec<(i64, f64)> = candidates.iter().map(|x| (x.0, x.1)).take(3 * k).collect();

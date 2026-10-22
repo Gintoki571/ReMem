@@ -24,7 +24,9 @@ pub const KINDS: &[&str] = &[
     "note",
 ];
 
-/// Tunables. Defaults are the design's starting values; eval calibrates them.
+/// Tunables. Read-time defaults were calibrated with `neocortex eval --sweep`
+/// on eval/fixtures.json (2026-10-23): low RRF k + graph weight 2 lets a
+/// strong single-channel hit (multi-hop answers found only by PPR) win.
 #[derive(Clone, Debug)]
 pub struct Config {
     /// Cosine at/above which a new memory is reported as a near duplicate.
@@ -54,6 +56,12 @@ pub struct Config {
     pub bm25_rel: f64,
     /// Shortest token length that gets a prefix arm in the FTS query.
     pub fts_prefix_min: usize,
+    /// Share of PPR seed mass given to the top dense-retrieval memories.
+    pub mem_seed_share: f64,
+    /// How many top dense-retrieval memories seed PPR.
+    pub mem_seed_top: usize,
+    /// Score multiplier for ended memories when the query asks about the past.
+    pub history_boost: f64,
 }
 
 impl Default for Config {
@@ -65,16 +73,19 @@ impl Default for Config {
             pred_alias: 0.90,
             w_bm25: 1.0,
             w_vector: 1.0,
-            w_graph: 1.0,
+            w_graph: 2.0,
             w_temporal: 1.0,
-            rrf_k: 60.0,
+            rrf_k: 5.0,
             alpha: 0.5,
             eps: 1e-5,
             expired_penalty: 0.35,
-            mmr_lambda: 0.75,
+            mmr_lambda: 0.9,
             half_life_days: 90.0,
             bm25_rel: 0.0,
             fts_prefix_min: 4,
+            mem_seed_share: 0.6,
+            mem_seed_top: 20,
+            history_boost: 1.5,
         }
     }
 }
@@ -431,6 +442,7 @@ impl Engine {
                 }
                 db.sql()
                     .execute("UPDATE relations SET valid_to=?1 WHERE id=?2", [at, id])?;
+                crate::remember::end_memories_of_ended_facts(db, &[id])?;
                 crate::kg::bump_gen(db)?;
                 return Ok(ChangeOutput {
                     changed: vec![format!("r{id} valid_to={at}")],

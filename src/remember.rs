@@ -396,6 +396,12 @@ pub fn remember(
             db.sql()
                 .execute("UPDATE memories_vec SET live=0 WHERE rowid=?1", [target])?;
         }
+        let touched: Vec<i64> = invalidated
+            .iter()
+            .copied()
+            .chain(rel_results.iter().map(|r| r.id))
+            .collect();
+        end_memories_of_ended_facts(db, &touched)?;
         kg::bump_gen(db)?;
         Ok(RememberOutput{id,duplicate_of,near_duplicate:near,entities:resolutions,relations:rel_results,invalidated_relations:invalidated,superseded_memories:supersedes,hints:if content.len()>2000{vec!["long content: consider splitting into atomic memories".into()]}else{Vec::new()}})
     })
@@ -430,6 +436,28 @@ fn write_similar(db: &Db, entity: i64, other: i64, score: f32) -> Result<()> {
         params![a, b, score],
     )?;
     kg::project_similar(db, a, b, score)
+}
+
+/// A memory whose every evidenced relation has ended describes a past state:
+/// give it valid_to = the latest relation end (if still open), so recall treats
+/// it as history ("lives in Austin" once "lives in Denver" was written).
+pub fn end_memories_of_ended_facts(db: &Db, relation_ids: &[i64]) -> Result<()> {
+    for rid in relation_ids {
+        db.sql().execute(
+            "UPDATE memories SET valid_to = (
+                 SELECT MAX(r.valid_to) FROM relation_evidence e JOIN relations r ON r.id = e.relation_id
+                 WHERE e.memory_id = memories.id)
+             WHERE valid_to IS NULL
+               AND id IN (SELECT memory_id FROM relation_evidence WHERE relation_id = ?1)
+               AND NOT EXISTS (
+                 SELECT 1 FROM relation_evidence e JOIN relations r ON r.id = e.relation_id
+                 WHERE e.memory_id = memories.id AND r.valid_to IS NULL)
+               AND (SELECT MAX(r.valid_to) FROM relation_evidence e JOIN relations r ON r.id = e.relation_id
+                    WHERE e.memory_id = memories.id) > valid_from",
+            [rid],
+        )?;
+    }
+    Ok(())
 }
 
 fn resolve_endpoint(
