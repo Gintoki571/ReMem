@@ -382,6 +382,8 @@ pub struct Community {
     /// Most central / most relevant entities first.
     pub entities: Vec<EntityCard>,
     pub facts: Vec<FactHit>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub representative: Option<MemoryHit>,
     pub score: f64,
 }
 

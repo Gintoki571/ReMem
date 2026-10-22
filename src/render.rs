@@ -23,6 +23,7 @@ fn memory_line(m: &MemoryHit, fmt: Fmt<'_>) -> String {
         line.push('→');
         line.push_str(&fmt(to));
     }
+
     if m.ended {
         match m.superseded_by {
             Some(by) => line.push_str(&format!(" [superseded by m{by}]")),
@@ -37,6 +38,19 @@ fn memory_line(m: &MemoryHit, fmt: Fmt<'_>) -> String {
         line.push(')');
     }
     line
+}
+
+fn truncate_content(content: &str, max_chars: usize) -> String {
+    if content.chars().count() <= max_chars {
+        return content.to_string();
+    }
+    let mut out: String = content.chars().take(max_chars.saturating_sub(1)).collect();
+    out.push('…');
+    out
+}
+
+fn timeline_memory_line(m: &MemoryHit, fmt: Fmt<'_>) -> String {
+    truncate_content(&memory_line(m, fmt), 160)
 }
 
 /// `[r9] Mom —live in→ Pune (since 2026-09-14)`
@@ -211,7 +225,7 @@ pub fn render_entity(out: &EntityOutput, fmt: Fmt<'_>) -> String {
     if !out.timeline.is_empty() {
         s.push_str("timeline:\n");
         for m in &out.timeline {
-            s.push_str(&memory_line(m, fmt));
+            s.push_str(&timeline_memory_line(m, fmt));
             s.push('\n');
         }
     }
@@ -246,6 +260,11 @@ pub fn render_overview(out: &OverviewOutput, fmt: Fmt<'_>) -> String {
         for f in &c.facts {
             s.push_str("  ");
             s.push_str(&fact_line(f, fmt));
+            s.push('\n');
+        }
+        if let Some(m) = &c.representative {
+            s.push_str("  e.g. ");
+            s.push_str(&timeline_memory_line(m, fmt));
             s.push('\n');
         }
     }
@@ -506,6 +525,24 @@ mod tests {
     }
 
     #[test]
+    fn entity_timeline_truncates_long_memory_lines() {
+        let out = EntityOutput {
+            card: card(3, "Mom", "person", &[]),
+            current_facts: Vec::new(),
+            past_facts: Vec::new(),
+            similar: Vec::new(),
+            timeline: vec![hit(42, "note", &"x".repeat(300), 100, None, false)],
+        };
+        let rendered = render_entity(&out, &fake);
+        let line = rendered
+            .lines()
+            .find(|line| line.starts_with("[m42]"))
+            .unwrap();
+        assert!(line.ends_with('…'));
+        assert_eq!(line.chars().count(), 160);
+    }
+
+    #[test]
     fn change_is_one_line_per_item() {
         let out = ChangeOutput {
             changed: vec!["m12 valid_to=2026-10-01".into(), "r4 expired".into()],
@@ -528,6 +565,7 @@ mod tests {
                 entities: vec![card(3, "Mom", "person", &[]), card(8, "Pune", "place", &[])],
                 facts: vec![fact(9, "Pune", 100, None, false)],
                 score: 0.83,
+                representative: None,
             }],
         };
         assert_eq!(

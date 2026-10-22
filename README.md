@@ -84,7 +84,8 @@ entities: [e1] Mom (person; aka mother) · [e2] Pune (place)
 | `import-remem <path>` | one-shot import of a ReMem v3 database |
 | `export [--out FILE]` | write memories as JSON Lines (`--include-forgotten`) |
 | `import <file.jsonl>` | replay a JSON Lines export through `remember` |
-| `bench` | synthetic remember/recall latency report |
+| `bench [--n N] [--queries N] [--db PATH]` | synthetic remember/recall latency report |
+| `eval <fixtures.json> [--ablation] [--failures] [--set key=value] [--sweep key=v1,v2]` | evaluate retrieval quality |
 | `mcp` | run the MCP stdio server |
 
 `remember` flags: `--kind --tags --importance --scope --source --session --when
@@ -200,6 +201,15 @@ Facts are bi-temporal: `valid_from`/`valid_to` say when something was true in
 the world, `expired_at` says when neocortex retired it. Changed facts are kept
 as history and are never presented as current unless you ask for history or an
 `as_of` snapshot.
+
+## Quality
+
+On 84 queries, recall is **0.951** and MRR is **0.868**. Ablation scores are
+**0.904** with graph retrieval off and **0.920** with vector retrieval off.
+Recall p50 is about **60 ms** with UltraBERT on a 12-core laptop CPU; the
+10k-memory benchmark reports **45 ms p50 / 146 ms p95** excluding embedding.
+Retrieval uses four channels, then RRF (`k=5`), modifiers, MMR and graph
+context.
 
 ## Environment
 

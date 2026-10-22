@@ -79,6 +79,8 @@ Store something when it will still matter next week:
 | `stats` | `neocortex stats` | counts and model status |
 
 Every tool takes `format: "text"` (default) or `"json"`.
+Use `overview` for a compact global view of related entities, facts and a
+representative memory; use `entity` for one entity's facts and timeline.
 
 ## Examples
 
@@ -106,8 +108,8 @@ Record a change instead of a contradiction:
 Recall before deciding:
 
 ```
-recall query="how do we deploy" tags=["deploy"]
-recall query="what did we decide about storage" include_history=true
+neocortex recall "how do we deploy" --tags deploy
+neocortex recall "what did we decide about storage" --history
 ```
 
 CLI, same memory:
@@ -117,3 +119,6 @@ neocortex remember "Chose SQLite over Postgres for neocortex: one file, no serve
   --kind decision --tags architecture,storage --importance 0.8
 neocortex recall "storage choice" --k 5 --json
 ```
+
+Write absolute dates; neocortex resolves relative dates in the machine's local
+timezone.

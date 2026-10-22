@@ -477,7 +477,18 @@ fn overview_finds_two_communities() {
     let e = engine(Arc::new(HashEmbedder));
     for (source, target) in [("Alpha", "Beta"), ("Beta", "Gamma"), ("Gamma", "Alpha")] {
         remember(&e, &format!("{source} works with {target}."), |i| {
-            i.entities = vec![entity(source), entity(target)];
+            i.entities = vec![
+                EntityIn {
+                    name: source.into(),
+                    kind: Some("project".into()),
+                    ..Default::default()
+                },
+                EntityIn {
+                    name: target.into(),
+                    kind: Some("project".into()),
+                    ..Default::default()
+                },
+            ];
             i.relations = vec![relation(
                 source,
                 "works with",
@@ -500,6 +511,51 @@ fn overview_finds_two_communities() {
     let out = e.overview(None, 10).unwrap();
     assert!(out.communities.len() >= 2);
     assert!(out.communities.iter().map(|c| c.size).sum::<usize>() >= 6);
+    assert!(out.communities.iter().all(|c| c.representative.is_some()));
+}
+
+#[test]
+fn overview_drops_junk_and_chooses_typed_labels_and_representative() {
+    let e = engine(Arc::new(HashEmbedder));
+    let representative = remember(&e, "Alpha Beta Alpha roadmap decision with details.", |i| {
+        i.entities = vec![
+            EntityIn {
+                name: "Alpha".into(),
+                kind: Some("project".into()),
+                ..Default::default()
+            },
+            EntityIn {
+                name: "Beta".into(),
+                kind: Some("project".into()),
+                ..Default::default()
+            },
+        ];
+        i.relations = vec![relation(
+            "Alpha",
+            "works with",
+            "Beta",
+            "Alpha works with Beta",
+        )];
+    });
+    remember(&e, "Alpha release planning.", |i| {
+        i.entities = vec![EntityIn {
+            name: "Alpha".into(),
+            kind: Some("project".into()),
+            ..Default::default()
+        }];
+    });
+    remember(&e, "junk only.", |i| {
+        i.entities = vec![entity("junk")];
+    });
+    let out = e.overview(None, 10).unwrap();
+    assert_eq!(out.communities.len(), 1);
+    let community = &out.communities[0];
+    assert_eq!(community.entities[0].name, "Alpha");
+    assert_eq!(
+        community.representative.as_ref().unwrap().id,
+        representative
+    );
+    assert!(community.representative.as_ref().unwrap().content.len() < 161);
 }
 
 #[test]

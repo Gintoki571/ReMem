@@ -930,43 +930,139 @@ pub fn entity(engine: &Engine, name: &str, limit: usize) -> Result<EntityOutput>
     })
 }
 
+fn overview_ppr(engine: &Engine, query: &str) -> Result<HashMap<i64, f64>> {
+    let vector = engine.emb.embed(&[query], Mode::Query)?.remove(0);
+    let snap = snapshot(engine, None, false)?;
+    let mut seeds = Vec::new();
+    let names = extract::ngrams(query, 4)
+        .into_iter()
+        .map(|x| x.0)
+        .collect::<Vec<_>>();
+    for id in alias_entities(&engine.db, &names)? {
+        if let Some(&node) = snap.ent_node.get(&id) {
+            seeds.push((node, 1.0));
+        }
+    }
+    let mut st = engine.db.sql().prepare(
+        "SELECT rowid,1-distance FROM entities_vec
+         WHERE embedding MATCH ?1 AND k=10 ORDER BY distance",
+    )?;
+    for row in st.query_map([crate::db::vec_blob(&vector)], |r| {
+        Ok((r.get::<_, i64>(0)?, r.get::<_, f64>(1)?))
+    })? {
+        let (id, score) = row?;
+        if score >= f64::from(engine.cfg.entity_seed) {
+            if let Some(&node) = snap.ent_node.get(&id) {
+                seeds.push((node, score));
+            }
+        }
+    }
+    Ok(
+        graph::ppr_push(&snap.csr, &seeds, engine.cfg.alpha, engine.cfg.eps, 200_000)
+            .into_iter()
+            .filter_map(|(node, score)| match snap.node_kind.get(node as usize) {
+                Some(('e', id)) => Some((*id, score)),
+                _ => None,
+            })
+            .collect(),
+    )
+}
+
+fn representative(engine: &Engine, ids: &[i64]) -> Result<Option<MemoryHit>> {
+    if ids.is_empty() {
+        return Ok(None);
+    }
+    let marks = std::iter::repeat_n("?", ids.len())
+        .collect::<Vec<_>>()
+        .join(",");
+    let sql = format!(
+        "SELECT m.id,m.kind,m.content,m.valid_from,m.valid_to,m.expired_at,m.superseded_by,m.tags
+         FROM memories m JOIN mentions mn ON mn.memory_id=m.id
+         WHERE mn.entity_id IN ({marks}) AND m.expired_at IS NULL
+         GROUP BY m.id
+         ORDER BY COUNT(DISTINCT mn.entity_id) DESC,m.importance DESC,m.valid_from DESC
+         LIMIT 1"
+    );
+    let row = engine
+        .db
+        .sql()
+        .query_row(&sql, params_from_iter(ids.iter()), |r| {
+            let valid_to: Option<i64> = r.get(4)?;
+            let expired: Option<i64> = r.get(5)?;
+            Ok(MemoryHit {
+                id: r.get(0)?,
+                kind: r.get(1)?,
+                content: r.get(2)?,
+                valid_from: r.get(3)?,
+                valid_to,
+                ended: expired.is_some() || valid_to.is_some_and(|x| x <= engine.clock().now),
+                superseded_by: r.get(6)?,
+                tags: r
+                    .get::<_, String>(7)?
+                    .split_whitespace()
+                    .map(str::to_string)
+                    .collect(),
+                score: 0.0,
+                reasons: Vec::new(),
+            })
+        })
+        .optional()?;
+    Ok(row)
+}
+
 pub fn overview(engine: &Engine, query: Option<&str>, k: usize) -> Result<OverviewOutput> {
     let comm = kg::communities(&engine.db)?;
     let mut groups: HashMap<i64, Vec<i64>> = HashMap::new();
     for (e, c) in comm {
         groups.entry(c).or_default().push(e);
     }
+    let ppr = query.map(|q| overview_ppr(engine, q)).transpose()?;
     let mut out = Vec::new();
     for (cid, ids) in groups {
-        let entities = ids
+        let mut ranked = ids
             .iter()
-            .take(5)
+            .map(|id| {
+                let (kind, description, mentions): (String, String, i64) =
+                    engine.db.sql().query_row(
+                        "SELECT type,description,mention_count FROM entities WHERE id=?1",
+                        [id],
+                        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                    )?;
+                Ok((
+                    *id,
+                    (!kind.is_empty() || !description.is_empty()),
+                    mentions,
+                    ppr.as_ref().and_then(|x| x.get(id)).copied().unwrap_or(0.0),
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        if ranked
+            .iter()
+            .all(|(_, typed, mentions, _)| !*typed && *mentions <= 1)
+        {
+            continue;
+        }
+        ranked.sort_by(|a, b| {
+            b.1.cmp(&a.1)
+                .then_with(|| b.2.cmp(&a.2))
+                .then_with(|| b.3.partial_cmp(&a.3).unwrap())
+        });
+        let ordered_ids: Vec<i64> = ranked.iter().map(|x| x.0).collect();
+        let entities = ordered_ids
+            .iter()
+            .take(3)
             .map(|id| card(engine, *id))
             .collect::<Result<Vec<_>>>()?;
-        let facts = facts_for(engine, &ids, false, engine.clock().now, 5)?;
+        let facts = facts_for(engine, &ordered_ids, false, engine.clock().now, 3)?;
         let score = query
-            .map(|q| {
-                ids.iter()
-                    .filter_map(|id| {
-                        engine
-                            .db
-                            .sql()
-                            .query_row(
-                                "SELECT mention_count FROM entities WHERE id=?1",
-                                [id],
-                                |r| r.get::<_, i64>(0),
-                            )
-                            .ok()
-                    })
-                    .sum::<i64>() as f64
-                    + q.len() as f64 * 0.0
-            })
-            .unwrap_or(ids.len() as f64);
+            .map(|_| ranked.iter().map(|x| x.3).sum())
+            .unwrap_or_else(|| ranked.iter().map(|x| x.2 as f64).sum());
         out.push(Community {
             id: cid,
-            size: ids.len(),
+            size: ordered_ids.len(),
             entities,
             facts,
+            representative: representative(engine, &ordered_ids)?,
             score,
         });
     }
