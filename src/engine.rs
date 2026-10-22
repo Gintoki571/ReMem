@@ -365,7 +365,7 @@ pub struct OverviewOutput {
 impl Engine {
     /// Store a memory (design §6).
     pub fn remember(&self, _inp: RememberInput) -> Result<RememberOutput> {
-        todo!("phase 2: write lane")
+        crate::remember::remember(&self.db, self.emb.as_ref(), &self.cfg, self.clock(), _inp)
     }
 
     /// Retrieve (design §8).
@@ -380,22 +380,232 @@ impl Engine {
 
     /// End validity of a memory (m<id>) or relation (r<id>) at `at` (default now).
     pub fn invalidate(&self, _id: &str, _at: Option<&str>) -> Result<ChangeOutput> {
-        todo!("phase 2: write lane")
+        let now = self.clock().now;
+        let at = _at
+            .map(|x| {
+                crate::temporal::parse_instant(x, &self.clock())
+                    .ok_or_else(|| crate::err!("invalid at; use ISO date or unix seconds"))
+            })
+            .transpose()?
+            .unwrap_or(now);
+        self.db.write(|db| {
+            if let Some(id) = parse_id(_id, 'm') {
+                let vf: i64 = db
+                    .sql()
+                    .query_row("SELECT valid_from FROM memories WHERE id=?1", [id], |r| {
+                        r.get(0)
+                    })
+                    .map_err(|_| crate::err!("unknown memory m{id}"))?;
+                if at < vf {
+                    return Err(crate::err!("at precedes memory valid_from"));
+                }
+                db.sql()
+                    .execute("UPDATE memories SET valid_to=?1 WHERE id=?2", [at, id])?;
+                crate::kg::bump_gen(db)?;
+                return Ok(ChangeOutput {
+                    changed: vec![format!("m{id} valid_to={at}")],
+                });
+            }
+            if let Some(id) = parse_id(_id, 'r') {
+                let vf: i64 = db
+                    .sql()
+                    .query_row("SELECT valid_from FROM relations WHERE id=?1", [id], |r| {
+                        r.get(0)
+                    })
+                    .map_err(|_| crate::err!("unknown relation r{id}"))?;
+                if at < vf {
+                    return Err(crate::err!("at precedes relation valid_from"));
+                }
+                db.sql()
+                    .execute("UPDATE relations SET valid_to=?1 WHERE id=?2", [at, id])?;
+                crate::kg::bump_gen(db)?;
+                return Ok(ChangeOutput {
+                    changed: vec![format!("r{id} valid_to={at}")],
+                });
+            }
+            Err(crate::err!("invalid id '{_id}'"))
+        })
     }
 
     /// Retire a memory (soft) or delete it with vectors/mentions/evidence (hard).
     pub fn forget(&self, _id: &str, _hard: bool) -> Result<ChangeOutput> {
-        todo!("phase 2: write lane")
+        let now = self.clock().now;
+        self.db.write(|db| {
+            let Some(id) = parse_id(_id, 'm') else {
+                return Err(crate::err!("invalid memory id '{_id}'"));
+            };
+            let exists: bool = db.sql().query_row(
+                "SELECT EXISTS(SELECT 1 FROM memories WHERE id=?1)",
+                [id],
+                |r| r.get(0),
+            )?;
+            if !exists {
+                return Err(crate::err!("unknown memory m{id}"));
+            }
+            if _hard {
+                // Relations whose only evidence was this memory disappear with
+                // it, including their FTS/vector rows.
+                let orphaned: Vec<i64> = {
+                    let mut st = db.sql().prepare(
+                        "SELECT r.id FROM relations r
+                         JOIN relation_evidence e ON e.relation_id=r.id
+                         WHERE e.memory_id=?1
+                           AND (SELECT count(*) FROM relation_evidence e2
+                                WHERE e2.relation_id=r.id)=1",
+                    )?;
+                    let rows = st.query_map([id], |r| r.get(0))?;
+                    rows.collect::<rusqlite::Result<_>>()?
+                };
+                for rid in orphaned {
+                    db.sql()
+                        .execute("DELETE FROM relations_fts WHERE rowid=?1", [rid])?;
+                    db.sql()
+                        .execute("DELETE FROM relations_vec WHERE rowid=?1", [rid])?;
+                    db.sql()
+                        .execute("DELETE FROM relations WHERE id=?1", [rid])?;
+                }
+                db.sql()
+                    .execute("DELETE FROM memories_vec WHERE rowid=?1", [id])?;
+                // Cascades mentions and relation_evidence.
+                db.sql().execute("DELETE FROM memories WHERE id=?1", [id])?;
+                crate::kg::rebuild_all(db)?;
+            } else {
+                // Soft forget keeps the projection node: it is history, and
+                // snapshot/validate exclude it from the live graph.
+                db.sql()
+                    .execute("UPDATE memories SET expired_at=?1 WHERE id=?2", [now, id])?;
+                db.sql()
+                    .execute("UPDATE memories_vec SET live=0 WHERE rowid=?1", [id])?;
+            }
+            crate::kg::bump_gen(db)?;
+            Ok(ChangeOutput {
+                changed: vec![format!(
+                    "m{id} {}",
+                    if _hard { "deleted" } else { "expired" }
+                )],
+            })
+        })
     }
 
     /// Merge entity `merge` into `keep` (aliases, mentions, relations move).
     pub fn merge_entities(&self, _keep: &str, _merge: &str) -> Result<ChangeOutput> {
-        todo!("phase 2: write lane")
+        let k = parse_entity(&self.db, _keep)?;
+        let m = parse_entity(&self.db, _merge)?;
+        if k == m {
+            return Err(crate::err!("cannot merge an entity into itself"));
+        }
+        let now = self.clock().now;
+        self.db.write(|db| {
+            // Move similar edges to `keep`, dropping self pairs and keeping the
+            // highest score per pair.
+            let moved: Vec<(i64, i64, f32)> = {
+                let mut st = db
+                    .sql()
+                    .prepare("SELECT a,b,score FROM similar WHERE a=?1 OR b=?1")?;
+                let rows = st.query_map([m], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+                rows.collect::<rusqlite::Result<_>>()?
+            };
+            db.sql()
+                .execute("DELETE FROM similar WHERE a=?1 OR b=?1", [m])?;
+            for (a, b, score) in moved {
+                let other = if a == m { b } else { a };
+                if other == k || other == m {
+                    continue;
+                }
+                let (lo, hi) = if other < k { (other, k) } else { (k, other) };
+                db.sql().execute(
+                    "INSERT INTO similar(a,b,score) VALUES (?1,?2,?3)
+                     ON CONFLICT(a,b) DO UPDATE SET score=MAX(score, excluded.score)",
+                    rusqlite::params![lo, hi, score],
+                )?;
+            }
+            db.sql().execute(
+                "UPDATE OR IGNORE mentions SET entity_id=?1 WHERE entity_id=?2",
+                [k, m],
+            )?;
+            db.sql()
+                .execute("DELETE FROM mentions WHERE entity_id=?1", [m])?;
+            db.sql().execute(
+                "UPDATE OR IGNORE entity_aliases SET entity_id=?1, origin='manual' WHERE entity_id=?2",
+                [k, m],
+            )?;
+            db.sql()
+                .execute("DELETE FROM entity_aliases WHERE entity_id=?1", [m])?;
+            db.sql()
+                .execute("UPDATE relations SET src=?1 WHERE src=?2", [k, m])?;
+            db.sql()
+                .execute("UPDATE relations SET dst=?1 WHERE dst=?2", [k, m])?;
+            // Self-loops created by the merge (or already present) are noise.
+            let loops: Vec<i64> = {
+                let mut st = db
+                    .sql()
+                    .prepare("SELECT id FROM relations WHERE src=dst AND src=?1")?;
+                let rows = st.query_map([k], |r| r.get::<_, i64>(0))?;
+                rows.collect::<rusqlite::Result<_>>()?
+            };
+            for rid in loops {
+                db.sql()
+                    .execute("DELETE FROM relations_fts WHERE rowid=?1", [rid])?;
+                db.sql()
+                    .execute("DELETE FROM relations_vec WHERE rowid=?1", [rid])?;
+                db.sql().execute("DELETE FROM relations WHERE id=?1", [rid])?;
+            }
+            let merged_count: i64 = db.sql().query_row(
+                "SELECT mention_count FROM entities WHERE id=?1",
+                [m],
+                |r| r.get(0),
+            )?;
+            db.sql().execute(
+                "UPDATE entities SET mention_count=mention_count+?1, updated_at=?2 WHERE id=?3",
+                rusqlite::params![merged_count, now, k],
+            )?;
+            db.sql()
+                .execute("DELETE FROM entities_fts WHERE rowid=?1", [m])?;
+            db.sql()
+                .execute("DELETE FROM entities_vec WHERE rowid=?1", [m])?;
+            db.sql().execute("DELETE FROM entities WHERE id=?1", [m])?;
+            crate::resolve::refresh_entity_fts(db, k)?;
+            crate::kg::rebuild_all(db)?;
+            crate::kg::bump_gen(db)?;
+            Ok(ChangeOutput {
+                changed: vec![format!("e{m} merged into e{k}")],
+            })
+        })
     }
 
     /// Add an alias name to an entity.
     pub fn add_alias(&self, _entity: &str, _alias: &str) -> Result<ChangeOutput> {
-        todo!("phase 2: write lane")
+        let id = parse_entity(&self.db, _entity)?;
+        let norm = crate::text::norm_name(_alias);
+        if norm.is_empty() {
+            return Err(crate::err!("alias must not be empty"));
+        }
+        self.db.write(|db| {
+            let other: Option<i64> = db
+                .sql()
+                .query_row(
+                    "SELECT entity_id FROM entity_aliases WHERE alias_norm=?1 AND entity_id<>?2 LIMIT 1",
+                    rusqlite::params![norm, id],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            if let Some(other) = other {
+                return Err(crate::err!(
+                    "alias '{}' names e{}; merge entities first",
+                    _alias,
+                    other
+                ));
+            }
+            db.sql().execute(
+                "INSERT OR IGNORE INTO entity_aliases(alias_norm,entity_id,origin) VALUES(?1,?2,'manual')",
+                rusqlite::params![norm, id],
+            )?;
+            crate::resolve::refresh_entity_fts(db, id)?;
+            crate::kg::bump_gen(db)?;
+            Ok(ChangeOutput {
+                changed: vec![format!("e{id} alias={norm}")],
+            })
+        })
     }
 
     /// Communities of the entity graph, ranked by relevance to `query` (or size).
@@ -404,21 +614,170 @@ impl Engine {
     }
 
     pub fn stats(&self) -> Result<Stats> {
-        todo!("phase 2: write lane")
+        let c = self.db.sql();
+        Ok(Stats {
+            memories: c.query_row("SELECT count(*) FROM memories", [], |r| r.get(0))?,
+            live_memories: c.query_row(
+                "SELECT count(*) FROM memories WHERE expired_at IS NULL",
+                [],
+                |r| r.get(0),
+            )?,
+            entities: c.query_row("SELECT count(*) FROM entities", [], |r| r.get(0))?,
+            relations: c.query_row("SELECT count(*) FROM relations", [], |r| r.get(0))?,
+            live_relations: c.query_row(
+                "SELECT count(*) FROM relations WHERE expired_at IS NULL",
+                [],
+                |r| r.get(0),
+            )?,
+            similar_edges: c.query_row("SELECT count(*) FROM similar", [], |r| r.get(0))?,
+            predicates: c.query_row("SELECT count(*) FROM predicates", [], |r| r.get(0))?,
+            db_bytes: c.query_row(
+                "SELECT page_count*page_size FROM pragma_page_count(), pragma_page_size()",
+                [],
+                |r| r.get(0),
+            )?,
+            embedder: self.emb.name().into(),
+            version: env!("CARGO_PKG_VERSION").into(),
+        })
     }
 
     /// Rebuild the graphqlite projection from the relational tables.
     pub fn reindex(&self) -> Result<ChangeOutput> {
-        todo!("phase 2: write lane")
+        self.db.write(|db| {
+            crate::kg::rebuild_all(db)?;
+            crate::kg::bump_gen(db)?;
+            Ok(ChangeOutput {
+                changed: vec!["projection rebuilt".into()],
+            })
+        })
     }
 
     /// Integrity problems (projection drift, orphan vectors, dangling refs); empty = healthy.
     pub fn validate(&self) -> Result<Vec<String>> {
-        todo!("phase 2: write lane")
+        let c = self.db.sql();
+        let mut out = Vec::new();
+        let count =
+            |sql: &str| -> Result<i64> { Ok(c.query_row(sql, [], |r| r.get::<_, i64>(0))?) };
+        let cypher_count = |query: &str| -> Result<i64> {
+            Ok(self
+                .db
+                .graph()
+                .cypher(query)?
+                .iter()
+                .next()
+                .and_then(|r| r.get::<i64>("c").ok())
+                .unwrap_or(0))
+        };
+        let nodes = cypher_count("MATCH (n) RETURN count(n) AS c")?;
+        let edges = cypher_count("MATCH (a)-[r]->(b) RETURN count(r) AS c")?;
+        let memories = count("SELECT count(*) FROM memories")?;
+        let entities = count("SELECT count(*) FROM entities")?;
+        let mentions = count("SELECT count(*) FROM mentions")?;
+        let similar = count("SELECT count(*) FROM similar")?;
+        let relations = count("SELECT count(*) FROM relations")?;
+        if nodes != memories + entities {
+            out.push(format!(
+                "projection nodes: {nodes}, relational: {}",
+                memories + entities
+            ));
+        }
+        if edges != mentions + similar + relations {
+            out.push(format!(
+                "projection edges: {edges}, relational: {}",
+                mentions + similar + relations
+            ));
+        }
+        if count("SELECT count(*) FROM memories_vec")? != memories {
+            out.push("memory vectors do not match memories".into());
+        }
+        if count("SELECT count(*) FROM entities_vec")? != entities {
+            out.push("entity vectors do not match entities".into());
+        }
+        let dangling_mentions = count(
+            "SELECT count(*) FROM mentions m
+             LEFT JOIN memories mem ON mem.id=m.memory_id
+             LEFT JOIN entities e ON e.id=m.entity_id
+             WHERE mem.id IS NULL OR e.id IS NULL",
+        )?;
+        if dangling_mentions != 0 {
+            out.push(format!(
+                "{dangling_mentions} mentions point at missing rows"
+            ));
+        }
+        let dangling_evidence = count(
+            "SELECT count(*) FROM relation_evidence ev
+             LEFT JOIN relations r ON r.id=ev.relation_id
+             LEFT JOIN memories m ON m.id=ev.memory_id
+             WHERE r.id IS NULL OR m.id IS NULL",
+        )?;
+        if dangling_evidence != 0 {
+            out.push(format!(
+                "{dangling_evidence} relation_evidence rows point at missing rows"
+            ));
+        }
+        Ok(out)
     }
 
     /// Read-only Cypher; rejects CREATE/MERGE/SET/DELETE/REMOVE/DROP.
     pub fn cypher(&self, _query: &str) -> Result<serde_json::Value> {
-        todo!("phase 2: write lane")
+        let upper = _query.to_ascii_uppercase();
+        for word in [
+            "CREATE", "MERGE", "SET", "DELETE", "DETACH", "REMOVE", "DROP", "CALL",
+        ] {
+            if upper
+                .split(|c: char| !c.is_ascii_alphabetic())
+                .any(|x| x == word)
+            {
+                return Err(crate::err!("cypher is read-only; {word} is not allowed"));
+            }
+        }
+        let result = self.db.graph().cypher(_query)?;
+        let rows: Vec<serde_json::Value> = result
+            .iter()
+            .map(|r| {
+                let mut obj = serde_json::Map::new();
+                for col in r.columns() {
+                    if let Some(v) = r.get_value(col) {
+                        obj.insert(
+                            col.clone(),
+                            serde_json::to_value(v).unwrap_or(serde_json::Value::Null),
+                        );
+                    }
+                }
+                serde_json::Value::Object(obj)
+            })
+            .collect();
+        Ok(serde_json::Value::Array(rows))
+    }
+}
+
+impl Engine {
+    pub fn check_embedder(&self) -> Result<()> {
+        crate::remember::check_embedder(&self.db, self.emb.as_ref())
+    }
+}
+fn parse_entity(db: &Db, s: &str) -> Result<i64> {
+    if let Some(id) = parse_id(s, 'e') {
+        return Ok(id);
+    };
+    let n = crate::text::norm_name(s);
+    db.sql()
+        .query_row(
+            "SELECT entity_id FROM entity_aliases WHERE alias_norm=?1 LIMIT 1",
+            [n],
+            |r| r.get(0),
+        )
+        .map_err(|_| crate::err!("unknown entity '{s}'"))
+}
+trait OptionalRow<T> {
+    fn optional(self) -> rusqlite::Result<Option<T>>;
+}
+impl<T> OptionalRow<T> for rusqlite::Result<T> {
+    fn optional(self) -> rusqlite::Result<Option<T>> {
+        match self {
+            Ok(v) => Ok(Some(v)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 }

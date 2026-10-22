@@ -125,7 +125,6 @@ fn remember_then_recall_from_the_cli() {
 }
 
 #[test]
-#[ignore = "needs phase-2 engine"]
 fn remember_reads_json_from_stdin() {
     use std::io::Write;
     let db = temp_db();
@@ -149,13 +148,12 @@ fn remember_reads_json_from_stdin() {
 }
 
 #[test]
-#[ignore = "needs phase-2 engine"]
 fn invalidate_forget_and_stats_from_the_cli() {
     let db = temp_db();
     let o = memory_cmd(&db, &["remember", "The deploy runs on Fridays."]);
     assert!(o.status.success(), "{}", stderr(&o));
 
-    let o = memory_cmd(&db, &["invalidate", "m1", "--at", "2026-10-01"]);
+    let o = memory_cmd(&db, &["invalidate", "m1", "--at", "2027-10-01"]);
     assert!(o.status.success(), "{}", stderr(&o));
 
     let o = memory_cmd(&db, &["forget", "m1", "--hard"]);
