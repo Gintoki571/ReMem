@@ -18,6 +18,10 @@ use std::sync::OnceLock;
 
 /// Largest accepted request line (16 MiB).
 pub const MAX_MESSAGE: usize = 16 * 1024 * 1024;
+const MAX_CONTENT: usize = 32 * 1024;
+const MAX_QUERY: usize = 2 * 1024;
+const MAX_ITEMS: usize = 64;
+const MAX_NAME: usize = 200;
 
 const PROTOCOLS: [&str; 3] = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
@@ -296,6 +300,7 @@ fn run_tool(engine: &Engine, name: &str, args: &Value) -> std::result::Result<St
             ))
         }
     };
+    validate_limits(name, args)?;
     match name {
         "remember" => {
             require(args, &["content"])?;
@@ -303,6 +308,7 @@ fn run_tool(engine: &Engine, name: &str, args: &Value) -> std::result::Result<St
             let out = engine.remember(inp).map_err(engine_error)?;
             emit(format, &out, || render::render_remember(&out))
         }
+
         "recall" => {
             require(args, &["query"])?;
             let inp: RecallInput = from_args(args)?;
@@ -313,6 +319,7 @@ fn run_tool(engine: &Engine, name: &str, args: &Value) -> std::result::Result<St
                 text
             })
         }
+
         "entity" => {
             require(args, &["name"])?;
             let name = args["name"].as_str().unwrap_or_default();
@@ -375,6 +382,94 @@ fn run_tool(engine: &Engine, name: &str, args: &Value) -> std::result::Result<St
         }
         _ => Err(ToolError::Unknown),
     }
+}
+
+fn validate_limits(name: &str, args: &Value) -> std::result::Result<(), ToolError> {
+    let check_text = |field: &str, max: usize| {
+        if args
+            .get(field)
+            .and_then(Value::as_str)
+            .is_some_and(|v| v.len() > max)
+        {
+            Err(ToolError::Failed(format!(
+                "{field} exceeds the {max}-byte limit"
+            )))
+        } else {
+            Ok(())
+        }
+    };
+    if name == "remember" {
+        check_text("content", MAX_CONTENT)?;
+    }
+    if name == "recall" || name == "overview" {
+        check_text("query", MAX_QUERY)?;
+    }
+    for field in ["entities", "relations", "keywords", "tags", "supersedes"] {
+        if args
+            .get(field)
+            .and_then(Value::as_array)
+            .is_some_and(|v| v.len() > MAX_ITEMS)
+        {
+            return Err(ToolError::Failed(format!(
+                "{field} exceeds the {MAX_ITEMS}-item limit"
+            )));
+        }
+    }
+    for field in ["k", "budget", "limit"] {
+        if let Some(value) = args.get(field).and_then(Value::as_u64) {
+            let max = match field {
+                "k" => 50,
+                "budget" => 20_000,
+                _ => 200,
+            };
+            if value > max {
+                return Err(ToolError::Failed(format!(
+                    "{field} exceeds the {max} limit"
+                )));
+            }
+        }
+    }
+    for field in [
+        "name",
+        "source",
+        "predicate",
+        "target",
+        "keep",
+        "merge",
+        "entity",
+        "alias",
+    ] {
+        if args
+            .get(field)
+            .and_then(Value::as_str)
+            .is_some_and(|v| v.chars().count() > MAX_NAME)
+        {
+            return Err(ToolError::Failed(format!(
+                "{field} exceeds the {MAX_NAME}-character limit"
+            )));
+        }
+    }
+    for (collection, fields) in [
+        ("entities", &["name", "type", "description"][..]),
+        ("relations", &["source", "predicate", "target"][..]),
+    ] {
+        if let Some(items) = args.get(collection).and_then(Value::as_array) {
+            for item in items {
+                for field in fields {
+                    if item
+                        .get(*field)
+                        .and_then(Value::as_str)
+                        .is_some_and(|v| v.chars().count() > MAX_NAME)
+                    {
+                        return Err(ToolError::Failed(format!(
+                            "{collection}.{field} exceeds the {MAX_NAME}-character limit"
+                        )));
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn emit<T: Serialize>(

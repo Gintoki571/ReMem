@@ -191,6 +191,47 @@ fn missing_required_argument_is_a_tool_error() {
     );
 }
 
+#[test]
+fn oversized_recall_query_is_rejected_at_the_tool_boundary() {
+    let mut mcp = Mcp::start();
+    mcp.initialize(PROTOCOLS[0]);
+    let query = "x".repeat(1024 * 1024);
+    let started = std::time::Instant::now();
+    let resp = mcp.call(json!({
+        "jsonrpc": "2.0", "id": 8, "method": "tools/call",
+        "params": {"name": "recall", "arguments": {"query": query}}
+    }));
+    assert!(started.elapsed() < std::time::Duration::from_secs(1));
+    assert_eq!(resp["result"]["isError"], true);
+    assert!(resp["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("query"));
+    assert!(resp["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("2048"));
+}
+
+#[test]
+fn oversized_remember_collection_is_rejected_with_field_and_limit() {
+    let mut mcp = Mcp::start();
+    mcp.initialize(PROTOCOLS[0]);
+    let entities: Vec<Value> = (0..65)
+        .map(|i| json!({"name": format!("entity-{i}")}))
+        .collect();
+    let resp = mcp.call(json!({
+        "jsonrpc": "2.0", "id": 9, "method": "tools/call",
+        "params": {"name": "remember", "arguments": {
+            "content": "bounded input", "entities": entities
+        }}
+    }));
+    assert_eq!(resp["result"]["isError"], true);
+    let text = resp["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(text.contains("entities"));
+    assert!(text.contains("64"));
+}
+
 // ------------------------------------------------------------ phase 2
 
 #[test]

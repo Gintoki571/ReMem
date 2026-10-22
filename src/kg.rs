@@ -191,23 +191,23 @@ pub fn snapshot(db: &Db, as_of: Option<i64>, include_ended: bool) -> Result<Snap
             edges.push((a, b, 1.0));
         }
     }
-    if include_ended {
-        let mut st = db
-            .sql()
-            .prepare("SELECT src,dst,evidence_count FROM relations")?;
-        let mut rows = st.query([])?;
+    if let Some(at) = as_of {
+        let mut st = db.sql().prepare(
+            "SELECT src,dst,evidence_count FROM relations
+             WHERE valid_from<=?1 AND (valid_to IS NULL OR valid_to>?1) AND expired_at IS NULL",
+        )?;
+        let mut rows = st.query(params![at])?;
         while let Some(r) = rows.next()? {
             let (s, d, c): (i64, i64, i64) = (r.get(0)?, r.get(1)?, r.get(2)?);
             if let (Some(&a), Some(&b)) = (ent_node.get(&s), ent_node.get(&d)) {
                 edges.push((a, b, (1.0 + c as f64).ln().max(0.5) as f32));
             }
         }
-    } else if let Some(now) = as_of {
-        let mut st = db.sql().prepare(
-            "SELECT src,dst,evidence_count FROM relations
-             WHERE valid_from<=?1 AND (valid_to IS NULL OR valid_to>?1) AND expired_at IS NULL",
-        )?;
-        let mut rows = st.query(params![now])?;
+    } else if include_ended {
+        let mut st = db
+            .sql()
+            .prepare("SELECT src,dst,evidence_count FROM relations")?;
+        let mut rows = st.query([])?;
         while let Some(r) = rows.next()? {
             let (s, d, c): (i64, i64, i64) = (r.get(0)?, r.get(1)?, r.get(2)?);
             if let (Some(&a), Some(&b)) = (ent_node.get(&s), ent_node.get(&d)) {

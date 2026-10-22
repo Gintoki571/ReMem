@@ -81,6 +81,66 @@ fn remember_without_content_is_a_usage_error() {
     assert!(stderr(&o).to_lowercase().contains("content"));
 }
 
+#[test]
+fn oversized_cli_query_is_a_usage_error() {
+    let query = "x".repeat(2049);
+    let o = run(&["recall", &query]);
+    assert_eq!(o.status.code(), Some(2), "{}", stderr(&o));
+    assert!(stderr(&o).contains("query"));
+    assert!(stderr(&o).contains("2048"));
+}
+
+#[test]
+fn cli_recall_k_budget_and_entity_limit_are_bounded() {
+    let o = run(&["recall", "test", "--k", "51"]);
+    assert_eq!(o.status.code(), Some(2), "{}", stderr(&o));
+    assert!(stderr(&o).contains("k"));
+    let o = run(&["recall", "test", "--budget", "20001"]);
+    assert_eq!(o.status.code(), Some(2), "{}", stderr(&o));
+    assert!(stderr(&o).contains("budget"));
+    let o = run(&["entity", "x", "--limit", "201"]);
+    assert_eq!(o.status.code(), Some(2), "{}", stderr(&o));
+    assert!(stderr(&o).contains("limit"));
+}
+
+#[test]
+fn eval_empty_queries_returns_zero_metrics() {
+    let dir = std::env::temp_dir().join(format!("neocortex-empty-eval-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let fixture = dir.join("empty.json");
+    std::fs::write(
+        &fixture,
+        r#"{"now":"2026-01-01","memories":[],"queries":[]}"#,
+    )
+    .unwrap();
+    let o = bin()
+        .env("NEOCORTEX_EMBEDDER", "hash")
+        .args(["eval", fixture.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(o.status.success(), "{}", stderr(&o));
+    assert!(stdout(&o).contains("recall: 0.000"), "{}", stdout(&o));
+}
+
+#[test]
+fn eval_unknown_expected_key_is_an_error() {
+    let dir = std::env::temp_dir().join(format!("neocortex-bad-eval-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let fixture = dir.join("bad.json");
+    std::fs::write(
+        &fixture,
+        r#"{"now":"2026-01-01","memories":[{"key":"a","content":"alpha"}],"queries":[{"q":"alpha","category":"x","expect":["typo"]}]}"#,
+    )
+    .unwrap();
+    let o = bin()
+        .env("NEOCORTEX_EMBEDDER", "hash")
+        .args(["eval", fixture.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(!o.status.success());
+    assert!(stderr(&o).contains("typo"), "{}", stderr(&o));
+}
+
 // ------------------------------------------------------------ phase 2
 
 fn memory_cmd(db: &Path, args: &[&str]) -> Output {
