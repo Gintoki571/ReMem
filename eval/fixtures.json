@@ -1,0 +1,2943 @@
+{
+  "now": "2026-10-21T15:00:00Z",
+  "memories": [
+    {
+      "key": "m001",
+      "content": "Alex's primary email address for professional technical correspondence is alex.mercer.dev@example.org.",
+      "kind": "fact",
+      "tags": [
+        "contact",
+        "personal"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-04-02",
+      "valid_to": "2025-08-20",
+      "entities": [
+        {
+          "name": "Alex Mercer",
+          "type": "person",
+          "aliases": [
+            "Alex"
+          ],
+          "description": "the user"
+        },
+        {
+          "name": "alex.mercer.dev@example.org",
+          "type": "object",
+          "aliases": [
+            "primary email"
+          ],
+          "description": "initial contact email"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alex Mercer",
+          "predicate": "has email",
+          "target": "alex.mercer.dev@example.org",
+          "fact": "Alex Mercer has primary email alex.mercer.dev@example.org",
+          "exclusive": true,
+          "valid_from": "2025-04-02"
+        }
+      ]
+    },
+    {
+      "key": "m002",
+      "content": "Alex resides in a rental apartment in Capitol Hill, Seattle, Washington.",
+      "kind": "fact",
+      "tags": [
+        "residence",
+        "location"
+      ],
+      "importance": 0.9,
+      "valid_from": "2025-04-05",
+      "valid_to": "2025-11-15",
+      "entities": [
+        {
+          "name": "Alex Mercer",
+          "type": "person",
+          "aliases": [
+            "Alex"
+          ]
+        },
+        {
+          "name": "Seattle",
+          "type": "place",
+          "aliases": [
+            "Seattle, WA",
+            "Emerald City"
+          ],
+          "description": "city in Washington state"
+        },
+        {
+          "name": "Capitol Hill apartment",
+          "type": "place",
+          "aliases": [
+            "Seattle home",
+            "Seattle apartment"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alex Mercer",
+          "predicate": "lives in",
+          "target": "Seattle",
+          "fact": "Alex Mercer lives in Seattle",
+          "exclusive": true,
+          "valid_from": "2025-04-05"
+        }
+      ]
+    },
+    {
+      "key": "m003",
+      "content": "Alex is employed as a Staff Software Engineer at Apex Commerce leading the checkout platform team.",
+      "kind": "fact",
+      "tags": [
+        "career",
+        "work"
+      ],
+      "importance": 0.9,
+      "valid_from": "2025-04-08",
+      "valid_to": "2025-10-01",
+      "entities": [
+        {
+          "name": "Alex Mercer",
+          "type": "person",
+          "aliases": [
+            "Alex"
+          ]
+        },
+        {
+          "name": "Apex Commerce",
+          "type": "organization",
+          "aliases": [
+            "Apex"
+          ],
+          "description": "e-commerce software company"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alex Mercer",
+          "predicate": "works at",
+          "target": "Apex Commerce",
+          "fact": "Alex Mercer works at Apex Commerce",
+          "exclusive": true,
+          "valid_from": "2025-04-08"
+        }
+      ]
+    },
+    {
+      "key": "m004",
+      "content": "Selected PostgreSQL as the primary database backend for the Nexus telemetry pipeline because of ACID guarantees.",
+      "kind": "decision",
+      "tags": [
+        "database",
+        "nexus",
+        "architecture"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-04-10",
+      "valid_to": "2025-09-20",
+      "entities": [
+        {
+          "name": "Nexus",
+          "type": "project",
+          "aliases": [
+            "Nexus telemetry",
+            "Nexus pipeline"
+          ],
+          "description": "telemetry ingestion pipeline"
+        },
+        {
+          "name": "PostgreSQL",
+          "type": "tool",
+          "aliases": [
+            "Postgres",
+            "pg"
+          ],
+          "description": "relational database engine"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Nexus",
+          "predicate": "primary database",
+          "target": "PostgreSQL",
+          "fact": "Nexus uses PostgreSQL as primary database",
+          "exclusive": true,
+          "valid_from": "2025-04-10"
+        }
+      ]
+    },
+    {
+      "key": "m005",
+      "content": "The Apex Commerce legacy billing engine runs on MySQL 8.0 provisioned on AWS RDS.",
+      "kind": "fact",
+      "tags": [
+        "database",
+        "work",
+        "infrastructure"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-04-12",
+      "entities": [
+        {
+          "name": "Apex Commerce",
+          "type": "organization"
+        },
+        {
+          "name": "MySQL",
+          "type": "tool",
+          "aliases": [
+            "MySQL 8.0"
+          ],
+          "description": "relational database engine for legacy billing"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Apex Commerce",
+          "predicate": "runs database",
+          "target": "MySQL",
+          "fact": "Apex Commerce runs billing on MySQL",
+          "exclusive": false,
+          "valid_from": "2025-04-12"
+        }
+      ]
+    },
+    {
+      "key": "m006",
+      "content": "Alex drinks dark roast coffee every morning, specifically a double shot of espresso made with French roast beans.",
+      "kind": "preference",
+      "tags": [
+        "habits",
+        "diet"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-04-15",
+      "valid_to": "2025-12-01"
+    },
+    {
+      "key": "m007",
+      "content": "Alex's mother Sarah Mercer is a landscape painter and botanist living in Portland, Oregon.",
+      "kind": "fact",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-04-22",
+      "entities": [
+        {
+          "name": "Sarah Mercer",
+          "type": "person",
+          "aliases": [
+            "Mom",
+            "mother",
+            "Sarah"
+          ],
+          "description": "Alex's biological mother"
+        },
+        {
+          "name": "Portland",
+          "type": "place",
+          "aliases": [
+            "Portland, OR"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sarah Mercer",
+          "predicate": "lives in",
+          "target": "Portland",
+          "fact": "Sarah Mercer lives in Portland",
+          "exclusive": true,
+          "valid_from": "2025-04-22"
+        }
+      ]
+    },
+    {
+      "key": "m008",
+      "content": "Aunt Clara is Alex's maternal aunt who served as Alex's legal guardian during boarding school in Connecticut.",
+      "kind": "fact",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-04-25",
+      "entities": [
+        {
+          "name": "Aunt Clara",
+          "type": "person",
+          "aliases": [
+            "Clara",
+            "guardian aunt"
+          ],
+          "description": "Alex's maternal aunt and former legal guardian"
+        },
+        {
+          "name": "Connecticut",
+          "type": "place",
+          "aliases": [
+            "CT"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Aunt Clara",
+          "predicate": "guardian of",
+          "target": "Alex Mercer",
+          "fact": "Aunt Clara acted as guardian for Alex Mercer",
+          "exclusive": false,
+          "valid_from": "2025-04-25"
+        }
+      ]
+    },
+    {
+      "key": "m009",
+      "content": "Alex owns a 2021 silver Honda Civic EX sedan used for commuting and weekend road trips.",
+      "kind": "fact",
+      "tags": [
+        "vehicle",
+        "property"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-05-02",
+      "entities": [
+        {
+          "name": "Honda Civic",
+          "type": "object",
+          "aliases": [
+            "the Civic",
+            "car",
+            "automobile"
+          ],
+          "description": "2021 silver Honda Civic EX sedan"
+        }
+      ]
+    },
+    {
+      "key": "m010",
+      "content": "Set the target release date for Project Chimera v1.0 to 2025-11-30.",
+      "kind": "decision",
+      "tags": [
+        "project",
+        "chimera",
+        "planning"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-05-10",
+      "valid_to": "2025-09-05"
+    },
+    {
+      "key": "m011",
+      "content": "Alex's brother Leo Mercer is a professional jazz saxophonist who performs with trios in New Orleans.",
+      "kind": "fact",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-05-18",
+      "entities": [
+        {
+          "name": "Leo Mercer",
+          "type": "person",
+          "aliases": [
+            "Leo",
+            "brother Leo"
+          ],
+          "description": "Alex's brother and saxophonist"
+        },
+        {
+          "name": "New Orleans",
+          "type": "place",
+          "aliases": [
+            "NOLA"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Leo Mercer",
+          "predicate": "lives in",
+          "target": "New Orleans",
+          "fact": "Leo Mercer lives in New Orleans",
+          "exclusive": true,
+          "valid_from": "2025-05-18"
+        }
+      ]
+    },
+    {
+      "key": "m012",
+      "content": "Alex's cousin Julian Vance works as a senior corporate tax accountant at Deloitte.",
+      "kind": "fact",
+      "tags": [
+        "family",
+        "finance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-05-22",
+      "entities": [
+        {
+          "name": "Julian Vance",
+          "type": "person",
+          "aliases": [
+            "Julian",
+            "cousin Julian"
+          ],
+          "description": "Alex's cousin and corporate tax accountant"
+        },
+        {
+          "name": "Deloitte",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Julian Vance",
+          "predicate": "works at",
+          "target": "Deloitte",
+          "fact": "Julian Vance works at Deloitte",
+          "exclusive": true,
+          "valid_from": "2025-05-22"
+        }
+      ]
+    },
+    {
+      "key": "m013",
+      "content": "Alex's younger sister Elena Mercer is Director of Platform Engineering at Veloce Labs.",
+      "kind": "fact",
+      "tags": [
+        "family",
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-06-05",
+      "entities": [
+        {
+          "name": "Elena Mercer",
+          "type": "person",
+          "aliases": [
+            "Elena",
+            "sister Elena"
+          ],
+          "description": "Alex's sister and engineering director"
+        },
+        {
+          "name": "Veloce Labs",
+          "type": "organization",
+          "description": "cloud infrastructure startup"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Elena Mercer",
+          "predicate": "works at",
+          "target": "Veloce Labs",
+          "fact": "Elena Mercer works at Veloce Labs",
+          "exclusive": true,
+          "valid_from": "2025-06-05"
+        }
+      ]
+    },
+    {
+      "key": "m014",
+      "content": "Dad loves fine woodworking and crafted a solid oak dining table in his garage workshop.",
+      "kind": "fact",
+      "tags": [
+        "family",
+        "hobbies"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-06-12"
+    },
+    {
+      "key": "m015",
+      "content": "Alex's primary care physician is Dr. Angela Wu at Pine Street Health Clinic in Seattle.",
+      "kind": "fact",
+      "tags": [
+        "health",
+        "medical"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-06-25",
+      "entities": [
+        {
+          "name": "Dr. Angela Wu",
+          "type": "person",
+          "aliases": [
+            "Angela Wu",
+            "doctor",
+            "physician",
+            "GP"
+          ],
+          "description": "Alex's primary care physician"
+        }
+      ]
+    },
+    {
+      "key": "m016",
+      "content": "Triggered a major lock contention outage on the legacy MySQL billing cluster by executing an unindexed ALTER TABLE statement during peak traffic.",
+      "kind": "mistake",
+      "tags": [
+        "incident",
+        "database",
+        "postmortem"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-07-10"
+    },
+    {
+      "key": "m017",
+      "content": "College buddy Marcus is Alex's regular weekend running partner, currently training together for regional half marathons.",
+      "kind": "fact",
+      "tags": [
+        "social",
+        "fitness"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-07-18",
+      "entities": [
+        {
+          "name": "Marcus",
+          "type": "person",
+          "aliases": [
+            "running buddy Marcus",
+            "bro Marcus"
+          ],
+          "description": "college friend and running buddy"
+        }
+      ]
+    },
+    {
+      "key": "m018",
+      "content": "Good friend Dave is a principal systems architect who specializes in distributed observability and stream processing.",
+      "kind": "fact",
+      "tags": [
+        "social",
+        "tech"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-07-25"
+    },
+    {
+      "key": "m019",
+      "content": "Purchased an Apple M3 Max MacBook Pro with 64GB RAM as the primary development machine.",
+      "kind": "fact",
+      "tags": [
+        "hardware",
+        "tools"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-08-05",
+      "entities": [
+        {
+          "name": "MacBook Pro",
+          "type": "tool",
+          "aliases": [
+            "laptop",
+            "notebook",
+            "MacBook"
+          ],
+          "description": "16-inch M3 Max MacBook Pro laptop"
+        }
+      ]
+    },
+    {
+      "key": "m020",
+      "content": "Alex migrated all personal and technical email communication to alex@mercer-labs.net.",
+      "kind": "event",
+      "tags": [
+        "contact",
+        "personal"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-08-20",
+      "supersedes": [
+        "m001"
+      ],
+      "entities": [
+        {
+          "name": "Alex Mercer",
+          "type": "person",
+          "aliases": [
+            "Alex"
+          ]
+        },
+        {
+          "name": "alex@mercer-labs.net",
+          "type": "object",
+          "aliases": [
+            "primary email"
+          ],
+          "description": "updated contact email"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alex Mercer",
+          "predicate": "has email",
+          "target": "alex@mercer-labs.net",
+          "fact": "Alex Mercer has primary email alex@mercer-labs.net",
+          "exclusive": true,
+          "valid_from": "2025-08-20"
+        }
+      ]
+    },
+    {
+      "key": "m021",
+      "content": "Resolved a silent gRPC connection leak by enabling client-side keepalive pings every 30 seconds and pooling subchannels.",
+      "kind": "procedure",
+      "tags": [
+        "debugging",
+        "networking",
+        "grpc"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-09-02"
+    },
+    {
+      "key": "m022",
+      "content": "Delayed Project Chimera target launch milestone to 2026-03-15 to complete mandatory hardware compliance testing.",
+      "kind": "event",
+      "tags": [
+        "project",
+        "chimera",
+        "planning"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-09-05",
+      "valid_to": "2026-01-20",
+      "supersedes": [
+        "m010"
+      ]
+    },
+    {
+      "key": "m023",
+      "content": "Configured Kubernetes horizontal pod autoscaling based on custom Prometheus memory metrics and queue backlog latency.",
+      "kind": "procedure",
+      "tags": [
+        "infrastructure",
+        "kubernetes",
+        "k8s"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-09-12"
+    },
+    {
+      "key": "m024",
+      "content": "Migrated Nexus telemetry storage from PostgreSQL to MongoDB to easily support evolving, unstructured JSON payload schemas.",
+      "kind": "decision",
+      "tags": [
+        "database",
+        "nexus",
+        "architecture"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-09-20",
+      "valid_to": "2026-04-05",
+      "supersedes": [
+        "m004"
+      ],
+      "entities": [
+        {
+          "name": "Nexus",
+          "type": "project"
+        },
+        {
+          "name": "MongoDB",
+          "type": "tool",
+          "aliases": [
+            "Mongo"
+          ],
+          "description": "document database"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Nexus",
+          "predicate": "primary database",
+          "target": "MongoDB",
+          "fact": "Nexus uses MongoDB as primary database",
+          "exclusive": true,
+          "valid_from": "2025-09-20"
+        }
+      ]
+    },
+    {
+      "key": "m025",
+      "content": "Former engineering manager Karen Liu delivered the keynote lecture on distributed consensus at Systems World 2025.",
+      "kind": "event",
+      "tags": [
+        "conference",
+        "network"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-09-25",
+      "entities": [
+        {
+          "name": "Karen Liu",
+          "type": "person",
+          "aliases": [
+            "Karen",
+            "former manager"
+          ],
+          "description": "Alex's former engineering manager at Apex Commerce"
+        },
+        {
+          "name": "Systems World 2025",
+          "type": "event",
+          "description": "annual distributed systems engineering conference"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Karen Liu",
+          "predicate": "spoke at",
+          "target": "Systems World 2025",
+          "fact": "Karen Liu spoke at Systems World 2025",
+          "exclusive": false,
+          "valid_from": "2025-09-25"
+        }
+      ]
+    },
+    {
+      "key": "m026",
+      "content": "Traveled to NYC for a three-day architecture summit in Midtown Manhattan and visited the Morgan Library.",
+      "kind": "event",
+      "tags": [
+        "travel",
+        "conference"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-09-28"
+    },
+    {
+      "key": "m027",
+      "content": "Alex started a new position as Head of Infrastructure at Kestrel Robotics leading platform stability.",
+      "kind": "event",
+      "tags": [
+        "career",
+        "work"
+      ],
+      "importance": 0.9,
+      "valid_from": "2025-10-01",
+      "valid_to": "2026-05-18",
+      "supersedes": [
+        "m003"
+      ],
+      "entities": [
+        {
+          "name": "Alex Mercer",
+          "type": "person",
+          "aliases": [
+            "Alex"
+          ]
+        },
+        {
+          "name": "Kestrel Robotics",
+          "type": "organization",
+          "aliases": [
+            "Kestrel"
+          ],
+          "description": "autonomous robotics company"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alex Mercer",
+          "predicate": "works at",
+          "target": "Kestrel Robotics",
+          "fact": "Alex Mercer works at Kestrel Robotics",
+          "exclusive": true,
+          "valid_from": "2025-10-01"
+        }
+      ]
+    },
+    {
+      "key": "m028",
+      "content": "Took a five-day autumn vacation to London, exploring modern art at the Tate Modern and staying in Covent Garden.",
+      "kind": "event",
+      "tags": [
+        "travel",
+        "vacation"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-10-12"
+    },
+    {
+      "key": "m029",
+      "content": "Left an expensive waterproof travel umbrella on the London Underground Piccadilly line during the England vacation.",
+      "kind": "note",
+      "tags": [
+        "travel",
+        "incident"
+      ],
+      "importance": 0.4,
+      "valid_from": "2025-10-15"
+    },
+    {
+      "key": "m030",
+      "content": "Dr. Angela Wu recommended taking 2000 IU vitamin D3 daily with breakfast during cloudy winter months.",
+      "kind": "note",
+      "tags": [
+        "health",
+        "routine"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-10-24"
+    },
+    {
+      "key": "m031",
+      "content": "The Systems World 2025 conference was hosted at the San Diego Convention Center in Southern California.",
+      "kind": "fact",
+      "tags": [
+        "conference",
+        "geography"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-10-28",
+      "entities": [
+        {
+          "name": "Systems World 2025",
+          "type": "event"
+        },
+        {
+          "name": "San Diego",
+          "type": "place",
+          "aliases": [
+            "San Diego, CA"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Systems World 2025",
+          "predicate": "held in",
+          "target": "San Diego",
+          "fact": "Systems World 2025 was held in San Diego",
+          "exclusive": true,
+          "valid_from": "2025-10-28"
+        }
+      ]
+    },
+    {
+      "key": "m032",
+      "content": "Alex moved from Seattle to Austin, Texas, renting a single-family house in East Austin with a fenced yard.",
+      "kind": "event",
+      "tags": [
+        "residence",
+        "relocation"
+      ],
+      "importance": 0.9,
+      "valid_from": "2025-11-15",
+      "valid_to": "2026-07-01",
+      "supersedes": [
+        "m002"
+      ],
+      "entities": [
+        {
+          "name": "Alex Mercer",
+          "type": "person",
+          "aliases": [
+            "Alex"
+          ]
+        },
+        {
+          "name": "Austin",
+          "type": "place",
+          "aliases": [
+            "Austin, TX",
+            "ATX"
+          ],
+          "description": "capital city of Texas"
+        },
+        {
+          "name": "East Austin house",
+          "type": "place",
+          "aliases": [
+            "Austin house",
+            "Austin home"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alex Mercer",
+          "predicate": "lives in",
+          "target": "Austin",
+          "fact": "Alex Mercer lives in Austin",
+          "exclusive": true,
+          "valid_from": "2025-11-15"
+        }
+      ]
+    },
+    {
+      "key": "m033",
+      "content": "Alex prefers tactile keyboard switches, specifically Gazzew Boba U4T lubed with Krytox 205g0 for comfortable daily typing.",
+      "kind": "preference",
+      "tags": [
+        "hardware",
+        "ergonomics"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-11-25"
+    },
+    {
+      "key": "m034",
+      "content": "Experienced a severe Kafka consumer group rebalance storm caused by long JVM garbage collection pauses exceeding max.poll.interval.ms.",
+      "kind": "mistake",
+      "tags": [
+        "incident",
+        "kafka",
+        "infrastructure"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-12-01"
+    },
+    {
+      "key": "m035",
+      "content": "Alex switched morning beverage from espresso to ceremonial matcha green tea to eliminate persistent caffeine-induced acid reflux.",
+      "kind": "preference",
+      "tags": [
+        "habits",
+        "diet"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-01",
+      "valid_to": "2026-06-15",
+      "supersedes": [
+        "m006"
+      ]
+    },
+    {
+      "key": "m036",
+      "content": "Replaced the front brake pads on the Honda Civic with ceramic pads and flushed the hydraulic brake lines.",
+      "kind": "procedure",
+      "tags": [
+        "maintenance",
+        "vehicle"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-10"
+    },
+    {
+      "key": "m037",
+      "content": "Dave recommended adopting Vector for high-throughput log aggregation and transformation across all microservices.",
+      "kind": "note",
+      "tags": [
+        "tech",
+        "logging",
+        "recommendation"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-12-18",
+      "entities": [
+        {
+          "name": "Dave",
+          "type": "person",
+          "aliases": [
+            "friend Dave"
+          ],
+          "description": "Alex's friend and systems architect"
+        },
+        {
+          "name": "Vector",
+          "type": "tool",
+          "description": "high-performance observability data pipeline"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dave",
+          "predicate": "recommended",
+          "target": "Vector",
+          "fact": "Dave recommended Vector",
+          "exclusive": false,
+          "valid_from": "2025-12-18"
+        }
+      ]
+    },
+    {
+      "key": "m038",
+      "content": "Hosted the annual holiday board game night for the bros with Dave, Marcus, and Sam, playing Terraforming Mars.",
+      "kind": "event",
+      "tags": [
+        "social",
+        "games"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-22"
+    },
+    {
+      "key": "m039",
+      "content": "Elena's platform team at Veloce Labs uses ClickHouse for storing and analyzing high-volume distributed telemetry metrics.",
+      "kind": "fact",
+      "tags": [
+        "tech",
+        "database",
+        "family"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-12-28",
+      "entities": [
+        {
+          "name": "Veloce Labs",
+          "type": "organization"
+        },
+        {
+          "name": "ClickHouse",
+          "type": "tool",
+          "description": "columnar analytical database"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Veloce Labs",
+          "predicate": "runs database",
+          "target": "ClickHouse",
+          "fact": "Veloce Labs uses ClickHouse for telemetry",
+          "exclusive": false,
+          "valid_from": "2025-12-28"
+        }
+      ]
+    },
+    {
+      "key": "m040",
+      "content": "Alex prefers using the Catppuccin Macchiato dark color scheme across Neovim, VS Code, and WezTerm.",
+      "kind": "preference",
+      "tags": [
+        "tools",
+        "ui"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-01-02"
+    },
+    {
+      "key": "m041",
+      "content": "Sent a set of handmade sable watercolor brushes to mom for Sarah's 62nd birthday celebration.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "gift"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-01-05"
+    },
+    {
+      "key": "m042",
+      "content": "Investigated recurring Kubernetes OOMKills and discovered Java processes ignoring container cgroup limits without MaxRAMPercentage configured.",
+      "kind": "mistake",
+      "tags": [
+        "incident",
+        "kubernetes",
+        "jvm"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-01-12"
+    },
+    {
+      "key": "m043",
+      "content": "Dr. Angela Wu referred Alex to orthopedist Dr. Robert Thorne in Austin to diagnose chronic patellar tendonitis in the left knee.",
+      "kind": "event",
+      "tags": [
+        "health",
+        "referral"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-01-16",
+      "entities": [
+        {
+          "name": "Dr. Angela Wu",
+          "type": "person",
+          "aliases": [
+            "Dr. Wu",
+            "doctor"
+          ]
+        },
+        {
+          "name": "Dr. Robert Thorne",
+          "type": "person",
+          "aliases": [
+            "Dr. Thorne",
+            "orthopedist",
+            "knee specialist"
+          ],
+          "description": "orthopedic specialist in Austin"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dr. Angela Wu",
+          "predicate": "referred to",
+          "target": "Dr. Robert Thorne",
+          "fact": "Dr. Angela Wu referred Alex to Dr. Robert Thorne",
+          "exclusive": false,
+          "valid_from": "2026-01-16"
+        }
+      ]
+    },
+    {
+      "key": "m044",
+      "content": "Pushed Project Chimera final delivery milestone to 2026-08-10 following severe sensor hardware supply chain bottlenecks.",
+      "kind": "event",
+      "tags": [
+        "project",
+        "chimera",
+        "planning"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-01-20",
+      "supersedes": [
+        "m022"
+      ]
+    },
+    {
+      "key": "m045",
+      "content": "Alex always selects forward cabin aisle seats on commercial flights to facilitate rapid boarding and disembarkation.",
+      "kind": "preference",
+      "tags": [
+        "travel",
+        "habits"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-01-26"
+    },
+    {
+      "key": "m046",
+      "content": "Alex mandates strict Rust formatting in team repositories: rustfmt with max_width = 100 and imports_granularity = 'Crate'.",
+      "kind": "preference",
+      "tags": [
+        "coding",
+        "rust",
+        "standards"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-02-04"
+    },
+    {
+      "key": "m047",
+      "content": "Dr. Robert Thorne prescribed Meloxicam 15mg for inflammation alongside a daily heavy slow-resistance eccentric squat routine.",
+      "kind": "procedure",
+      "tags": [
+        "health",
+        "rehab"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-02-10",
+      "entities": [
+        {
+          "name": "Dr. Robert Thorne",
+          "type": "person"
+        },
+        {
+          "name": "Meloxicam",
+          "type": "object",
+          "aliases": [
+            "anti-inflammatory"
+          ],
+          "description": "prescription NSAID medication"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dr. Robert Thorne",
+          "predicate": "prescribed",
+          "target": "Meloxicam",
+          "fact": "Dr. Robert Thorne prescribed Meloxicam",
+          "exclusive": false,
+          "valid_from": "2026-02-10"
+        }
+      ]
+    },
+    {
+      "key": "m048",
+      "content": "Aunt Clara sent a package of homemade Connecticut maple walnut cookies for Valentine's Day.",
+      "kind": "note",
+      "tags": [
+        "family",
+        "gift"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-02-14"
+    },
+    {
+      "key": "m049",
+      "content": "Disassembled the bottom chassis of the MacBook Pro to clear compacted lint from fan impellers and heatsink fins.",
+      "kind": "procedure",
+      "tags": [
+        "hardware",
+        "maintenance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-20"
+    },
+    {
+      "key": "m050",
+      "content": "Running buddy Marcus adopted an energetic Australian Shepherd puppy named Buster from a shelter.",
+      "kind": "event",
+      "tags": [
+        "social",
+        "pets"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-25",
+      "entities": [
+        {
+          "name": "Marcus",
+          "type": "person"
+        },
+        {
+          "name": "Buster",
+          "type": "object",
+          "aliases": [
+            "Buster the dog",
+            "Marcus's dog"
+          ],
+          "description": "Australian Shepherd dog owned by Marcus"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Marcus",
+          "predicate": "owns",
+          "target": "Buster",
+          "fact": "Marcus owns Buster the Australian Shepherd",
+          "exclusive": false,
+          "valid_from": "2026-02-25"
+        }
+      ]
+    },
+    {
+      "key": "m051",
+      "content": "Encountered a deadlocking service worker caused by holding a std::sync::MutexGuard across an asynchronous await boundary.",
+      "kind": "mistake",
+      "tags": [
+        "coding",
+        "rust",
+        "concurrency"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-03-04"
+    },
+    {
+      "key": "m052",
+      "content": "Installed a reverse osmosis filtration system under the kitchen sink to filter Austin tap water minerals.",
+      "kind": "procedure",
+      "tags": [
+        "home",
+        "diy"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-03-08"
+    },
+    {
+      "key": "m053",
+      "content": "Alex changed the primary contact mobile phone number to +1-555-0892, retiring the previous number +1-555-0143.",
+      "kind": "event",
+      "tags": [
+        "contact",
+        "personal"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-03-10",
+      "entities": [
+        {
+          "name": "Alex Mercer",
+          "type": "person",
+          "aliases": [
+            "Alex"
+          ]
+        },
+        {
+          "name": "+1-555-0892",
+          "type": "object",
+          "aliases": [
+            "primary phone",
+            "mobile number"
+          ],
+          "description": "Alex's current mobile phone number"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alex Mercer",
+          "predicate": "primary phone",
+          "target": "+1-555-0892",
+          "fact": "Alex Mercer has primary phone +1-555-0892",
+          "exclusive": true,
+          "valid_from": "2026-03-10"
+        }
+      ]
+    },
+    {
+      "key": "m054",
+      "content": "Hardened k8s cluster security by disabling ambient service account token automounting across all workload namespaces.",
+      "kind": "procedure",
+      "tags": [
+        "security",
+        "kubernetes",
+        "k8s"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-03-18"
+    },
+    {
+      "key": "m055",
+      "content": "Commercial flight AA1422 bound for Chicago O'Hare was diverted to Milwaukee Mitchell Airport due to severe supercell thunderstorms.",
+      "kind": "event",
+      "tags": [
+        "travel",
+        "flight",
+        "delay"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-24",
+      "entities": [
+        {
+          "name": "Flight AA1422",
+          "type": "event",
+          "aliases": [
+            "AA1422",
+            "diverted flight"
+          ],
+          "description": "airline flight diverted by severe weather"
+        },
+        {
+          "name": "Milwaukee",
+          "type": "place",
+          "aliases": [
+            "Milwaukee, WI"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Flight AA1422",
+          "predicate": "diverted to",
+          "target": "Milwaukee",
+          "fact": "Flight AA1422 was diverted to Milwaukee",
+          "exclusive": true,
+          "valid_from": "2026-03-24"
+        }
+      ]
+    },
+    {
+      "key": "m056",
+      "content": "The airline provided overnight distressed passenger accommodation vouchers at The Pfister Hotel in downtown Milwaukee.",
+      "kind": "fact",
+      "tags": [
+        "travel",
+        "hotel"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-25",
+      "entities": [
+        {
+          "name": "Milwaukee",
+          "type": "place"
+        },
+        {
+          "name": "The Pfister Hotel",
+          "type": "place",
+          "aliases": [
+            "Pfister Hotel"
+          ],
+          "description": "historic luxury hotel in downtown Milwaukee"
+        }
+      ],
+      "relations": [
+        {
+          "source": "The Pfister Hotel",
+          "predicate": "located in",
+          "target": "Milwaukee",
+          "fact": "The Pfister Hotel is located in Milwaukee",
+          "exclusive": true,
+          "valid_from": "2026-03-25"
+        }
+      ]
+    },
+    {
+      "key": "m057",
+      "content": "Replaced MongoDB with ClickHouse as the primary database for Nexus to achieve sub-second aggregation query speeds on billion-row datasets.",
+      "kind": "decision",
+      "tags": [
+        "database",
+        "nexus",
+        "architecture"
+      ],
+      "importance": 0.9,
+      "valid_from": "2026-04-05",
+      "supersedes": [
+        "m024"
+      ],
+      "entities": [
+        {
+          "name": "Nexus",
+          "type": "project"
+        },
+        {
+          "name": "ClickHouse",
+          "type": "tool",
+          "aliases": [
+            "CH"
+          ],
+          "description": "columnar OLAP database"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Nexus",
+          "predicate": "primary database",
+          "target": "ClickHouse",
+          "fact": "Nexus uses ClickHouse as primary database",
+          "exclusive": true,
+          "valid_from": "2026-04-05"
+        }
+      ]
+    },
+    {
+      "key": "m058",
+      "content": "Spent seven days vacationing in Paris during spring, admiring Impressionist masterpieces at the Musée d'Orsay and strolling Le Marais.",
+      "kind": "event",
+      "tags": [
+        "travel",
+        "vacation"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-04-12"
+    },
+    {
+      "key": "m059",
+      "content": "Tasted the most delicious flaky almond croissants in Paris at Du Pain et des Idées bakery near Canal Saint-Martin.",
+      "kind": "observation",
+      "tags": [
+        "travel",
+        "food"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-04-16"
+    },
+    {
+      "key": "m060",
+      "content": "Alex successfully finished the Austin Half Marathon with an official chip time personal record of 1:38:45.",
+      "kind": "event",
+      "tags": [
+        "fitness",
+        "running"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-04-18"
+    },
+    {
+      "key": "m061",
+      "content": "Brother Leo released a sophomore contemporary jazz quartet album titled 'Crescent Drift' on heavyweight 180g vinyl.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "music"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-25"
+    },
+    {
+      "key": "m062",
+      "content": "Mitigated persistent PostgreSQL connection saturation under sudden traffic bursts by deploying PgBouncer in transaction pooling mode.",
+      "kind": "procedure",
+      "tags": [
+        "database",
+        "postgres",
+        "scalability"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-05-04"
+    },
+    {
+      "key": "m063",
+      "content": "Mounted four new Michelin CrossClimate2 all-weather tires onto the Honda Civic ahead of winter driving.",
+      "kind": "procedure",
+      "tags": [
+        "maintenance",
+        "vehicle"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-05-08",
+      "entities": [
+        {
+          "name": "Honda Civic",
+          "type": "object",
+          "aliases": [
+            "the Civic",
+            "car"
+          ]
+        },
+        {
+          "name": "Michelin CrossClimate2",
+          "type": "object",
+          "aliases": [
+            "Michelin tires",
+            "CrossClimate2"
+          ],
+          "description": "all-weather passenger car tires"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Honda Civic",
+          "predicate": "equipped with",
+          "target": "Michelin CrossClimate2",
+          "fact": "Honda Civic is equipped with Michelin CrossClimate2 tires",
+          "exclusive": true,
+          "valid_from": "2026-05-08"
+        }
+      ]
+    },
+    {
+      "key": "m064",
+      "content": "Friend Dave accepted an offer to join Stripe as Principal Systems Architect in their core ledger foundation group.",
+      "kind": "event",
+      "tags": [
+        "social",
+        "career"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-05-14",
+      "entities": [
+        {
+          "name": "Dave",
+          "type": "person",
+          "aliases": [
+            "friend Dave"
+          ]
+        },
+        {
+          "name": "Stripe",
+          "type": "organization",
+          "description": "global financial technology company"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dave",
+          "predicate": "works at",
+          "target": "Stripe",
+          "fact": "Dave works at Stripe",
+          "exclusive": true,
+          "valid_from": "2026-05-14"
+        }
+      ]
+    },
+    {
+      "key": "m065",
+      "content": "Alex accepted a new executive role as VP of Platform Engineering at Helio Systems directing cloud architecture.",
+      "kind": "event",
+      "tags": [
+        "career",
+        "work"
+      ],
+      "importance": 0.9,
+      "valid_from": "2026-05-18",
+      "supersedes": [
+        "m027"
+      ],
+      "entities": [
+        {
+          "name": "Alex Mercer",
+          "type": "person",
+          "aliases": [
+            "Alex"
+          ]
+        },
+        {
+          "name": "Helio Systems",
+          "type": "organization",
+          "aliases": [
+            "Helio"
+          ],
+          "description": "enterprise cloud platform company"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alex Mercer",
+          "predicate": "works at",
+          "target": "Helio Systems",
+          "fact": "Alex Mercer works at Helio Systems",
+          "exclusive": true,
+          "valid_from": "2026-05-18"
+        }
+      ]
+    },
+    {
+      "key": "m066",
+      "content": "Configured WireGuard mesh VPN tunnels across developer testing environments with automated peer rotation via systemd timers.",
+      "kind": "procedure",
+      "tags": [
+        "networking",
+        "security"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-24"
+    },
+    {
+      "key": "m067",
+      "content": "Cousin Julian moved into a historic two-story brownstone apartment in downtown Minneapolis, Minnesota.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "relocation"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-29",
+      "entities": [
+        {
+          "name": "Julian Vance",
+          "type": "person",
+          "aliases": [
+            "cousin Julian",
+            "Julian"
+          ]
+        },
+        {
+          "name": "Minneapolis",
+          "type": "place",
+          "aliases": [
+            "Minneapolis, MN"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Julian Vance",
+          "predicate": "lives in",
+          "target": "Minneapolis",
+          "fact": "Julian Vance lives in Minneapolis",
+          "exclusive": true,
+          "valid_from": "2026-05-29"
+        }
+      ]
+    },
+    {
+      "key": "m068",
+      "content": "Priya Sharma manages the customer portal frontend engineering squad at Helio Systems.",
+      "kind": "fact",
+      "tags": [
+        "work",
+        "team"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-06-03",
+      "entities": [
+        {
+          "name": "Priya Sharma",
+          "type": "person",
+          "aliases": [
+            "Priya"
+          ],
+          "description": "engineering manager at Helio Systems"
+        },
+        {
+          "name": "Helio Systems Customer Portal",
+          "type": "project",
+          "aliases": [
+            "customer portal",
+            "client portal"
+          ],
+          "description": "customer management web portal"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Priya Sharma",
+          "predicate": "manages",
+          "target": "Helio Systems Customer Portal",
+          "fact": "Priya Sharma manages the Helio Systems Customer Portal",
+          "exclusive": false,
+          "valid_from": "2026-06-03"
+        }
+      ]
+    },
+    {
+      "key": "m069",
+      "content": "Father Arthur retired from teaching high school physics after 35 dedicated years in public secondary education.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "milestone"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-06-08"
+    },
+    {
+      "key": "m070",
+      "content": "Alex settled on drinking loose-leaf Earl Grey black tea with a splash of oat milk each morning instead of matcha green tea.",
+      "kind": "preference",
+      "tags": [
+        "habits",
+        "diet"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-06-15",
+      "supersedes": [
+        "m035"
+      ]
+    },
+    {
+      "key": "m071",
+      "content": "Alex prefers Saucony Endorphin Speed running shoes for tempo interval workouts and Asics Gel-Nimbus for slow recovery jogs.",
+      "kind": "preference",
+      "tags": [
+        "running",
+        "gear"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-22"
+    },
+    {
+      "key": "m072",
+      "content": "Alex relocated from Austin to Denver, Colorado, purchasing a craftsman home near Washington Park.",
+      "kind": "event",
+      "tags": [
+        "residence",
+        "relocation"
+      ],
+      "importance": 0.9,
+      "valid_from": "2026-07-01",
+      "supersedes": [
+        "m032"
+      ],
+      "entities": [
+        {
+          "name": "Alex Mercer",
+          "type": "person",
+          "aliases": [
+            "Alex"
+          ]
+        },
+        {
+          "name": "Denver",
+          "type": "place",
+          "aliases": [
+            "Denver, CO",
+            "Mile High City"
+          ],
+          "description": "capital city of Colorado"
+        },
+        {
+          "name": "Washington Park home",
+          "type": "place",
+          "aliases": [
+            "Denver house",
+            "Denver home"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alex Mercer",
+          "predicate": "lives in",
+          "target": "Denver",
+          "fact": "Alex Mercer lives in Denver",
+          "exclusive": true,
+          "valid_from": "2026-07-01"
+        }
+      ]
+    },
+    {
+      "key": "m073",
+      "content": "Set up a standing desk in the Denver home office with a Herman Miller Embody chair and dual 27-inch 4K Dell monitors.",
+      "kind": "fact",
+      "tags": [
+        "workspace",
+        "ergonomics"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-08"
+    },
+    {
+      "key": "m074",
+      "content": "Eliminated silent Amazon S3 file upload corruption by verifying per-part SHA256 checksums on client-side multipart uploads.",
+      "kind": "procedure",
+      "tags": [
+        "cloud",
+        "storage",
+        "reliability"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-07-15"
+    },
+    {
+      "key": "m075",
+      "content": "Drove the Civic up to Trail Ridge Road above 12,000 feet during a summer camping trip in Rocky Mountain National Park.",
+      "kind": "event",
+      "tags": [
+        "travel",
+        "mountains",
+        "outdoors"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-07-22",
+      "entities": [
+        {
+          "name": "Honda Civic",
+          "type": "object",
+          "aliases": [
+            "the Civic",
+            "car"
+          ]
+        },
+        {
+          "name": "Rocky Mountain National Park",
+          "type": "place",
+          "aliases": [
+            "RMNP"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Honda Civic",
+          "predicate": "driven to",
+          "target": "Rocky Mountain National Park",
+          "fact": "The Civic was driven to Rocky Mountain National Park",
+          "exclusive": false,
+          "valid_from": "2026-07-22"
+        }
+      ]
+    },
+    {
+      "key": "m076",
+      "content": "The Helio Systems customer portal web frontend was fully rebuilt using SvelteKit and Tailwind CSS.",
+      "kind": "fact",
+      "tags": [
+        "work",
+        "frontend",
+        "sveltekit"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-07-28",
+      "entities": [
+        {
+          "name": "Helio Systems Customer Portal",
+          "type": "project"
+        },
+        {
+          "name": "SvelteKit",
+          "type": "tool",
+          "description": "web application framework"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Helio Systems Customer Portal",
+          "predicate": "built with",
+          "target": "SvelteKit",
+          "fact": "Helio Systems Customer Portal is built with SvelteKit",
+          "exclusive": true,
+          "valid_from": "2026-07-28"
+        }
+      ]
+    },
+    {
+      "key": "m077",
+      "content": "Completed a 500-mile engine oil and filter change on the Honda Civic using 0W-20 full synthetic motor oil.",
+      "kind": "procedure",
+      "tags": [
+        "maintenance",
+        "vehicle"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-08-04"
+    },
+    {
+      "key": "m078",
+      "content": "Started structured 10K running block focusing on lactate threshold intervals and weekend uphill trail runs.",
+      "kind": "event",
+      "tags": [
+        "fitness",
+        "running"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-08-12"
+    },
+    {
+      "key": "m079",
+      "content": "Diagnosed intermittent Envoy proxy 503 downstream timeouts caused by misaligned connection idle timeouts behind AWS ALB.",
+      "kind": "mistake",
+      "tags": [
+        "networking",
+        "infrastructure",
+        "incident"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-08-18"
+    },
+    {
+      "key": "m080",
+      "content": "Traveled to New York City for an August weekend, caught a Broadway performance of Hadestown, and walked the High Line.",
+      "kind": "event",
+      "tags": [
+        "travel",
+        "leisure"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-25"
+    },
+    {
+      "key": "m081",
+      "content": "Alex prefers using ZFS with LZ4 compression on primary NVMe backups for transparent data integrity verification.",
+      "kind": "preference",
+      "tags": [
+        "storage",
+        "linux"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-29"
+    },
+    {
+      "key": "m082",
+      "content": "Migrated internal identity provider for Helio engineering teams to self-hosted Authentik with WebAuthn security keys.",
+      "kind": "procedure",
+      "tags": [
+        "security",
+        "infrastructure"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-09-04"
+    },
+    {
+      "key": "m083",
+      "content": "Alex prefers searing steaks in a Lodge cast iron skillet and baking sourdough boules inside an enamelled Dutch oven.",
+      "kind": "preference",
+      "tags": [
+        "cooking",
+        "habits"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-09"
+    },
+    {
+      "key": "m084",
+      "content": "Adopted Rust tracing crate with OpenTelemetry OTLP exporter for unified asynchronous distributed tracing across all backend services.",
+      "kind": "decision",
+      "tags": [
+        "observability",
+        "rust"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-09-14"
+    },
+    {
+      "key": "m085",
+      "content": "Attended the Denver Tech Meetup on high-concurrency Rust architectures and connected with local systems programmers.",
+      "kind": "event",
+      "tags": [
+        "community",
+        "meetup",
+        "denver"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-09-18"
+    },
+    {
+      "key": "m086",
+      "content": "Configured local automated weekly encrypted restic backups from the MacBook Pro to a home Synology NAS.",
+      "kind": "procedure",
+      "tags": [
+        "backup",
+        "tools"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-22"
+    },
+    {
+      "key": "m087",
+      "content": "Purchased a Garmin Forerunner 965 GPS smartwatch to record heart rate variability and running cadence metrics.",
+      "kind": "fact",
+      "tags": [
+        "gear",
+        "running",
+        "gadgets"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-26",
+      "entities": [
+        {
+          "name": "Garmin Forerunner 965",
+          "type": "tool",
+          "aliases": [
+            "Garmin watch",
+            "running watch"
+          ],
+          "description": "GPS smartwatch for running"
+        }
+      ]
+    },
+    {
+      "key": "m088",
+      "content": "Prepared flower beds in the Denver garden for winter frost by spreading three inches of cedar bark mulch.",
+      "kind": "procedure",
+      "tags": [
+        "home",
+        "gardening"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-10-01"
+    },
+    {
+      "key": "m089",
+      "content": "Aunt Clara announced her retirement from school administration and plans to travel across Portugal next spring.",
+      "kind": "event",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-03"
+    },
+    {
+      "key": "m090",
+      "content": "Experienced a build regression where Cargo compiler cache was thrashing due to differing RUSTFLAGS environment variables in CI scripts.",
+      "kind": "mistake",
+      "tags": [
+        "ci",
+        "rust",
+        "builds"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-10-05"
+    },
+    {
+      "key": "m091",
+      "content": "Purchased warm wool running gloves and reflective ankle bands from REI for chilly autumn morning runs.",
+      "kind": "fact",
+      "tags": [
+        "running",
+        "gear",
+        "shopping"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-07"
+    },
+    {
+      "key": "m092",
+      "content": "Configured Grafana dashboards with alerting rules for CPU steal percentage and network packet drops on AWS EC2 instances.",
+      "kind": "procedure",
+      "tags": [
+        "monitoring",
+        "infrastructure"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-10-10"
+    },
+    {
+      "key": "m093",
+      "content": "Renewed Denver residential parking permit for the Civic at the city municipal building.",
+      "kind": "event",
+      "tags": [
+        "errands",
+        "vehicle",
+        "denver"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-10-14"
+    },
+    {
+      "key": "m094",
+      "content": "Completed a brisk 12-kilometer tempo run along the Cherry Creek trail at a 4:30 min/km pace.",
+      "kind": "event",
+      "tags": [
+        "fitness",
+        "running"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-17"
+    },
+    {
+      "key": "m095",
+      "content": "Carried out annual home furnace inspection and replaced high-efficiency MERV 13 air filters.",
+      "kind": "procedure",
+      "tags": [
+        "home",
+        "maintenance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-20"
+    }
+  ],
+  "queries": [
+    {
+      "q": "Catppuccin Macchiato color scheme",
+      "category": "keyword",
+      "expect": [
+        "m040"
+      ],
+      "k": 5,
+      "note": "direct keyword hit on IDE/terminal theme preference"
+    },
+    {
+      "q": "Gazzew Boba U4T switches",
+      "category": "keyword",
+      "expect": [
+        "m033"
+      ],
+      "k": 5,
+      "note": "direct keyword match on mechanical keyboard switch choice"
+    },
+    {
+      "q": "Du Pain et des Idées croissants",
+      "category": "keyword",
+      "expect": [
+        "m059"
+      ],
+      "k": 5,
+      "note": "direct keyword match on bakery visited in Paris"
+    },
+    {
+      "q": "Saucony Endorphin Speed",
+      "category": "keyword",
+      "expect": [
+        "m071"
+      ],
+      "k": 5,
+      "note": "direct keyword hit on preferred running shoe model"
+    },
+    {
+      "q": "PgBouncer transaction pooling",
+      "category": "keyword",
+      "expect": [
+        "m062"
+      ],
+      "k": 5,
+      "note": "direct keyword match on PostgreSQL connection scaling solution"
+    },
+    {
+      "q": "Garmin Forerunner 965 GPS",
+      "category": "keyword",
+      "expect": [
+        "m087"
+      ],
+      "k": 5,
+      "note": "direct keyword match on running smartwatch purchase"
+    },
+    {
+      "q": "Lodge cast iron skillet",
+      "category": "keyword",
+      "expect": [
+        "m083"
+      ],
+      "k": 5,
+      "note": "direct keyword match on cookware preference"
+    },
+    {
+      "q": "preventing thread blockages across async boundary in Rust",
+      "category": "paraphrase",
+      "expect": [
+        "m051"
+      ],
+      "k": 5,
+      "note": "paraphrase of deadlocking service worker holding MutexGuard across await"
+    },
+    {
+      "q": "morning drink change to stop stomach acidity",
+      "category": "paraphrase",
+      "expect": [
+        "m035"
+      ],
+      "k": 5,
+      "note": "paraphrase of switching from espresso to matcha to cure acid reflux"
+    },
+    {
+      "q": "pipeline partition rebalance churn caused by GC latency",
+      "category": "paraphrase",
+      "expect": [
+        "m034"
+      ],
+      "k": 5,
+      "note": "paraphrase of Kafka consumer group rebalance storm from JVM pause"
+    },
+    {
+      "q": "lightweight tool suggested for high throughput log ingestion",
+      "category": "paraphrase",
+      "expect": [
+        "m037"
+      ],
+      "k": 5,
+      "note": "paraphrase of Dave recommending Vector for aggregation"
+    },
+    {
+      "q": "bread baking equipment for artisanal sourdough",
+      "category": "paraphrase",
+      "expect": [
+        "m083"
+      ],
+      "k": 5,
+      "note": "paraphrase of baking sourdough boules in enamelled Dutch oven"
+    },
+    {
+      "q": "compiler caching slowdown in continuous integration",
+      "category": "paraphrase",
+      "expect": [
+        "m090"
+      ],
+      "k": 5,
+      "note": "paraphrase of Cargo cache thrashing due to differing RUSTFLAGS"
+    },
+    {
+      "q": "automated peer rotation for secure mesh tunneling",
+      "category": "paraphrase",
+      "expect": [
+        "m066"
+      ],
+      "k": 5,
+      "note": "paraphrase of WireGuard mesh with systemd timer peer rotation"
+    },
+    {
+      "q": "all addresses where Alex made a home",
+      "category": "synonym",
+      "expect": [
+        "m002",
+        "m032",
+        "m072"
+      ],
+      "k": 5,
+      "note": "synonym trap: home vs house vs apartment across 3 cities"
+    },
+    {
+      "q": "mother's creative artistic pursuit",
+      "category": "synonym",
+      "expect": [
+        "m007"
+      ],
+      "expect_absent": [
+        "m008"
+      ],
+      "k": 5,
+      "note": "synonym trap: mother vs mom (Sarah Mercer); aunt Clara absent"
+    },
+    {
+      "q": "father's teaching career",
+      "category": "synonym",
+      "expect": [
+        "m069"
+      ],
+      "k": 5,
+      "note": "synonym trap: father vs dad (Arthur Mercer)"
+    },
+    {
+      "q": "buddies Alex plays board games with",
+      "category": "synonym",
+      "expect": [
+        "m038"
+      ],
+      "k": 5,
+      "note": "synonym trap: buddies vs bros"
+    },
+    {
+      "q": "maintenance performed on automobile",
+      "category": "synonym",
+      "expect": [
+        "m036",
+        "m063",
+        "m077"
+      ],
+      "k": 5,
+      "note": "synonym trap: automobile vs car vs Civic"
+    },
+    {
+      "q": "analytical queries on pg database",
+      "category": "synonym",
+      "expect": [
+        "m004"
+      ],
+      "expect_absent": [
+        "m005"
+      ],
+      "k": 5,
+      "note": "synonym trap: pg vs PostgreSQL; MySQL legacy billing absent"
+    },
+    {
+      "q": "vacation trips to New York City",
+      "category": "synonym",
+      "expect": [
+        "m026",
+        "m080"
+      ],
+      "k": 5,
+      "note": "synonym trap: New York City vs NYC"
+    },
+    {
+      "q": "notebook thermal fan cleaning",
+      "category": "synonym",
+      "expect": [
+        "m049"
+      ],
+      "k": 5,
+      "note": "synonym trap: notebook vs laptop vs MacBook Pro"
+    },
+    {
+      "q": "winter supplement guidance from GP",
+      "category": "synonym",
+      "expect": [
+        "m030"
+      ],
+      "k": 5,
+      "note": "synonym trap: GP vs primary care physician vs Dr. Angela Wu"
+    },
+    {
+      "q": "k8s cluster security hardening",
+      "category": "synonym",
+      "expect": [
+        "m054"
+      ],
+      "k": 5,
+      "note": "synonym trap: k8s vs Kubernetes"
+    },
+    {
+      "q": "what database does my sister's team use",
+      "category": "multi-hop",
+      "expect": [
+        "m039"
+      ],
+      "k": 5,
+      "note": "multi-hop: sister -> Elena (m013) -> Veloce Labs -> ClickHouse (m039); m039 has no keyword 'sister'"
+    },
+    {
+      "q": "which city does the accountant in the family live in",
+      "category": "multi-hop",
+      "expect": [
+        "m067"
+      ],
+      "k": 5,
+      "note": "multi-hop: accountant -> Julian Vance (m012) -> Minneapolis (m067); m067 has no keyword 'accountant'"
+    },
+    {
+      "q": "what brand of tires are on the car taken to Trail Ridge Road",
+      "category": "multi-hop",
+      "expect": [
+        "m063"
+      ],
+      "k": 5,
+      "note": "multi-hop: Trail Ridge Road -> Civic (m075) -> Michelin CrossClimate2 (m063); m063 has no 'Trail Ridge Road'"
+    },
+    {
+      "q": "employer of the engineer who suggested our logging pipeline",
+      "category": "multi-hop",
+      "expect": [
+        "m064"
+      ],
+      "k": 5,
+      "note": "multi-hop: logging pipeline suggestion -> Dave (m037) -> Stripe (m064); m064 has no logging terms"
+    },
+    {
+      "q": "canine companion breed belonging to Alex's half-marathon training partner",
+      "category": "multi-hop",
+      "expect": [
+        "m050"
+      ],
+      "k": 5,
+      "note": "multi-hop: half-marathon partner -> Marcus (m017) -> Buster Australian Shepherd (m050); m050 has no marathon terms"
+    },
+    {
+      "q": "web UI stack chosen for Priya's project",
+      "category": "multi-hop",
+      "expect": [
+        "m076"
+      ],
+      "k": 5,
+      "note": "multi-hop: Priya -> customer portal (m068) -> SvelteKit (m076); m076 does not mention Priya"
+    },
+    {
+      "q": "city where former manager Karen Liu gave a keynote speech",
+      "category": "multi-hop",
+      "expect": [
+        "m031"
+      ],
+      "k": 5,
+      "note": "multi-hop: Karen Liu -> Systems World 2025 (m025) -> San Diego (m031); m031 does not mention Karen or manager"
+    },
+    {
+      "q": "medication directed by the specialist Alex was referred to for knee tendonitis",
+      "category": "multi-hop",
+      "expect": [
+        "m047"
+      ],
+      "k": 5,
+      "note": "multi-hop: knee referral -> Dr. Robert Thorne (m043) -> Meloxicam (m047); m047 does not mention knee or tendonitis"
+    },
+    {
+      "q": "lodging for passengers when flight AA1422 was grounded by weather",
+      "category": "multi-hop",
+      "expect": [
+        "m056"
+      ],
+      "k": 5,
+      "note": "multi-hop: AA1422 diversion -> Milwaukee (m055) -> The Pfister Hotel (m056); m056 contains no flight number or weather words"
+    },
+    {
+      "q": "furnace maintenance performed yesterday",
+      "category": "temporal-window",
+      "expect": [
+        "m095"
+      ],
+      "k": 5,
+      "note": "yesterday relative to 2026-10-21 is 2026-10-20"
+    },
+    {
+      "q": "parking errands taken care of last week",
+      "category": "temporal-window",
+      "expect": [
+        "m093"
+      ],
+      "k": 5,
+      "note": "last week relative to Wednesday 2026-10-21 covers 2026-10-14"
+    },
+    {
+      "q": "running apparel bought two weeks ago",
+      "category": "temporal-window",
+      "expect": [
+        "m091"
+      ],
+      "k": 5,
+      "note": "two weeks ago covers 2026-10-07"
+    },
+    {
+      "q": "tech meetups attended last month",
+      "category": "temporal-window",
+      "expect": [
+        "m085"
+      ],
+      "k": 5,
+      "note": "last month covers September 2026 (2026-09-18)"
+    },
+    {
+      "q": "cluster security adjustments made in March",
+      "category": "temporal-window",
+      "expect": [
+        "m054"
+      ],
+      "k": 5,
+      "note": "in March covers March 2026 (2026-03-18)"
+    },
+    {
+      "q": "competitive half marathon completed this year",
+      "category": "temporal-window",
+      "expect": [
+        "m060"
+      ],
+      "k": 5,
+      "note": "this year covers 2026 (Austin Half Marathon on 2026-04-18)"
+    },
+    {
+      "q": "vacation travel taken in 2025",
+      "category": "temporal-window",
+      "expect": [
+        "m028"
+      ],
+      "k": 5,
+      "note": "in 2025 covers London trip in October 2025"
+    },
+    {
+      "q": "athletic training progression started since August",
+      "category": "temporal-window",
+      "expect": [
+        "m078"
+      ],
+      "k": 5,
+      "note": "since August covers 2026-08-12 block start"
+    },
+    {
+      "q": "where does Alex live",
+      "category": "as-of",
+      "as_of": "2025-08-01",
+      "expect": [
+        "m002"
+      ],
+      "expect_absent": [
+        "m032",
+        "m072"
+      ],
+      "k": 5,
+      "note": "valid city on 2025-08-01 was Seattle; Austin and Denver were future"
+    },
+    {
+      "q": "where does Alex live",
+      "category": "as-of",
+      "as_of": "2026-02-01",
+      "expect": [
+        "m032"
+      ],
+      "expect_absent": [
+        "m002",
+        "m072"
+      ],
+      "k": 5,
+      "note": "valid city on 2026-02-01 was Austin; Seattle expired, Denver future"
+    },
+    {
+      "q": "who is Alex's employer",
+      "category": "as-of",
+      "as_of": "2025-07-01",
+      "expect": [
+        "m003"
+      ],
+      "expect_absent": [
+        "m027",
+        "m065"
+      ],
+      "k": 5,
+      "note": "valid employer on 2025-07-01 was Apex Commerce; Kestrel and Helio were future"
+    },
+    {
+      "q": "who is Alex's employer",
+      "category": "as-of",
+      "as_of": "2026-01-15",
+      "expect": [
+        "m027"
+      ],
+      "expect_absent": [
+        "m003",
+        "m065"
+      ],
+      "k": 5,
+      "note": "valid employer on 2026-01-15 was Kestrel Robotics; Apex expired, Helio future"
+    },
+    {
+      "q": "primary database engine for Nexus pipeline",
+      "category": "as-of",
+      "as_of": "2025-06-01",
+      "expect": [
+        "m004"
+      ],
+      "expect_absent": [
+        "m024",
+        "m057"
+      ],
+      "k": 5,
+      "note": "Nexus primary db on 2025-06-01 was PostgreSQL; MongoDB and ClickHouse future"
+    },
+    {
+      "q": "primary database engine for Nexus pipeline",
+      "category": "as-of",
+      "as_of": "2025-11-01",
+      "expect": [
+        "m024"
+      ],
+      "expect_absent": [
+        "m004",
+        "m057"
+      ],
+      "k": 5,
+      "note": "Nexus primary db on 2025-11-01 was MongoDB; PostgreSQL expired, ClickHouse future"
+    },
+    {
+      "q": "active contact email address for Alex",
+      "category": "as-of",
+      "as_of": "2025-06-01",
+      "expect": [
+        "m001"
+      ],
+      "expect_absent": [
+        "m020"
+      ],
+      "k": 5,
+      "note": "email on 2025-06-01 was alex.mercer.dev@example.org before migration"
+    },
+    {
+      "q": "where does Alex live currently",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m072"
+      ],
+      "expect_absent": [
+        "m002",
+        "m032"
+      ],
+      "k": 5,
+      "note": "current city is Denver; Seattle and Austin are superseded"
+    },
+    {
+      "q": "who employs Alex right now",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m065"
+      ],
+      "expect_absent": [
+        "m003",
+        "m027"
+      ],
+      "k": 5,
+      "note": "current employer is Helio Systems; Apex and Kestrel are superseded"
+    },
+    {
+      "q": "current primary database powering Nexus",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m057"
+      ],
+      "expect_absent": [
+        "m004",
+        "m024"
+      ],
+      "k": 5,
+      "note": "current Nexus DB is ClickHouse; PostgreSQL and MongoDB are superseded"
+    },
+    {
+      "q": "what does Alex drink in the morning",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m070"
+      ],
+      "expect_absent": [
+        "m006",
+        "m035"
+      ],
+      "k": 5,
+      "note": "current morning drink is Earl Grey tea; dark roast coffee and matcha are superseded"
+    },
+    {
+      "q": "current contact phone number for Alex",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m053"
+      ],
+      "k": 5,
+      "note": "current phone is +1-555-0892"
+    },
+    {
+      "q": "what is the final delivery milestone date for Project Chimera",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m044"
+      ],
+      "expect_absent": [
+        "m010",
+        "m022"
+      ],
+      "k": 5,
+      "note": "final deadline is 2026-08-10; earlier dates are superseded"
+    },
+    {
+      "q": "current active email for Alex",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m020"
+      ],
+      "expect_absent": [
+        "m001"
+      ],
+      "k": 5,
+      "note": "current email is alex@mercer-labs.net; alex.mercer.dev@example.org superseded"
+    },
+    {
+      "q": "where does Alex's mother reside",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m007"
+      ],
+      "expect_absent": [
+        "m008"
+      ],
+      "k": 5,
+      "note": "mother Sarah lives in Portland; Aunt Clara in Connecticut must not be confused"
+    },
+    {
+      "q": "where did Alex live previously before moving to Austin",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m002"
+      ],
+      "k": 5,
+      "note": "retrieving historical residence in Seattle"
+    },
+    {
+      "q": "where did Alex reside prior to Denver",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m032"
+      ],
+      "k": 5,
+      "note": "retrieving historical residence in Austin"
+    },
+    {
+      "q": "past companies Alex worked at before Helio Systems",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m003",
+        "m027"
+      ],
+      "k": 5,
+      "note": "historical employers: Apex Commerce and Kestrel Robotics"
+    },
+    {
+      "q": "earlier database backends evaluated and used for Nexus",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m004",
+        "m024"
+      ],
+      "k": 5,
+      "note": "historical databases used for Nexus prior to ClickHouse"
+    },
+    {
+      "q": "what morning beverages did Alex consume previously",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m006",
+        "m035"
+      ],
+      "k": 5,
+      "note": "past morning drinks: dark roast espresso and matcha green tea"
+    },
+    {
+      "q": "initial projected release date for Project Chimera before delays",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m010"
+      ],
+      "k": 5,
+      "note": "original target deadline was 2025-11-30"
+    },
+    {
+      "q": "original email used by Alex before migrating to personal domain",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m001"
+      ],
+      "k": 5,
+      "note": "historical contact email alex.mercer.dev@example.org"
+    },
+    {
+      "q": "morning tea preparation preferences",
+      "category": "preference",
+      "expect": [
+        "m070"
+      ],
+      "k": 5,
+      "note": "preference for loose-leaf Earl Grey with oat milk"
+    },
+    {
+      "q": "mechanical keyboard switch preference and lubrication",
+      "category": "preference",
+      "expect": [
+        "m033"
+      ],
+      "k": 5,
+      "note": "preference for Gazzew Boba U4T lubed with Krytox 205g0"
+    },
+    {
+      "q": "preferred code editor and terminal theme",
+      "category": "preference",
+      "expect": [
+        "m040"
+      ],
+      "k": 5,
+      "note": "preference for Catppuccin Macchiato across editors and terminal"
+    },
+    {
+      "q": "flight seating preference for commercial air travel",
+      "category": "preference",
+      "expect": [
+        "m045"
+      ],
+      "k": 5,
+      "note": "preference for forward cabin aisle seats"
+    },
+    {
+      "q": "rustfmt rules and code formatting style guidelines",
+      "category": "preference",
+      "expect": [
+        "m046"
+      ],
+      "k": 5,
+      "note": "preference for rustfmt max_width 100 and imports_granularity Crate"
+    },
+    {
+      "q": "running shoe preference for speed workouts and recovery",
+      "category": "preference",
+      "expect": [
+        "m071"
+      ],
+      "k": 5,
+      "note": "preference for Endorphin Speed for tempo and Gel-Nimbus for recovery"
+    },
+    {
+      "q": "cookware preferences for searing meat and baking bread",
+      "category": "preference",
+      "expect": [
+        "m083"
+      ],
+      "k": 5,
+      "note": "preference for Lodge cast iron skillet and enamelled Dutch oven"
+    },
+    {
+      "q": "what went wrong with the legacy MySQL billing schema migration",
+      "category": "procedure/lesson",
+      "expect": [
+        "m016"
+      ],
+      "k": 5,
+      "note": "incident mistake: unindexed ALTER TABLE locking billing cluster"
+    },
+    {
+      "q": "how did we resolve the gRPC client connection leak",
+      "category": "procedure/lesson",
+      "expect": [
+        "m021"
+      ],
+      "k": 5,
+      "note": "procedure: keepalive pings and subchannel pooling"
+    },
+    {
+      "q": "root cause of Kafka consumer group rebalancing loop",
+      "category": "procedure/lesson",
+      "expect": [
+        "m034"
+      ],
+      "k": 5,
+      "note": "incident mistake: JVM GC pauses exceeding max.poll.interval.ms"
+    },
+    {
+      "q": "why were Java containers terminating unexpectedly under Kubernetes",
+      "category": "procedure/lesson",
+      "expect": [
+        "m042"
+      ],
+      "k": 5,
+      "note": "incident mistake: JVM ignoring container memory limits without MaxRAMPercentage"
+    },
+    {
+      "q": "fixing thermal throttling issues on the MacBook Pro",
+      "category": "procedure/lesson",
+      "expect": [
+        "m049"
+      ],
+      "k": 5,
+      "note": "procedure: clearing lint from fan impellers and heatsink fins"
+    },
+    {
+      "q": "how did we solve PostgreSQL connection spikes under peak load",
+      "category": "procedure/lesson",
+      "expect": [
+        "m062"
+      ],
+      "k": 5,
+      "note": "procedure: deploying PgBouncer in transaction pooling mode"
+    },
+    {
+      "q": "procedure for preventing S3 multipart upload file corruption",
+      "category": "procedure/lesson",
+      "expect": [
+        "m074"
+      ],
+      "k": 5,
+      "note": "procedure: client-side per-part SHA256 checksum verification"
+    },
+    {
+      "q": "all personal vacations and recreational trips taken",
+      "category": "aggregation",
+      "expect": [
+        "m026",
+        "m028",
+        "m058",
+        "m075",
+        "m080"
+      ],
+      "k": 8,
+      "note": "aggregating NYC summit, London trip, Paris trip, RMNP camping, NYC Broadway"
+    },
+    {
+      "q": "members of Alex's immediate and extended family",
+      "category": "aggregation",
+      "expect": [
+        "m007",
+        "m008",
+        "m011",
+        "m012",
+        "m013",
+        "m014",
+        "m069"
+      ],
+      "k": 8,
+      "note": "aggregating mother Sarah, Aunt Clara, brother Leo, cousin Julian, sister Elena, father Arthur"
+    },
+    {
+      "q": "friends and running partners in Alex's social circle",
+      "category": "aggregation",
+      "expect": [
+        "m017",
+        "m018",
+        "m038",
+        "m050",
+        "m064"
+      ],
+      "k": 8,
+      "note": "aggregating Marcus, Dave, and Sam across social/training activities"
+    },
+    {
+      "q": "technical outages, incidents, and engineering mistakes",
+      "category": "aggregation",
+      "expect": [
+        "m016",
+        "m034",
+        "m042",
+        "m051",
+        "m079",
+        "m090"
+      ],
+      "k": 8,
+      "note": "aggregating MySQL lock outage, Kafka rebalance, Java OOM, async mutex deadlock, Envoy 503, Cargo cache thrash"
+    },
+    {
+      "q": "all computing hardware and mobile tech devices owned",
+      "category": "aggregation",
+      "expect": [
+        "m009",
+        "m019",
+        "m033",
+        "m049",
+        "m073",
+        "m087"
+      ],
+      "k": 8,
+      "note": "aggregating Civic, MacBook Pro, Boba U4T keyboard, standing desk setup, Garmin smartwatch"
+    },
+    {
+      "q": "database engines used or managed across all projects",
+      "category": "aggregation",
+      "expect": [
+        "m004",
+        "m005",
+        "m024",
+        "m039",
+        "m057",
+        "m062"
+      ],
+      "k": 8,
+      "note": "aggregating PostgreSQL, MySQL 8.0, MongoDB, ClickHouse (Veloce Labs & Nexus), PgBouncer"
+    },
+    {
+      "q": "running milestones, race completions, and athletic gear purchases",
+      "category": "aggregation",
+      "expect": [
+        "m060",
+        "m071",
+        "m078",
+        "m087",
+        "m091",
+        "m094"
+      ],
+      "k": 8,
+      "note": "aggregating Austin Half Marathon, Saucony shoes, 10K training block, Garmin watch, wool running gloves, Cherry Creek tempo run"
+    }
+  ]
+}
