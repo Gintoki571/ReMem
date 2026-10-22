@@ -38,8 +38,10 @@ Store something when it will still matter next week:
 - **Consistent names**: always "Mom", never "mother" in one memory and "Mom" in
   the next. Aliases belong in `entities`.
 - **Structured when known**: pass `entities` and `relations`. Mark single-valued
-  relations (`lives in`, `works at`, `is married to`, `uses`) `exclusive: true`
-  so the previous value is ended and kept as history.
+  relations (`lives in`, `works at`, `is married to`, `has phone number`)
+  `exclusive: true` so the previous value is ended and kept as history.
+  Exclusivity sticks to the predicate for every future write, so never mark
+  multi-valued ones (`uses`, `knows`, `likes`, `depends on`) exclusive.
 - **Correct, don't contradict**: use `supersedes: ["m12"]` for a newer memory
   that replaces an older one, or `invalidate` when a fact stopped being true.
   Never write two live facts that disagree.
@@ -91,7 +93,7 @@ Store a decision with structure:
  "kind": "decision", "tags": ["architecture", "storage"], "importance": 0.8,
  "entities": [{"name": "neocortex", "type": "project"},
               {"name": "SQLite", "type": "tool"}, {"name": "Postgres", "type": "tool"}],
- "relations": [{"source": "neocortex", "predicate": "uses", "target": "SQLite", "exclusive": true}],
+ "relations": [{"source": "neocortex", "predicate": "uses", "target": "SQLite"}],
  "keywords": ["storage choice"]}
 ```
 
