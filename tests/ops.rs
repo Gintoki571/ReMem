@@ -24,7 +24,14 @@ fn temp_dir(tag: &str) -> PathBuf {
 }
 
 fn engine(path: &Path) -> Engine {
-    Engine::open(path, Arc::new(HashEmbedder)).unwrap()
+    // Fixed UTC offset: the system default is the machine's local offset.
+    let clock = neocortex::temporal::Clock {
+        now: neocortex::temporal::Clock::system().now,
+        tz_offset_secs: 0,
+    };
+    Engine::open(path, Arc::new(HashEmbedder))
+        .unwrap()
+        .with_clock(clock)
 }
 
 fn person(name: &str) -> EntityIn {
