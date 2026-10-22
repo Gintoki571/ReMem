@@ -28,6 +28,15 @@ pub fn heuristic_entities(text: &str) -> Vec<Candidate> {
     });
     let mut seen: Vec<String> = Vec::new();
     cands.retain(|c| {
+        if !c.name.chars().any(char::is_alphabetic) {
+            return false;
+        }
+        if c.name.chars().count() <= 1 {
+            return false;
+        }
+        if is_all_caps_status_word(&c.name) {
+            return false;
+        }
         let norm = norm_name(&c.name);
         if norm.is_empty() || seen.contains(&norm) {
             return false;
@@ -336,6 +345,136 @@ fn is_word_joiner(chars: &[(usize, char)], j: usize) -> bool {
     }
 }
 
+pub const STATUS_WORDS: &[&str] = &[
+    "PASS", "FAIL", "FAILED", "OK", "DONE", "CLOSED", "OPEN", "TODO", "FIXME", "NOTE", "WARN",
+    "WARNING", "ERROR", "NEW", "FULL", "RED", "GREEN", "YES", "NO", "CLEAN", "DIRTY", "READY",
+    "WIP", "NA", "TBD", "AND", "OR", "NOT", "THE", "ALL", "ANY",
+];
+
+pub fn is_status_word(word: &str) -> bool {
+    STATUS_WORDS.contains(&word)
+}
+
+fn is_all_caps_status_word(name: &str) -> bool {
+    let words: Vec<&str> = name.split_whitespace().collect();
+    if words.len() == 1 {
+        is_status_word(words[0])
+    } else {
+        false
+    }
+}
+
+const ORDINARY_WORDS: &[&str] = &[
+    "replay",
+    "merged",
+    "merge",
+    "full",
+    "remaining",
+    "remain",
+    "starting",
+    "start",
+    "unpark",
+    "reports",
+    "report",
+    "lane",
+    "rule",
+    "rules",
+    "suite",
+    "test",
+    "tests",
+    "build",
+    "builds",
+    "check",
+    "checked",
+    "clean",
+    "step",
+    "steps",
+    "task",
+    "tasks",
+    "item",
+    "items",
+    "part",
+    "parts",
+    "phase",
+    "phases",
+];
+
+fn is_ordinary_word(word: &str) -> bool {
+    let f = fold(word);
+    is_stopword(&f)
+        || is_weekday_or_month(&f)
+        || excluded_word(word)
+        || is_status_word(word)
+        || ORDINARY_WORDS.contains(&f.as_str())
+}
+
+fn is_sentence_start(text: &str, pos: usize) -> bool {
+    let before = text[..pos].trim_end_matches([' ', '\t']);
+    if before.is_empty() {
+        return true;
+    }
+    let last = before.chars().next_back().unwrap();
+    if matches!(last, '.' | '!' | '?' | ':' | ';' | '\n' | '\r') {
+        return true;
+    }
+    if matches!(last, '-' | '*' | '+') {
+        let pre = before[..before.len() - last.len_utf8()].trim_end_matches([' ', '\t']);
+        if pre.is_empty() || pre.ends_with('\n') || pre.ends_with('\r') {
+            return true;
+        }
+    }
+    false
+}
+
+fn appears_capitalised_not_at_sentence_start(text: &str, word: &str) -> bool {
+    let mut search = 0;
+    while let Some(rel) = text[search..].find(word) {
+        let idx = search + rel;
+        search = idx + word.len();
+
+        let at_word_start = idx == 0 || !text[..idx].chars().next_back().unwrap().is_alphanumeric();
+        let at_word_end =
+            search == text.len() || !text[search..].chars().next().unwrap().is_alphanumeric();
+
+        if at_word_start && at_word_end && !is_sentence_start(text, idx) {
+            return true;
+        }
+    }
+    false
+}
+
+fn has_inner_capital_or_digit(word: &str) -> bool {
+    let chars: Vec<char> = word.chars().collect();
+    if chars.len() < 2 {
+        return false;
+    }
+    for i in 1..chars.len() {
+        let prev = chars[i - 1];
+        let curr = chars[i];
+        if curr.is_uppercase() && prev.is_lowercase() {
+            return true;
+        }
+        if curr.is_ascii_digit()
+            && prev.is_alphabetic()
+            && (i + 1 < chars.len() && chars[i + 1].is_alphabetic())
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn is_acronym(word: &str) -> bool {
+    let count = word.chars().count();
+    (2..=6).contains(&count)
+        && word.chars().all(|c| c.is_ascii_uppercase())
+        && !is_status_word(word)
+}
+
+fn is_single_capital_letter(word: &str) -> bool {
+    word.chars().count() == 1 && word.chars().next().unwrap().is_ascii_uppercase()
+}
+
 fn word_candidates(text: &str, consumed: &[(usize, usize)]) -> Vec<Candidate> {
     let words = word_tokens(text, consumed);
     let mut cands = Vec::new();
@@ -363,6 +502,9 @@ fn word_candidates(text: &str, consumed: &[(usize, usize)]) -> Vec<Candidate> {
                 break;
             }
             let w = words[k].text;
+            if is_acronym(words[k - 1].text) && is_acronym(w) {
+                break;
+            }
             if is_proper_word(w) {
                 last = k;
                 k += 1;
@@ -379,33 +521,84 @@ fn word_candidates(text: &str, consumed: &[(usize, usize)]) -> Vec<Candidate> {
                 break;
             }
         }
-        let start = words[i].start;
-        if last == i {
-            cands.push(Candidate {
-                name: words[i].text.to_string(),
-                hint: "proper",
-                start,
-                end: words[i].end,
-            });
-        } else {
-            let end = words[last].end;
-            let has_calendar = words[i..=last]
-                .iter()
-                .any(|w| is_weekday_or_month(&fold(w.text)));
-            if !has_calendar {
-                let hint = if is_number(words[last].text) {
-                    "version"
-                } else {
-                    "proper"
-                };
+
+        // Rule 3: leading/trailing status words are trimmed from spans
+        let mut s_idx = i;
+        let mut e_idx = last;
+        while s_idx <= e_idx && is_status_word(words[s_idx].text) {
+            s_idx += 1;
+        }
+        while e_idx >= s_idx && is_status_word(words[e_idx].text) {
+            e_idx -= 1;
+        }
+        if s_idx > e_idx {
+            i = last + 1;
+            continue;
+        }
+
+        // Rule 3: a span made only of single letters/numbers/status words is rejected
+        let only_trivial = words[s_idx..=e_idx]
+            .iter()
+            .all(|w| w.text.chars().count() <= 1 || is_number(w.text) || is_status_word(w.text));
+        if only_trivial {
+            i = last + 1;
+            continue;
+        }
+
+        if s_idx == e_idx {
+            let w = &words[s_idx];
+            // Rule 2: A single capitalised word at sentence start is kept only if
+            // the same word also appears capitalised NOT at a sentence start elsewhere in the text,
+            // or it has an inner capital/digit (ReMem, PostgreSQL, k8s),
+            // or it is an acronym (SQL, MCP, CPU).
+            let keep = if is_sentence_start(text, w.start) {
+                is_acronym(w.text)
+                    || has_inner_capital_or_digit(w.text)
+                    || appears_capitalised_not_at_sentence_start(text, w.text)
+            } else {
+                true
+            };
+            if keep {
                 cands.push(Candidate {
-                    name: text[start..end].to_string(),
-                    hint,
-                    start,
-                    end,
+                    name: w.text.to_string(),
+                    hint: "proper",
+                    start: w.start,
+                    end: w.end,
                 });
             }
+        } else {
+            // Rule 2: keep spans where the second token is a single capital letter or a number
+            // only if the first token is not a sentence-initial ordinary word
+            let w0 = &words[s_idx];
+            let w1 = &words[s_idx + 1];
+            let second_is_single_cap_or_num =
+                is_single_capital_letter(w1.text) || is_number(w1.text);
+            let reject_span = second_is_single_cap_or_num
+                && is_sentence_start(text, w0.start)
+                && (w0.text.chars().count() <= 1 || is_ordinary_word(w0.text));
+
+            if !reject_span {
+                let has_calendar = words[s_idx..=e_idx]
+                    .iter()
+                    .any(|w| is_weekday_or_month(&fold(w.text)));
+                if !has_calendar {
+                    let start = words[s_idx].start;
+                    let end = words[e_idx].end;
+                    let hint = if is_number(words[e_idx].text) {
+                        "version"
+                    } else {
+                        "proper"
+                    };
+                    cands.push(Candidate {
+                        name: text[start..end].to_string(),
+                        hint,
+                        start,
+                        end,
+                    });
+                }
+            }
         }
+
         i = last + 1;
     }
     cands
@@ -433,12 +626,8 @@ fn word_hint(text: &str) -> Option<&'static str> {
     if text.contains('_') || text.contains("::") || text.matches('.').count() >= 2 {
         return Some("identifier");
     }
-    let mut prev: Option<char> = None;
-    for c in text.chars() {
-        if c.is_uppercase() && prev.is_some_and(|p| p.is_lowercase() || p.is_ascii_digit()) {
-            return Some("identifier");
-        }
-        prev = Some(c);
+    if has_inner_capital_or_digit(text) {
+        return Some("identifier");
     }
     None
 }
@@ -458,7 +647,7 @@ fn is_connector(word: &str) -> bool {
 }
 
 fn is_span_start(word: &str) -> bool {
-    is_proper_word(word) && !excluded_word(word)
+    is_proper_word(word) && (!excluded_word(word) || is_status_word(word))
 }
 
 fn excluded_word(word: &str) -> bool {
@@ -733,5 +922,114 @@ mod tests {
         assert!(g
             .iter()
             .any(|(n, s, e)| n == "house" && &text[*s..*e] == "house"));
+    }
+
+    #[test]
+    fn table_test_heuristic_entities_kept_vs_rejected() {
+        struct Case {
+            input: &'static str,
+            kept: &'static [&'static str],
+            rejected: &'static [&'static str],
+        }
+
+        let cases = [
+            Case {
+                input: "Replay lane E: CLOSED. F PASS 7, D 11 merged.",
+                kept: &[],
+                rejected: &[
+                    "Replay", "CLOSED", "F", "PASS", "7", "D", "11", "merged", "F PASS 7", "D 11",
+                ],
+            },
+            Case {
+                input: "Merged lane-a into main; Full suite PASS.",
+                kept: &[],
+                rejected: &["Merged", "Full", "PASS"],
+            },
+            Case {
+                input: "Remaining: fix live_filter test in remem-store",
+                kept: &["live_filter"],
+                rejected: &["Remaining"],
+            },
+            Case {
+                input: "Unpark rule: check dependencies.",
+                kept: &[],
+                rejected: &["Unpark"],
+            },
+            Case {
+                input: "PASS FAIL FAILED OK DONE CLOSED OPEN TODO FIXME NOTE WARN WARNING ERROR \
+                        NEW FULL RED GREEN YES NO CLEAN DIRTY READY WIP NA TBD AND OR NOT THE ALL ANY \
+                        SQL MCP RRF CPU GPU API DB NYC AWS",
+                kept: &["SQL", "MCP", "RRF", "CPU", "GPU", "API", "DB", "NYC", "AWS"],
+                rejected: &[
+                    "PASS", "FAIL", "FAILED", "OK", "DONE", "CLOSED", "OPEN", "TODO", "FIXME",
+                    "NOTE", "WARN", "WARNING", "ERROR", "NEW", "FULL", "RED", "GREEN", "YES",
+                    "NO", "CLEAN", "DIRTY", "READY", "WIP", "NA", "TBD", "AND", "OR", "NOT",
+                    "THE", "ALL", "ANY",
+                ],
+            },
+            Case {
+                input: "Alice called Bob. Later Alice returned.",
+                kept: &["Alice", "Bob"],
+                rejected: &[],
+            },
+            Case {
+                input: "Reports indicated starting was full.",
+                kept: &[],
+                rejected: &["Reports", "Starting", "Full"],
+            },
+            Case {
+                input: "ReMem and PostgreSQL run on k8s.",
+                kept: &["ReMem", "PostgreSQL", "k8s"],
+                rejected: &[],
+            },
+            Case {
+                input: "Postgres 16 is deployed. We love Postgres 16.",
+                kept: &["Postgres 16"],
+                rejected: &[],
+            },
+            Case {
+                input: "We tested Lane E. Lane E was closed.",
+                kept: &["Lane E"],
+                rejected: &[],
+            },
+            Case {
+                input: "We deployed to CLOSED Lane E today.",
+                kept: &["Lane E"],
+                rejected: &["CLOSED", "CLOSED Lane E"],
+            },
+            Case {
+                input: "Report: F PASS 7 and D 11.",
+                kept: &[],
+                rejected: &["Report", "F PASS 7", "D 11", "F", "PASS", "7", "D", "11"],
+            },
+            Case {
+                input: "Alice Johnson met SQLite in New York City.",
+                kept: &["Alice Johnson", "SQLite", "New York City"],
+                rejected: &[],
+            },
+        ];
+
+        for case in cases {
+            let actual = heuristic_entities(case.input);
+            let actual_names: Vec<&str> = actual.iter().map(|c| c.name.as_str()).collect();
+            for expected in case.kept {
+                assert!(
+                    actual_names.contains(expected),
+                    "expected kept entity {:?} missing from {:?} in input {:?}",
+                    expected,
+                    actual_names,
+                    case.input
+                );
+            }
+            for rejected in case.rejected {
+                assert!(
+                    !actual_names.contains(rejected),
+                    "rejected entity {:?} unexpectedly present in {:?} in input {:?}",
+                    rejected,
+                    actual_names,
+                    case.input
+                );
+            }
+        }
     }
 }
