@@ -113,6 +113,14 @@ impl UltraBert {
         let rope_theta: Vec<f64> = serde_json::from_value(config["rope_theta"].clone())?;
         let windows: Vec<Option<usize>> =
             serde_json::from_value(config["attention_windows"].clone())?;
+        // A wrong config must be an error, not an index panic that kills the MCP server.
+        if rope_theta.len() < 24 || windows.len() < 24 {
+            return Err(crate::err!(
+                "model config has {} rope_theta and {} attention_windows entries; UltraBERT-Embed-150M needs 24 each",
+                rope_theta.len(),
+                windows.len()
+            ));
+        }
 
         let mut rope: Vec<(f64, Tensor, Tensor)> = Vec::new();
         let mut rope_index = |theta: f64| -> crate::Result<usize> {
