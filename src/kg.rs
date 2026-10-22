@@ -40,6 +40,27 @@ pub fn project_entity(db: &Db, id: i64, name: &str, kind: &str) -> Result<()> {
     )
 }
 
+/// Project an entity using its stored name/type (so a bare mention never
+/// clobbers an existing type).
+pub fn project_entity_from_db(db: &Db, id: i64) -> Result<()> {
+    let (name, kind): (String, String) =
+        db.sql()
+            .query_row("SELECT name,type FROM entities WHERE id=?1", [id], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })?;
+    project_entity(db, id, &name, &kind)
+}
+
+/// Advance the write generation used to invalidate caches.
+pub fn bump_gen(db: &Db) -> Result<()> {
+    db.sql().execute(
+        "INSERT INTO meta(key,value) VALUES('gen','1')
+         ON CONFLICT(key) DO UPDATE SET value=CAST(CAST(value AS INTEGER)+1 AS TEXT)",
+        [],
+    )?;
+    Ok(())
+}
+
 pub fn project_mention(db: &Db, memory: i64, entity: i64) -> Result<()> {
     run(
         db,
@@ -137,7 +158,15 @@ pub fn snapshot(db: &Db, as_of: Option<i64>, include_ended: bool) -> Result<Snap
     let mut mem_node = HashMap::new();
     let mut ent_node = HashMap::new();
     {
-        let mut st = db.sql().prepare("SELECT id FROM memories ORDER BY id")?;
+        // Forgotten memories (expired without a superseding memory) are not
+        // part of the graph. Superseded memories are history and stay only
+        // when the caller asks for ended nodes.
+        let sql = if include_ended {
+            "SELECT id FROM memories WHERE expired_at IS NULL OR superseded_by IS NOT NULL ORDER BY id"
+        } else {
+            "SELECT id FROM memories WHERE expired_at IS NULL ORDER BY id"
+        };
+        let mut st = db.sql().prepare(sql)?;
         for row in st.query_map([], |r| r.get::<_, i64>(0))? {
             let id = row?;
             mem_node.insert(id, nodes.len() as u32);
@@ -162,23 +191,41 @@ pub fn snapshot(db: &Db, as_of: Option<i64>, include_ended: bool) -> Result<Snap
             edges.push((a, b, 1.0));
         }
     }
-    let now = as_of.unwrap_or_else(|| crate::temporal::Clock::system().now);
-    let sql = if include_ended {
-        "SELECT src,dst,evidence_count FROM relations"
+    if include_ended {
+        let mut st = db
+            .sql()
+            .prepare("SELECT src,dst,evidence_count FROM relations")?;
+        let mut rows = st.query([])?;
+        while let Some(r) = rows.next()? {
+            let (s, d, c): (i64, i64, i64) = (r.get(0)?, r.get(1)?, r.get(2)?);
+            if let (Some(&a), Some(&b)) = (ent_node.get(&s), ent_node.get(&d)) {
+                edges.push((a, b, (1.0 + c as f64).ln().max(0.5) as f32));
+            }
+        }
+    } else if let Some(now) = as_of {
+        let mut st = db.sql().prepare(
+            "SELECT src,dst,evidence_count FROM relations
+             WHERE valid_from<=?1 AND (valid_to IS NULL OR valid_to>?1) AND expired_at IS NULL",
+        )?;
+        let mut rows = st.query(params![now])?;
+        while let Some(r) = rows.next()? {
+            let (s, d, c): (i64, i64, i64) = (r.get(0)?, r.get(1)?, r.get(2)?);
+            if let (Some(&a), Some(&b)) = (ent_node.get(&s), ent_node.get(&d)) {
+                edges.push((a, b, (1.0 + c as f64).ln().max(0.5) as f32));
+            }
+        }
     } else {
-        "SELECT src,dst,evidence_count FROM relations WHERE valid_from<=?1 AND (valid_to IS NULL OR valid_to>?1) AND expired_at IS NULL"
-    };
-    let mut st = db.sql().prepare(sql)?;
-    let iter = if include_ended {
-        st.query([])?
-    } else {
-        st.query(params![now])?
-    };
-    let mut rows = iter;
-    while let Some(r) = rows.next()? {
-        let (s, d, c): (i64, i64, i64) = (r.get(0)?, r.get(1)?, r.get(2)?);
-        if let (Some(&a), Some(&b)) = (ent_node.get(&s), ent_node.get(&d)) {
-            edges.push((a, b, (1.0 + (c as f64).ln()).max(0.5) as f32));
+        // No clock: "currently valid" is an SQL predicate, not a timestamp.
+        let mut st = db.sql().prepare(
+            "SELECT src,dst,evidence_count FROM relations
+             WHERE valid_to IS NULL AND expired_at IS NULL",
+        )?;
+        let mut rows = st.query([])?;
+        while let Some(r) = rows.next()? {
+            let (s, d, c): (i64, i64, i64) = (r.get(0)?, r.get(1)?, r.get(2)?);
+            if let (Some(&a), Some(&b)) = (ent_node.get(&s), ent_node.get(&d)) {
+                edges.push((a, b, (1.0 + c as f64).ln().max(0.5) as f32));
+            }
         }
     }
     let mut st = db.sql().prepare("SELECT a,b,score FROM similar")?;
@@ -205,8 +252,29 @@ pub fn snapshot(db: &Db, as_of: Option<i64>, include_ended: bool) -> Result<Snap
 pub fn communities(db: &Db) -> Result<HashMap<i64, i64>> {
     let result = db.graph().cypher("RETURN louvain(1.0)")?;
     let mut out = HashMap::new();
-    for row in result {
-        if let Ok(user) = row.get::<String>("user_id") {
+    for row in &result {
+        // graphqlite returns algorithm results as one row whose `column_0` is
+        // an array of {node_id, user_id, community} objects.
+        if let Some(graphqlite::Value::Array(items)) = row.get_value("column_0") {
+            for item in items {
+                let graphqlite::Value::Object(fields) = item else {
+                    continue;
+                };
+                let user = match fields.get("user_id") {
+                    Some(graphqlite::Value::String(s)) => s.clone(),
+                    Some(graphqlite::Value::Integer(i)) => i.to_string(),
+                    _ => continue,
+                };
+                let community = match fields.get("community") {
+                    Some(graphqlite::Value::Integer(i)) => *i,
+                    Some(graphqlite::Value::Float(f)) => *f as i64,
+                    _ => continue,
+                };
+                if let Some(id) = user.strip_prefix("e:").and_then(|x| x.parse().ok()) {
+                    out.insert(id, community);
+                }
+            }
+        } else if let Ok(user) = row.get::<String>("user_id") {
             if let Some(id) = user.strip_prefix("e:").and_then(|x| x.parse().ok()) {
                 if let Ok(c) = row.get::<i64>("community") {
                     out.insert(id, c);
@@ -214,5 +282,18 @@ pub fn communities(db: &Db) -> Result<HashMap<i64, i64>> {
             }
         }
     }
+    let now = crate::temporal::Clock::system().now;
+    db.sql().execute("DELETE FROM communities", [])?;
+    for (id, community) in &out {
+        db.sql().execute(
+            "INSERT OR REPLACE INTO communities(entity_id,community,computed_at) VALUES (?1,?2,?3)",
+            params![id, community, now],
+        )?;
+    }
+    db.sql().execute(
+        "INSERT OR REPLACE INTO meta(key,value)
+         VALUES('communities_gen', COALESCE((SELECT value FROM meta WHERE key='gen'),'0'))",
+        [],
+    )?;
     Ok(out)
 }

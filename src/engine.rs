@@ -401,6 +401,7 @@ impl Engine {
                 }
                 db.sql()
                     .execute("UPDATE memories SET valid_to=?1 WHERE id=?2", [at, id])?;
+                crate::kg::bump_gen(db)?;
                 return Ok(ChangeOutput {
                     changed: vec![format!("m{id} valid_to={at}")],
                 });
@@ -417,6 +418,7 @@ impl Engine {
                 }
                 db.sql()
                     .execute("UPDATE relations SET valid_to=?1 WHERE id=?2", [at, id])?;
+                crate::kg::bump_gen(db)?;
                 return Ok(ChangeOutput {
                     changed: vec![format!("r{id} valid_to={at}")],
                 });
@@ -428,17 +430,60 @@ impl Engine {
     /// Retire a memory (soft) or delete it with vectors/mentions/evidence (hard).
     pub fn forget(&self, _id: &str, _hard: bool) -> Result<ChangeOutput> {
         let now = self.clock().now;
-        self.db.write(|db|{
-            let Some(id)=parse_id(_id,'m') else{return Err(crate::err!("invalid memory id '{_id}'"));};
-            let exists:bool=db.sql().query_row("SELECT EXISTS(SELECT 1 FROM memories WHERE id=?1)",[id],|r|r.get(0))?;
-            if !exists{return Err(crate::err!("unknown memory m{id}"));}
+        self.db.write(|db| {
+            let Some(id) = parse_id(_id, 'm') else {
+                return Err(crate::err!("invalid memory id '{_id}'"));
+            };
+            let exists: bool = db.sql().query_row(
+                "SELECT EXISTS(SELECT 1 FROM memories WHERE id=?1)",
+                [id],
+                |r| r.get(0),
+            )?;
+            if !exists {
+                return Err(crate::err!("unknown memory m{id}"));
+            }
             if _hard {
-                db.sql().execute("DELETE FROM memories_vec WHERE rowid=?1",[id])?;
-                db.sql().execute("DELETE FROM memories WHERE id=?1",[id])?;
-                db.sql().execute("DELETE FROM relations WHERE id IN (SELECT r.id FROM relations r LEFT JOIN relation_evidence e ON e.relation_id=r.id WHERE e.relation_id IS NULL)",[])?;
-            } else {db.sql().execute("UPDATE memories SET expired_at=?1 WHERE id=?2",[now,id])?;db.sql().execute("UPDATE memories_vec SET live=0 WHERE rowid=?1",[id])?;}
-            crate::kg::remove_memory(db,id)?;
-            Ok(ChangeOutput{changed:vec![format!("m{id} {}",if _hard{"deleted"}else{"expired"})]})
+                // Relations whose only evidence was this memory disappear with
+                // it, including their FTS/vector rows.
+                let orphaned: Vec<i64> = {
+                    let mut st = db.sql().prepare(
+                        "SELECT r.id FROM relations r
+                         JOIN relation_evidence e ON e.relation_id=r.id
+                         WHERE e.memory_id=?1
+                           AND (SELECT count(*) FROM relation_evidence e2
+                                WHERE e2.relation_id=r.id)=1",
+                    )?;
+                    let rows = st.query_map([id], |r| r.get(0))?;
+                    rows.collect::<rusqlite::Result<_>>()?
+                };
+                for rid in orphaned {
+                    db.sql()
+                        .execute("DELETE FROM relations_fts WHERE rowid=?1", [rid])?;
+                    db.sql()
+                        .execute("DELETE FROM relations_vec WHERE rowid=?1", [rid])?;
+                    db.sql()
+                        .execute("DELETE FROM relations WHERE id=?1", [rid])?;
+                }
+                db.sql()
+                    .execute("DELETE FROM memories_vec WHERE rowid=?1", [id])?;
+                // Cascades mentions and relation_evidence.
+                db.sql().execute("DELETE FROM memories WHERE id=?1", [id])?;
+                crate::kg::rebuild_all(db)?;
+            } else {
+                // Soft forget keeps the projection node: it is history, and
+                // snapshot/validate exclude it from the live graph.
+                db.sql()
+                    .execute("UPDATE memories SET expired_at=?1 WHERE id=?2", [now, id])?;
+                db.sql()
+                    .execute("UPDATE memories_vec SET live=0 WHERE rowid=?1", [id])?;
+            }
+            crate::kg::bump_gen(db)?;
+            Ok(ChangeOutput {
+                changed: vec![format!(
+                    "m{id} {}",
+                    if _hard { "deleted" } else { "expired" }
+                )],
+            })
         })
     }
 
@@ -449,18 +494,82 @@ impl Engine {
         if k == m {
             return Err(crate::err!("cannot merge an entity into itself"));
         }
-        self.db.write(|db|{
-            db.sql().execute("UPDATE OR IGNORE mentions SET entity_id=?1 WHERE entity_id=?2",[k,m])?;
-            db.sql().execute("DELETE FROM mentions WHERE entity_id=?1",[m])?;
-            db.sql().execute("UPDATE OR IGNORE entity_aliases SET entity_id=?1,origin='manual' WHERE entity_id=?2",[k,m])?;
-            db.sql().execute("DELETE FROM entity_aliases WHERE entity_id=?1",[m])?;
-            db.sql().execute("UPDATE relations SET src=?1 WHERE src=?2",[k,m])?;
-            db.sql().execute("UPDATE relations SET dst=?1 WHERE dst=?2",[k,m])?;
-            db.sql().execute("DELETE FROM similar WHERE a=?1 OR b=?1",[m])?;
-            db.sql().execute("DELETE FROM entities_vec WHERE rowid=?1",[m])?;
-            db.sql().execute("DELETE FROM entities WHERE id=?1",[m])?;
+        let now = self.clock().now;
+        self.db.write(|db| {
+            // Move similar edges to `keep`, dropping self pairs and keeping the
+            // highest score per pair.
+            let moved: Vec<(i64, i64, f32)> = {
+                let mut st = db
+                    .sql()
+                    .prepare("SELECT a,b,score FROM similar WHERE a=?1 OR b=?1")?;
+                let rows = st.query_map([m], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+                rows.collect::<rusqlite::Result<_>>()?
+            };
+            db.sql()
+                .execute("DELETE FROM similar WHERE a=?1 OR b=?1", [m])?;
+            for (a, b, score) in moved {
+                let other = if a == m { b } else { a };
+                if other == k || other == m {
+                    continue;
+                }
+                let (lo, hi) = if other < k { (other, k) } else { (k, other) };
+                db.sql().execute(
+                    "INSERT INTO similar(a,b,score) VALUES (?1,?2,?3)
+                     ON CONFLICT(a,b) DO UPDATE SET score=MAX(score, excluded.score)",
+                    rusqlite::params![lo, hi, score],
+                )?;
+            }
+            db.sql().execute(
+                "UPDATE OR IGNORE mentions SET entity_id=?1 WHERE entity_id=?2",
+                [k, m],
+            )?;
+            db.sql()
+                .execute("DELETE FROM mentions WHERE entity_id=?1", [m])?;
+            db.sql().execute(
+                "UPDATE OR IGNORE entity_aliases SET entity_id=?1, origin='manual' WHERE entity_id=?2",
+                [k, m],
+            )?;
+            db.sql()
+                .execute("DELETE FROM entity_aliases WHERE entity_id=?1", [m])?;
+            db.sql()
+                .execute("UPDATE relations SET src=?1 WHERE src=?2", [k, m])?;
+            db.sql()
+                .execute("UPDATE relations SET dst=?1 WHERE dst=?2", [k, m])?;
+            // Self-loops created by the merge (or already present) are noise.
+            let loops: Vec<i64> = {
+                let mut st = db
+                    .sql()
+                    .prepare("SELECT id FROM relations WHERE src=dst AND src=?1")?;
+                let rows = st.query_map([k], |r| r.get::<_, i64>(0))?;
+                rows.collect::<rusqlite::Result<_>>()?
+            };
+            for rid in loops {
+                db.sql()
+                    .execute("DELETE FROM relations_fts WHERE rowid=?1", [rid])?;
+                db.sql()
+                    .execute("DELETE FROM relations_vec WHERE rowid=?1", [rid])?;
+                db.sql().execute("DELETE FROM relations WHERE id=?1", [rid])?;
+            }
+            let merged_count: i64 = db.sql().query_row(
+                "SELECT mention_count FROM entities WHERE id=?1",
+                [m],
+                |r| r.get(0),
+            )?;
+            db.sql().execute(
+                "UPDATE entities SET mention_count=mention_count+?1, updated_at=?2 WHERE id=?3",
+                rusqlite::params![merged_count, now, k],
+            )?;
+            db.sql()
+                .execute("DELETE FROM entities_fts WHERE rowid=?1", [m])?;
+            db.sql()
+                .execute("DELETE FROM entities_vec WHERE rowid=?1", [m])?;
+            db.sql().execute("DELETE FROM entities WHERE id=?1", [m])?;
+            crate::resolve::refresh_entity_fts(db, k)?;
             crate::kg::rebuild_all(db)?;
-            Ok(ChangeOutput{changed:vec![format!("e{m} merged into e{k}")]})
+            crate::kg::bump_gen(db)?;
+            Ok(ChangeOutput {
+                changed: vec![format!("e{m} merged into e{k}")],
+            })
         })
     }
 
@@ -468,23 +577,35 @@ impl Engine {
     pub fn add_alias(&self, _entity: &str, _alias: &str) -> Result<ChangeOutput> {
         let id = parse_entity(&self.db, _entity)?;
         let norm = crate::text::norm_name(_alias);
-        let other: Option<i64> = self
-            .db
-            .sql()
-            .query_row(
-                "SELECT entity_id FROM entity_aliases WHERE alias_norm=?1",
-                [&norm],
-                |r| r.get(0),
-            )
-            .optional()?;
-        if let Some(other) = other.filter(|x| *x != id) {
-            return Err(crate::err!(
-                "alias '{}' names e{}; merge entities first",
-                _alias,
-                other
-            ));
+        if norm.is_empty() {
+            return Err(crate::err!("alias must not be empty"));
         }
-        self.db.write(|db|{db.sql().execute("INSERT OR IGNORE INTO entity_aliases(alias_norm,entity_id,origin) VALUES(?1,?2,'manual')",[_alias.to_string(),id.to_string()])?;Ok(ChangeOutput{changed:vec![format!("e{id} alias={norm}")]})})
+        self.db.write(|db| {
+            let other: Option<i64> = db
+                .sql()
+                .query_row(
+                    "SELECT entity_id FROM entity_aliases WHERE alias_norm=?1 AND entity_id<>?2 LIMIT 1",
+                    rusqlite::params![norm, id],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            if let Some(other) = other {
+                return Err(crate::err!(
+                    "alias '{}' names e{}; merge entities first",
+                    _alias,
+                    other
+                ));
+            }
+            db.sql().execute(
+                "INSERT OR IGNORE INTO entity_aliases(alias_norm,entity_id,origin) VALUES(?1,?2,'manual')",
+                rusqlite::params![norm, id],
+            )?;
+            crate::resolve::refresh_entity_fts(db, id)?;
+            crate::kg::bump_gen(db)?;
+            Ok(ChangeOutput {
+                changed: vec![format!("e{id} alias={norm}")],
+            })
+        })
     }
 
     /// Communities of the entity graph, ranked by relevance to `query` (or size).
@@ -524,6 +645,7 @@ impl Engine {
     pub fn reindex(&self) -> Result<ChangeOutput> {
         self.db.write(|db| {
             crate::kg::rebuild_all(db)?;
+            crate::kg::bump_gen(db)?;
             Ok(ChangeOutput {
                 changed: vec!["projection rebuilt".into()],
             })
@@ -534,30 +656,64 @@ impl Engine {
     pub fn validate(&self) -> Result<Vec<String>> {
         let c = self.db.sql();
         let mut out = Vec::new();
-        let nodes: i64 = self
-            .db
-            .graph()
-            .cypher("MATCH (n) RETURN count(n) AS c")?
-            .iter()
-            .next()
-            .and_then(|r| r.get("c").ok())
-            .unwrap_or(0);
-        let expected: i64 = c
-            .query_row("SELECT count(*) FROM memories", [], |r| r.get::<_, i64>(0))?
-            + c.query_row("SELECT count(*) FROM entities", [], |r| r.get::<_, i64>(0))?;
-        if nodes != expected {
-            out.push(format!("projection nodes: {nodes}, relational: {expected}"));
+        let count =
+            |sql: &str| -> Result<i64> { Ok(c.query_row(sql, [], |r| r.get::<_, i64>(0))?) };
+        let cypher_count = |query: &str| -> Result<i64> {
+            Ok(self
+                .db
+                .graph()
+                .cypher(query)?
+                .iter()
+                .next()
+                .and_then(|r| r.get::<i64>("c").ok())
+                .unwrap_or(0))
+        };
+        let nodes = cypher_count("MATCH (n) RETURN count(n) AS c")?;
+        let edges = cypher_count("MATCH (a)-[r]->(b) RETURN count(r) AS c")?;
+        let memories = count("SELECT count(*) FROM memories")?;
+        let entities = count("SELECT count(*) FROM entities")?;
+        let mentions = count("SELECT count(*) FROM mentions")?;
+        let similar = count("SELECT count(*) FROM similar")?;
+        let relations = count("SELECT count(*) FROM relations")?;
+        if nodes != memories + entities {
+            out.push(format!(
+                "projection nodes: {nodes}, relational: {}",
+                memories + entities
+            ));
         }
-        for (name, sql) in [
-            ("memory vectors", "SELECT count(*) FROM memories_vec"),
-            ("memories", "SELECT count(*) FROM memories"),
-        ] {
-            let a: i64 = c.query_row(sql, [], |r| r.get(0))?;
-            if name == "memory vectors"
-                && a != c.query_row("SELECT count(*) FROM memories", [], |r| r.get::<_, i64>(0))?
-            {
-                out.push("memory vectors do not match memories".into());
-            }
+        if edges != mentions + similar + relations {
+            out.push(format!(
+                "projection edges: {edges}, relational: {}",
+                mentions + similar + relations
+            ));
+        }
+        if count("SELECT count(*) FROM memories_vec")? != memories {
+            out.push("memory vectors do not match memories".into());
+        }
+        if count("SELECT count(*) FROM entities_vec")? != entities {
+            out.push("entity vectors do not match entities".into());
+        }
+        let dangling_mentions = count(
+            "SELECT count(*) FROM mentions m
+             LEFT JOIN memories mem ON mem.id=m.memory_id
+             LEFT JOIN entities e ON e.id=m.entity_id
+             WHERE mem.id IS NULL OR e.id IS NULL",
+        )?;
+        if dangling_mentions != 0 {
+            out.push(format!(
+                "{dangling_mentions} mentions point at missing rows"
+            ));
+        }
+        let dangling_evidence = count(
+            "SELECT count(*) FROM relation_evidence ev
+             LEFT JOIN relations r ON r.id=ev.relation_id
+             LEFT JOIN memories m ON m.id=ev.memory_id
+             WHERE r.id IS NULL OR m.id IS NULL",
+        )?;
+        if dangling_evidence != 0 {
+            out.push(format!(
+                "{dangling_evidence} relation_evidence rows point at missing rows"
+            ));
         }
         Ok(out)
     }
