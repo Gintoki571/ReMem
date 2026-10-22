@@ -617,3 +617,18 @@ fn sweep_ingests_once_and_reports_each_variant() {
         assert_eq!(report.queries, 1);
     }
 }
+
+#[test]
+fn entity_lookup_falls_back_to_prefix_and_suggests_closest() {
+    let engine = engine(Arc::new(HashEmbedder));
+    remember(&engine, "The lab runs UltraBERT-Embed-150M on CPU.", |m| {
+        m.entities = vec![entity("UltraBERT-Embed-150M")];
+    });
+    let out = engine.entity("UltraBERT", 5).unwrap();
+    assert_eq!(out.card.name, "UltraBERT-Embed-150M");
+    let err = engine.entity("zzqx unknown", 5).unwrap_err().to_string();
+    assert!(
+        err.contains("unknown entity") && err.contains("closest:"),
+        "{err}"
+    );
+}

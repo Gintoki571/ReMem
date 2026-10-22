@@ -873,7 +873,8 @@ pub fn entity(engine: &Engine, name: &str, limit: usize) -> Result<EntityOutput>
                 )
                 .ok()
         })
-        .ok_or_else(|| crate::err!("unknown entity '{name}'"))?;
+        .map(Ok)
+        .unwrap_or_else(|| lookup_entity_fuzzy(engine, name))?;
     let now = engine.clock().now;
     let card = card(engine, id)?;
     let mut current = facts_for(engine, &[id], false, now, limit)?;
@@ -930,6 +931,56 @@ pub fn entity(engine: &Engine, name: &str, limit: usize) -> Result<EntityOutput>
     })
 }
 
+/// Fallbacks after an exact alias miss: the unique-best alias prefix
+/// ("UltraBERT" -> "UltraBERT-Embed-150M"), then the nearest entity card at
+/// cosine >= 0.8; otherwise an error that names the closest entities.
+fn lookup_entity_fuzzy(engine: &Engine, name: &str) -> Result<i64> {
+    let n = text::norm_name(name);
+    if n.chars().count() >= 3 {
+        let prefix: Option<i64> = engine
+            .db
+            .sql()
+            .query_row(
+                "SELECT a.entity_id FROM entity_aliases a JOIN entities e ON e.id = a.entity_id
+                 WHERE a.alias_norm >= ?1 AND a.alias_norm < ?1 || char(1114111)
+                 ORDER BY e.mention_count DESC, length(a.alias_norm) LIMIT 1",
+                [&n],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if let Some(id) = prefix {
+            return Ok(id);
+        }
+    }
+    let vector = engine.emb.embed(&[name], Mode::Document)?.remove(0);
+    let mut st = engine.db.sql().prepare(
+        "SELECT v.rowid, 1 - v.distance, e.name FROM entities_vec v JOIN entities e ON e.id = v.rowid
+         WHERE v.embedding MATCH ?1 AND k = 3 ORDER BY v.distance",
+    )?;
+    let near: Vec<(i64, f64, String)> = st
+        .query_map([crate::db::vec_blob(&vector)], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })?
+        .collect::<rusqlite::Result<_>>()?;
+    match near.first() {
+        Some((id, cos, _)) if *cos >= 0.8 => Ok(*id),
+        _ => Err(crate::err!(
+            "unknown entity '{name}'{}",
+            if near.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "; closest: {}",
+                    near.iter()
+                        .map(|(id, _, n)| format!("{n} (e{id})"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            }
+        )),
+    }
+}
+
 fn overview_ppr(engine: &Engine, query: &str) -> Result<HashMap<i64, f64>> {
     let vector = engine.emb.embed(&[query], Mode::Query)?.remove(0);
     let snap = snapshot(engine, None, false)?;
@@ -954,6 +1005,35 @@ fn overview_ppr(engine: &Engine, query: &str) -> Result<HashMap<i64, f64>> {
         if score >= f64::from(engine.cfg.entity_seed) {
             if let Some(&node) = snap.ent_node.get(&id) {
                 seeds.push((node, score));
+            }
+        }
+    }
+    // Topical queries ("embedding performance") rarely name an entity: seed the
+    // walk from the nearest memories too, with the same share recall uses.
+    let ent_total: f64 = seeds.iter().map(|(_, w)| w).sum();
+    let mut st = engine.db.sql().prepare(
+        "SELECT rowid,1-distance FROM memories_vec
+         WHERE embedding MATCH ?1 AND k=?2 AND live=1 ORDER BY distance",
+    )?;
+    let mem: Vec<(i64, f64)> = st
+        .query_map(
+            params![crate::db::vec_blob(&vector), engine.cfg.mem_seed_top as i64],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )?
+        .collect::<rusqlite::Result<_>>()?;
+    let mem_total: f64 = mem.iter().map(|(_, w)| w.max(0.0)).sum();
+    if mem_total > 0.0 {
+        let share = if ent_total > 0.0 {
+            engine.cfg.mem_seed_share
+        } else {
+            1.0
+        };
+        for (_, w) in seeds.iter_mut() {
+            *w *= (1.0 - share) / ent_total;
+        }
+        for (id, w) in mem {
+            if let Some(&node) = snap.mem_node.get(&id) {
+                seeds.push((node, w.max(0.0) * share / mem_total));
             }
         }
     }
