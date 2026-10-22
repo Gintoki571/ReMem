@@ -106,29 +106,22 @@ fn ingest(engine: &Engine, memories: Vec<MemoryFixture>) -> Result<(Ids, Keys, f
     let start = Instant::now();
     let mut ids = HashMap::new();
     let mut keys = HashMap::new();
-    let mut pending = Vec::new();
     for memory in memories {
-        let supersedes = memory.input.supersedes.clone();
         let mut input = memory.input;
-        input.supersedes.clear();
+        let supersedes = input
+            .supersedes
+            .iter()
+            .map(|key| {
+                ids.get(key)
+                    .copied()
+                    .map(|id| format!("m{id}"))
+                    .ok_or_else(|| crate::err!("unknown supersedes key '{key}'"))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        input.supersedes = supersedes;
         let out = engine.remember(input)?;
         ids.insert(memory.key.clone(), out.id);
         keys.insert(out.id, memory.key);
-        pending.push((out.id, supersedes));
-    }
-    for (id, supersedes) in pending {
-        for key in supersedes {
-            if let Some(old) = ids.get(&key) {
-                engine.db.sql().execute(
-                    "UPDATE memories SET expired_at=?1,superseded_by=?2,valid_to=COALESCE(valid_to,?1) WHERE id=?3",
-                    rusqlite::params![engine.clock().now, id, old],
-                )?;
-                engine
-                    .db
-                    .sql()
-                    .execute("UPDATE memories_vec SET live=0 WHERE rowid=?1", [old])?;
-            }
-        }
     }
     Ok((ids, keys, start.elapsed().as_secs_f64() * 1000.0))
 }
@@ -150,6 +143,11 @@ fn evaluate(
     let mut failures = Vec::new();
     let mut by_category: HashMap<String, (usize, f64, f64)> = HashMap::new();
     for query in queries {
+        for key in query.expect.iter().chain(query.expect_absent.iter()) {
+            if !ids.contains_key(key) {
+                return Err(crate::err!("unknown evaluation memory key '{key}'"));
+            }
+        }
         let started = Instant::now();
         let out = engine.recall(&RecallInput {
             query: query.q.clone(),
@@ -222,7 +220,7 @@ fn evaluate(
         }
     }
     latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let n = latencies.len().max(1);
+    let n = latencies.len();
     let category = by_category
         .into_iter()
         .map(|(name, (count, recall, mrr))| {
@@ -231,12 +229,19 @@ fn evaluate(
         .collect::<serde_json::Map<_, _>>();
     Ok(EvalReport {
         queries: latencies.len(),
-        recall: recall_sum / n as f64,
-        mrr: mrr_sum / n as f64,
+        recall: if n == 0 { 0.0 } else { recall_sum / n as f64 },
+        mrr: if n == 0 { 0.0 } else { mrr_sum / n as f64 },
         category: serde_json::Value::Object(category),
-        latency_mean_ms: latencies.iter().sum::<f64>() / n as f64,
-        latency_p50_ms: latencies[(n / 2).min(n - 1)],
-        latency_p95_ms: latencies[((n * 95) / 100).min(n - 1)],
+        latency_mean_ms: if n == 0 {
+            0.0
+        } else {
+            latencies.iter().sum::<f64>() / n as f64
+        },
+        latency_p50_ms: n.checked_sub(1).map(|_| latencies[n / 2]).unwrap_or(0.0),
+        latency_p95_ms: n
+            .checked_sub(1)
+            .map(|_| latencies[((n * 95) / 100).min(n - 1)])
+            .unwrap_or(0.0),
         ingestion_ms,
         ingested: ingested as usize,
         failures,
@@ -422,13 +427,4 @@ pub fn ablation_variants(base: &Config) -> Vec<(String, Config)> {
         out.push((name.to_string(), cfg));
     }
     out
-}
-
-pub fn ablation(
-    fixtures: &Path,
-    emb: Arc<dyn Embedder>,
-    base: Config,
-) -> Result<Vec<(String, EvalReport)>> {
-    let variants = ablation_variants(&base);
-    sweep(fixtures, emb, base, variants)
 }

@@ -135,6 +135,48 @@ fn list(raw: &str) -> Vec<String> {
         .collect()
 }
 
+fn cap_items<T>(field: &str, items: Vec<T>) -> std::result::Result<Vec<T>, Fail> {
+    if items.len() > 64 {
+        Err(usage(format!("{field} exceeds the 64-item limit")))
+    } else {
+        Ok(items)
+    }
+}
+
+fn cap_text(field: &str, value: &str, max: usize) -> std::result::Result<(), Fail> {
+    if value.len() > max {
+        Err(usage(format!("{field} exceeds the {max}-byte limit")))
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_remember_names(input: &RememberInput) -> std::result::Result<(), Fail> {
+    for entity in &input.entities {
+        for (field, value) in [("entity name", entity.name.as_str())]
+            .into_iter()
+            .chain(entity.kind.as_deref().map(|v| ("entity type", v)))
+            .chain(entity.aliases.iter().map(|v| ("entity alias", v.as_str())))
+        {
+            if value.chars().count() > 200 {
+                return Err(usage(format!("{field} exceeds the 200-character limit")));
+            }
+        }
+    }
+    for relation in &input.relations {
+        for (field, value) in [
+            ("relation source", relation.source.as_str()),
+            ("relation predicate", relation.predicate.as_str()),
+            ("relation target", relation.target.as_str()),
+        ] {
+            if value.chars().count() > 200 {
+                return Err(usage(format!("{field} exceeds the 200-character limit")));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// `--entities` / `--relations`: a JSON array or one object.
 fn json_list<T: DeserializeOwned>(raw: &str, flag: &str) -> std::result::Result<Vec<T>, Fail> {
     let value: serde_json::Value =
@@ -225,14 +267,20 @@ fn parse_remember(args: &[String]) -> std::result::Result<RememberInput, Fail> {
             "--until" => input.valid_to = Some(value(args, &mut i, arg)?),
             "--entities" => {
                 let raw = value(args, &mut i, arg)?;
-                input.entities = json_list::<EntityIn>(&raw, "--entities")?;
+                input.entities =
+                    cap_items("--entities", json_list::<EntityIn>(&raw, "--entities")?)?;
             }
             "--relations" => {
                 let raw = value(args, &mut i, arg)?;
-                input.relations = json_list::<RelationIn>(&raw, "--relations")?;
+                input.relations =
+                    cap_items("--relations", json_list::<RelationIn>(&raw, "--relations")?)?;
             }
-            "--keywords" => input.keywords = list(&value(args, &mut i, arg)?),
-            "--supersedes" => input.supersedes = list(&value(args, &mut i, arg)?),
+            "--keywords" => {
+                input.keywords = cap_items("--keywords", list(&value(args, &mut i, arg)?))?
+            }
+            "--supersedes" => {
+                input.supersedes = cap_items("--supersedes", list(&value(args, &mut i, arg)?))?
+            }
             other if other.starts_with('-') => {
                 return Err(usage(format!("unknown option {other}")));
             }
@@ -244,8 +292,26 @@ fn parse_remember(args: &[String]) -> std::result::Result<RememberInput, Fail> {
         let mut raw = String::new();
         std::io::Read::read_to_string(&mut std::io::stdin(), &mut raw)
             .map_err(|e| Fail::Run(format!("cannot read stdin: {e}")))?;
-        return serde_json::from_str(&raw)
-            .map_err(|e| usage(format!("invalid RememberInput JSON on stdin: {e}")));
+        let input: RememberInput = serde_json::from_str(&raw)
+            .map_err(|e| usage(format!("invalid RememberInput JSON on stdin: {e}")))?;
+        cap_text("content", &input.content, 32 * 1024)?;
+        if input.entities.len() > 64 {
+            return Err(usage("entities exceeds the 64-item limit"));
+        }
+        if input.relations.len() > 64 {
+            return Err(usage("relations exceeds the 64-item limit"));
+        }
+        if input.tags.len() > 64 {
+            return Err(usage("tags exceeds the 64-item limit"));
+        }
+        if input.keywords.len() > 64 {
+            return Err(usage("keywords exceeds the 64-item limit"));
+        }
+        if input.supersedes.len() > 64 {
+            return Err(usage("supersedes exceeds the 64-item limit"));
+        }
+        validate_remember_names(&input)?;
+        return Ok(input);
     }
     if words.is_empty() {
         return Err(usage(
@@ -253,6 +319,11 @@ fn parse_remember(args: &[String]) -> std::result::Result<RememberInput, Fail> {
         ));
     }
     input.content = words.join(" ");
+    cap_text("content", &input.content, 32 * 1024)?;
+    if input.tags.len() > 64 {
+        return Err(usage("tags exceeds the 64-item limit"));
+    }
+    validate_remember_names(&input)?;
     Ok(input)
 }
 
@@ -272,10 +343,22 @@ fn parse_recall(args: &[String]) -> std::result::Result<RecallInput, Fail> {
     while i < args.len() {
         let arg = args[i].as_str();
         match arg {
-            "--k" => input.k = Some(number(args, &mut i, arg)?),
-            "--budget" => input.budget = Some(number(args, &mut i, arg)?),
+            "--k" => {
+                let n = number(args, &mut i, arg)?;
+                if n > 50 {
+                    return Err(usage("--k exceeds the 50 limit"));
+                }
+                input.k = Some(n);
+            }
+            "--budget" => {
+                let n = number(args, &mut i, arg)?;
+                if n > 20_000 {
+                    return Err(usage("--budget exceeds the 20000 limit"));
+                }
+                input.budget = Some(n);
+            }
             "--kinds" => input.kinds = list(&value(args, &mut i, arg)?),
-            "--tags" => input.tags = list(&value(args, &mut i, arg)?),
+            "--tags" => input.tags = cap_items("--tags", list(&value(args, &mut i, arg)?))?,
             "--scope" => input.scope = Some(value(args, &mut i, arg)?),
             "--source" => input.source = Some(value(args, &mut i, arg)?),
             "--session" => input.session = Some(value(args, &mut i, arg)?),
@@ -283,8 +366,12 @@ fn parse_recall(args: &[String]) -> std::result::Result<RecallInput, Fail> {
             "--until" => input.until = Some(value(args, &mut i, arg)?),
             "--as-of" => input.as_of = Some(value(args, &mut i, arg)?),
             "--history" => input.include_history = true,
-            "--entities" => input.entities = list(&value(args, &mut i, arg)?),
-            "--keywords" => input.keywords = list(&value(args, &mut i, arg)?),
+            "--entities" => {
+                input.entities = cap_items("--entities", list(&value(args, &mut i, arg)?))?
+            }
+            "--keywords" => {
+                input.keywords = cap_items("--keywords", list(&value(args, &mut i, arg)?))?
+            }
             other if other.starts_with('-') => {
                 return Err(usage(format!("unknown option {other}")));
             }
@@ -296,6 +383,7 @@ fn parse_recall(args: &[String]) -> std::result::Result<RecallInput, Fail> {
         return Err(usage("recall needs a query"));
     }
     input.query = words.join(" ");
+    cap_text("query", &input.query, 2 * 1024)?;
     Ok(input)
 }
 
@@ -312,7 +400,12 @@ fn cmd_entity(globals: &Globals, args: &[String]) -> CmdResult {
     while i < args.len() {
         let arg = args[i].as_str();
         match arg {
-            "--limit" => limit = number(args, &mut i, arg)?,
+            "--limit" => {
+                limit = number(args, &mut i, arg)?;
+                if limit > 200 {
+                    return Err(usage("--limit exceeds the 200 limit"));
+                }
+            }
             other if other.starts_with('-') => {
                 return Err(usage(format!("unknown option {other}")));
             }
@@ -395,7 +488,12 @@ fn cmd_overview(globals: &Globals, args: &[String]) -> CmdResult {
     while i < args.len() {
         let arg = args[i].as_str();
         match arg {
-            "--k" => k = number(args, &mut i, arg)?,
+            "--k" => {
+                k = number(args, &mut i, arg)?;
+                if k > 50 {
+                    return Err(usage("--k exceeds the 50 limit"));
+                }
+            }
             other if other.starts_with('-') => {
                 return Err(usage(format!("unknown option {other}")));
             }

@@ -169,6 +169,53 @@ fn as_of_returns_the_then_valid_memory() {
 }
 
 #[test]
+fn as_of_graph_excludes_relations_that_start_in_the_future() {
+    let e = engine(Arc::new(HashEmbedder));
+    let answer = remember(&e, "Anika owns the audit binder.", |i| {
+        i.entities = vec![entity("Anika")];
+    });
+    remember(&e, "Priya mentors Anika.", |i| {
+        i.entities = vec![entity("Priya"), entity("Anika")];
+        i.relations = vec![RelationIn {
+            source: "Priya".into(),
+            predicate: "mentors".into(),
+            target: "Anika".into(),
+            fact: Some("Priya mentors Anika".into()),
+            valid_from: Some("2027-01-01".into()),
+            ..Default::default()
+        }];
+    });
+    let out = e
+        .recall(&RecallInput {
+            query: "What does Priya oversee?".into(),
+            as_of: Some("2026-10-01".into()),
+            ..Default::default()
+        })
+        .unwrap();
+    assert!(!has_reason(&out, answer, "graph#"));
+}
+
+#[test]
+fn temporal_channel_scores_all_small_window_matches_not_only_newest_400() {
+    let e = engine(Arc::new(HashEmbedder));
+    let old = remember(&e, "quarterly archive marker", |i| {
+        i.valid_from = Some("1577836800".into());
+    });
+    for day in 1..405 {
+        remember(&e, &format!("quarterly archive filler {day}"), |i| {
+            i.valid_from = Some((1577836800_i64 + day * 86_400).to_string());
+        });
+    }
+    let out = e
+        .recall(&RecallInput {
+            query: "in 2020 quarterly archive marker".into(),
+            ..Default::default()
+        })
+        .unwrap();
+    assert!(ids(&out).contains(&old));
+}
+
+#[test]
 fn superseded_hidden_normally_returned_with_history() {
     let e = engine(Arc::new(HashEmbedder));
     let old = remember(&e, "The office is in Delhi", |_| {});
