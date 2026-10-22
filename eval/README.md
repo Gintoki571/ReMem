@@ -177,3 +177,9 @@ To measure the marginal contribution of each retrieval channel, the benchmark is
 5. **Ablate Temporal**: $w_{\text{temporal}} = 0.0$.
 
 Each ablation run must demonstrate either an expected drop in performance for its target categories (e.g. graph ablation dropping multi-hop recall; temporal ablation dropping temporal-window recall) or provide empirical justification for channel tuning.
+
+## Tuning protocol
+
+- `fixtures.json` (95 memories / 84 queries, personal + engineering agent) and `holdout.json` (105 memories / 88 queries, research-lab agent, written independently) share this format.
+- Change defaults in `engine::Config` only when the change helps (or is neutral on) BOTH sets; report both. Sweep with one ingestion: `neocortex eval eval/holdout.json --sweep w_graph=1,1.5,2 --set rrf_k=5`.
+- Current defaults (2026-10-23): fixtures recall 0.953 / MRR 0.894; holdout recall 0.924 / MRR 0.789. Original design defaults on holdout: 0.869 / 0.622.

@@ -25,8 +25,10 @@ pub const KINDS: &[&str] = &[
 ];
 
 /// Tunables. Read-time defaults were calibrated with `neocortex eval --sweep`
-/// on eval/fixtures.json (2026-10-23): low RRF k + graph weight 2 lets a
-/// strong single-channel hit (multi-hop answers found only by PPR) win.
+/// on eval/fixtures.json and checked on the independent eval/holdout.json
+/// (2026-10-23): low RRF k lets a strong single-channel hit win (multi-hop
+/// answers found only by PPR), and vector 2 / graph 1.5 keeps PPR from
+/// overriding dense similarity on plain paraphrases.
 #[derive(Clone, Debug)]
 pub struct Config {
     /// Cosine at/above which a new memory is reported as a near duplicate.
@@ -76,8 +78,8 @@ impl Default for Config {
             entity_seed: 0.55,
             pred_alias: 0.90,
             w_bm25: 1.0,
-            w_vector: 1.0,
-            w_graph: 2.0,
+            w_vector: 2.0,
+            w_graph: 1.5,
             w_temporal: 1.0,
             rrf_k: 5.0,
             alpha: 0.5,

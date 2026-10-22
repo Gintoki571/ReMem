@@ -122,7 +122,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - `src/mcp.rs` - MCP stdio server (JSON-RPC 2.0, 8 tools, LazyEmbedder). `src/render.rs` - compact text output. `src/main.rs` - CLI. `src/import.rs` - one-shot ReMem v3 import.
 - `src/export.rs` - JSON Lines `export`/`import` (backup and embedder migration: re-ingest through remember). `src/bench.rs` - synthetic corpus + latency/size report (`neocortex bench --n N`). `src/eval.rs` - `neocortex eval` (ablation, failures, `--set`, `--sweep` on one ingestion).
 - `tests/ops.rs` - export/import round trip, concurrent writer processes.
-- `eval/fixtures.json` + `eval/README.md` - retrieval benchmark (95 memories, 84 queries, 11 categories) and scoring rules.
+- `eval/fixtures.json` (tuning, 95 memories / 84 queries) + `eval/holdout.json` (independent check, 105 / 88) + `eval/README.md` (format, scoring, tuning protocol: defaults change only if both sets agree).
 - `skills/neocortex/SKILL.md` - agent-facing usage protocol; `README.md` - user docs.
 
 ## Work Guidance
@@ -137,6 +137,6 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test            # model-dependent tests skip when the model dir is absent
-cargo build --release && ./target/release/neocortex eval eval/fixtures.json --ablation   # quality gate: recall >= 0.95, MRR >= 0.868
+cargo build --release && ./target/release/neocortex eval eval/fixtures.json --ablation   # gate: fixtures recall >= 0.95 / MRR >= 0.89; holdout (eval/holdout.json) recall >= 0.92 / MRR >= 0.78
 NEOCORTEX_EMBEDDER=hash ./target/release/neocortex bench --n 10000 --db /tmp/b.db      # recall p50 <= 150 ms
 ```
