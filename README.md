@@ -207,7 +207,7 @@ as history and are never presented as current unless you ask for history or an
 |---|---|---|
 | `NEOCORTEX_DB` | `~/.neocortex/neocortex.db` | database file (`--db` overrides) |
 | `NEOCORTEX_MODEL_DIR` | `~/.neocortex/models/UltraBERT-Embed-150M` | embedding model directory |
-| `NEOCORTEX_TZ` | `UTC` | local offset for relative dates, `+HH:MM` or `Z` |
+| `NEOCORTEX_TZ` | system local offset | offset for relative dates and displayed dates, `+HH:MM` or `Z` |
 | `NEOCORTEX_MAX_TOKENS` | `1024` | max tokens per embedding |
 | `NEOCORTEX_EMBEDDER` | unset | `hash` selects the deterministic test embedder |
 

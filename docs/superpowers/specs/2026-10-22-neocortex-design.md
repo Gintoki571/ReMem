@@ -216,7 +216,7 @@ Agent skill doc `skills/neocortex/SKILL.md`: when to remember (decisions, prefer
 - Integer ids with prefixes.
 - Closed `kind` set.
 - No automatic deletion or decay of memories; time affects ranking only.
-- Times are stored as UTC unix seconds. Relative phrases resolve in the local offset from `NEOCORTEX_TZ` (±HH:MM, default UTC). Shortcut: no tzdb, so DST changes are not tracked.
+- Times are stored as UTC unix seconds. Relative phrases and displayed dates use `NEOCORTEX_TZ` (±HH:MM) or, by default, the system's local UTC offset (read through SQLite's localtime, sampled once per process — a DST switch is seen after restart).
 - Thresholds (NEAR_DUP 0.97, SIM_EDGE 0.75, entity seed 0.55, predicate alias 0.90, RRF weights) are starting values, and the eval suite tunes them.
 
 ## 12. Left to the builder

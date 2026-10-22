@@ -18,7 +18,7 @@ pub struct Clock {
 }
 
 impl Clock {
-    /// System time; offset from NEOCORTEX_TZ ("+05:30", "-08:00", "Z"), default UTC.
+    /// System time; offset from NEOCORTEX_TZ ("+05:30", "-08:00", "Z"), default the system local offset.
     pub fn system() -> Clock {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -315,7 +315,29 @@ fn has_phrase(hay: &str, needle: &str) -> bool {
 // --- token parsers ----------------------------------------------------------
 
 fn tz_offset(raw: Option<&str>) -> i32 {
-    raw.and_then(parse_offset).unwrap_or(0)
+    match raw {
+        Some(r) => parse_offset(r).unwrap_or(0),
+        None => local_offset(),
+    }
+}
+
+/// The system's current UTC offset. SQLite's 'localtime' modifier wraps the C
+/// library's localtime_r, so this needs no tz database of our own.
+/// shortcut: sampled once per process, so a DST switch is seen after restart.
+fn local_offset() -> i32 {
+    static OFFSET: std::sync::OnceLock<i32> = std::sync::OnceLock::new();
+    *OFFSET.get_or_init(|| {
+        rusqlite::Connection::open_in_memory()
+            .and_then(|c| {
+                c.query_row(
+                    "SELECT strftime('%s','now','localtime') - strftime('%s','now')",
+                    [],
+                    |r| r.get::<_, i64>(0),
+                )
+            })
+            .map(|s| s as i32)
+            .unwrap_or(0)
+    })
 }
 
 fn parse_offset(s: &str) -> Option<i32> {
@@ -1111,6 +1133,6 @@ mod tests {
         assert_eq!(tz_offset(Some("utc")), 0);
         assert_eq!(tz_offset(Some("")), 0);
         assert_eq!(tz_offset(Some("Europe/Berlin")), 0);
-        assert_eq!(tz_offset(None), 0);
+        assert_eq!(tz_offset(None), local_offset());
     }
 }
