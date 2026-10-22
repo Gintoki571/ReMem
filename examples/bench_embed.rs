@@ -13,7 +13,8 @@ fn median(times: &mut [Duration]) -> Duration {
 fn main() {
     let start = Instant::now();
     let model = load(None).expect("load UltraBERT model");
-    println!("load: {:.3}s", start.elapsed().as_secs_f64());
+    let mode = model.name();
+    println!("{mode:16} load: {:.3}s", start.elapsed().as_secs_f64());
 
     let query = ["which database is production on"];
     for _ in 0..3 {
@@ -27,7 +28,7 @@ fn main() {
     }
     let best_query = best(&samples);
     println!(
-        "query median (20): {}  best: {}",
+        "{mode:16} query median (20): {}  best: {}",
         format_duration(median(&mut samples)),
         format_duration(best_query)
     );
@@ -41,7 +42,7 @@ fn main() {
     }
     let best_docs = best(&runs);
     println!(
-        "documents: 64 in {} ({:.1} docs/s)",
+        "{mode:16} documents: 64 in {} ({:.1} docs/s)",
         format_duration(best_docs),
         64.0 / best_docs.as_secs_f64()
     );
@@ -61,7 +62,7 @@ fn main() {
         assert_eq!(out.len(), 1);
         runs.push(start.elapsed());
     }
-    println!("long doc: {}", format_duration(best(&runs)));
+    println!("{mode:16} long doc: {}", format_duration(best(&runs)));
 }
 
 fn format_duration(duration: Duration) -> String {
