@@ -194,7 +194,6 @@ fn missing_required_argument_is_a_tool_error() {
 // ------------------------------------------------------------ phase 2
 
 #[test]
-#[ignore = "needs phase-2 engine"]
 fn remember_then_recall_through_mcp() {
     let mut mcp = Mcp::start();
     mcp.initialize(PROTOCOLS[0]);
@@ -222,7 +221,6 @@ fn remember_then_recall_through_mcp() {
 }
 
 #[test]
-#[ignore = "needs phase-2 engine"]
 fn entity_invalidate_and_forget_through_mcp() {
     let mut mcp = Mcp::start();
     mcp.initialize(PROTOCOLS[0]);
@@ -241,7 +239,7 @@ fn entity_invalidate_and_forget_through_mcp() {
 
     let inv = mcp.call(json!({
         "jsonrpc": "2.0", "id": 22, "method": "tools/call",
-        "params": {"name": "invalidate", "arguments": {"id": "m1", "at": "2026-10-01"}}
+        "params": {"name": "invalidate", "arguments": {"id": "m1", "at": "tomorrow"}}
     }));
     assert_eq!(inv["result"]["isError"], false, "{inv}");
 

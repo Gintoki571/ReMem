@@ -87,6 +87,7 @@ fn dispatch(args: &[String]) -> CmdResult {
         "validate" => cmd_validate(&globals),
         "cypher" => cmd_cypher(&globals, rest),
         "import-remem" => cmd_import(&globals, rest),
+        "eval" => cmd_eval(&globals, rest),
         "mcp" => {
             let engine = open_engine(&globals)?;
             mcp::serve(&engine).map_err(runtime)
@@ -460,6 +461,46 @@ fn cmd_import(globals: &Globals, args: &[String]) -> CmdResult {
     } else {
         println!("imported {imported}, skipped {skipped}");
     }
+
+    Ok(())
+}
+
+fn cmd_eval(globals: &Globals, args: &[String]) -> CmdResult {
+    let path = args
+        .first()
+        .ok_or_else(|| usage("eval needs a fixtures.json path"))?;
+    let ablation = args.iter().any(|x| x == "--ablation");
+    let engine = open_engine(globals)?;
+    let report =
+        neocortex::eval::run_eval(Path::new(path), Arc::clone(&engine.emb), engine.cfg.clone())
+            .map_err(runtime)?;
+    if globals.json {
+        let mut value = serde_json::to_value(&report).map_err(|e| Fail::Run(e.to_string()))?;
+        if ablation {
+            value["ablation"] = serde_json::to_value(neocortex::eval::ablation(
+                Path::new(path),
+                Arc::clone(&engine.emb),
+                engine.cfg,
+            ))
+            .map_err(|e| Fail::Run(e.to_string()))?;
+        }
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&value).map_err(|e| Fail::Run(e.to_string()))?
+        );
+    } else {
+        print!("{}", neocortex::eval::render_report(&report));
+        if ablation {
+            for (name, result) in
+                neocortex::eval::ablation(Path::new(path), Arc::clone(&engine.emb), engine.cfg)
+            {
+                println!(
+                    "ablation {name}: recall {:.3}, mrr {:.3}",
+                    result.recall, result.mrr
+                );
+            }
+        }
+    }
     Ok(())
 }
 
@@ -483,6 +524,7 @@ Commands:
   validate                 report integrity problems (exit 1 if any)
   cypher <query>           run read-only Cypher
   import-remem <path>      import a ReMem v3 SQLite file
+  eval <fixtures.json>     evaluate retrieval quality (--ablation)
   mcp                      run the MCP stdio server
   help                     this text
   --version                print the version
