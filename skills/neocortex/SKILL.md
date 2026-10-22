@@ -69,6 +69,9 @@ Store something when it will still matter next week:
 
 ## Tools (MCP) and CLI equivalents
 
+Prefer the MCP tools when the `neocortex` server is connected. Otherwise use the CLI;
+the installed binary is `~/.neocortex/bin/neocortex` (DB `~/.neocortex/neocortex.db`).
+
 | MCP tool | CLI | Use |
 |---|---|---|
 | `remember` | `neocortex remember <text>` | store a memory |
