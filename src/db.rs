@@ -56,7 +56,9 @@ impl Db {
         conn.execute_batch("PRAGMA foreign_keys=ON; PRAGMA synchronous=NORMAL;")?;
         let g = graphqlite::Connection::from_rusqlite(conn)?;
         let db = Db { g };
-        let v: i64 = db.sql().query_row("PRAGMA user_version", [], |r| r.get(0))?;
+        let v: i64 = db
+            .sql()
+            .query_row("PRAGMA user_version", [], |r| r.get(0))?;
         if v > SCHEMA_VERSION {
             return Err(crate::err!(
                 "database schema v{v} is newer than this neocortex (v{SCHEMA_VERSION})"
@@ -138,7 +140,8 @@ mod tests {
     fn cypher_inside_transaction_rolls_back() {
         let db = Db::open_in_memory().unwrap();
         let r: Result<()> = db.write(|db| {
-            db.graph().cypher("CREATE (:Entity {id: 'e:1', name: 'x'})")?;
+            db.graph()
+                .cypher("CREATE (:Entity {id: 'e:1', name: 'x'})")?;
             Err(crate::err!("boom"))
         });
         assert!(r.is_err());

@@ -33,7 +33,13 @@ impl Csr {
 /// sum 1. Push node u while r(u) >= eps * wdeg(u); nodes with wdeg 0 keep
 /// their residual (act as self-loops). Stops after max_pushes pushes.
 /// Returns (node, score) with score > 0, sorted descending.
-pub fn ppr_push(g: &Csr, seeds: &[(u32, f64)], alpha: f64, eps: f64, max_pushes: usize) -> Vec<(u32, f64)> {
+pub fn ppr_push(
+    g: &Csr,
+    seeds: &[(u32, f64)],
+    alpha: f64,
+    eps: f64,
+    max_pushes: usize,
+) -> Vec<(u32, f64)> {
     todo!("lane graph")
 }
 

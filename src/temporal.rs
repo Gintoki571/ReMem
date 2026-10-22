@@ -464,6 +464,9 @@ fn month_index(tok: &str) -> Option<u32> {
     if let Some(i) = FULL.iter().position(|n| *n == tok) {
         return Some(i as u32 + 1);
     }
+    if tok == "sept" {
+        return Some(9);
+    }
     ABBR.iter().position(|n| *n == tok).map(|i| i as u32 + 1)
 }
 
