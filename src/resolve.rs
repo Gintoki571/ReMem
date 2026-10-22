@@ -246,6 +246,7 @@ pub fn resolve_entity(
     let ids: Vec<i64> = generated.iter().map(|(id, _)| *id).collect();
     let mut details = Vec::new();
     let mut names: HashMap<i64, String> = HashMap::new();
+    let mut norms: HashMap<i64, String> = HashMap::new();
     if !ids.is_empty() {
         let placeholders = vec!["?"; ids.len()].join(",");
         let sql = format!(
@@ -269,6 +270,7 @@ pub fn resolve_entity(
                 .map(|(_, score)| *score)
                 .unwrap_or(0.0);
             names.insert(id, name.clone());
+            norms.insert(id, entity_norm.clone());
             if !kind.is_empty() && !entity_type.is_empty() && entity_type != kind {
                 continue;
             }
@@ -328,19 +330,30 @@ pub fn resolve_entity(
     )?;
     // Only the KNN hits create soft edges; lexical/acronym candidates are
     // handled above and never reach this branch.
+    // Do not create similar soft edges when either entity norm has fewer
+    // than 3 letters or contains no letters.
     let mut similar: Vec<(i64, String, f32)> = Vec::new();
-    for id in &knn_order {
-        let Some(name) = names.get(id) else { continue };
-        let score = generated
-            .iter()
-            .find(|(candidate, _)| candidate == id)
-            .map(|(_, score)| *score)
-            .unwrap_or(0.0);
-        if score >= cfg.sim_edge && !similar.iter().any(|(other, _, _)| other == id) {
-            similar.push((*id, name.clone(), score));
-        }
-        if similar.len() == 3 {
-            break;
+    let norm_letters = norm.chars().filter(|c| c.is_alphabetic()).count();
+    if norm_letters >= 3 {
+        for id in &knn_order {
+            let Some(name) = names.get(id) else { continue };
+            let Some(other_norm) = norms.get(id) else {
+                continue;
+            };
+            if other_norm.chars().filter(|c| c.is_alphabetic()).count() < 3 {
+                continue;
+            }
+            let score = generated
+                .iter()
+                .find(|(candidate, _)| candidate == id)
+                .map(|(_, score)| *score)
+                .unwrap_or(0.0);
+            if score >= cfg.sim_edge && !similar.iter().any(|(other, _, _)| other == id) {
+                similar.push((*id, name.clone(), score));
+            }
+            if similar.len() == 3 {
+                break;
+            }
         }
     }
     Ok(Resolved {
@@ -577,4 +590,130 @@ fn predicate_row(db: &Db, id: i64) -> Result<(i64, String, bool)> {
         |r| Ok((r.get(0)?, r.get(1)?)),
     )?;
     Ok((id, canonical, exclusive != 0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn axis(i: usize) -> Vec<f32> {
+        let mut v = vec![0.0; DIMS];
+        v[i] = 1.0;
+        v
+    }
+
+    fn at(cos: f32) -> Vec<f32> {
+        let mut v = vec![0.0; DIMS];
+        v[0] = cos;
+        v[1] = (1.0 - cos * cos).sqrt();
+        v
+    }
+
+    #[test]
+    fn test_similar_edge_guard_requires_three_letters() {
+        let db = Db::open_in_memory().unwrap();
+        let cfg = Config::default();
+
+        // 1. Entities with no letters (e.g. "7" and "11") embed close together
+        let r1 = resolve_entity(
+            &db,
+            &EntityIn {
+                name: "7".into(),
+                kind: None,
+                aliases: vec![],
+                description: None,
+                same_as: None,
+            },
+            &axis(0),
+            100,
+            &cfg,
+        )
+        .unwrap();
+        assert_eq!(r1.similar.len(), 0);
+
+        let r2 = resolve_entity(
+            &db,
+            &EntityIn {
+                name: "11".into(),
+                kind: None,
+                aliases: vec![],
+                description: None,
+                same_as: None,
+            },
+            &at(0.95),
+            100,
+            &cfg,
+        )
+        .unwrap();
+        // Should NOT create a similar edge to "7"
+        assert_eq!(
+            r2.similar.len(),
+            0,
+            "expected no similar edges between 0-letter norms, got {:?}",
+            r2.similar
+        );
+
+        // 2. Entity with fewer than 3 letters (e.g. "ab") and "London"
+        let r3 = resolve_entity(
+            &db,
+            &EntityIn {
+                name: "ab".into(),
+                kind: None,
+                aliases: vec![],
+                description: None,
+                same_as: None,
+            },
+            &at(0.95),
+            100,
+            &cfg,
+        )
+        .unwrap();
+        assert_eq!(
+            r3.similar.len(),
+            0,
+            "expected no similar edges for < 3 letter norm 'ab', got {:?}",
+            r3.similar
+        );
+
+        // 3. Normal entities with >= 3 letters create similar edges
+        let r4 = resolve_entity(
+            &db,
+            &EntityIn {
+                name: "London".into(),
+                kind: None,
+                aliases: vec![],
+                description: None,
+                same_as: None,
+            },
+            &axis(2),
+            100,
+            &cfg,
+        )
+        .unwrap();
+        let r5 = resolve_entity(
+            &db,
+            &EntityIn {
+                name: "Paris".into(),
+                kind: None,
+                aliases: vec![],
+                description: None,
+                same_as: None,
+            },
+            &{
+                let mut v = vec![0.0; DIMS];
+                v[2] = 0.95;
+                v[3] = (1.0 - 0.95 * 0.95_f32).sqrt();
+                v
+            },
+            100,
+            &cfg,
+        )
+        .unwrap();
+        assert_eq!(
+            r5.similar.len(),
+            1,
+            "expected similar edge between London and Paris"
+        );
+        assert_eq!(r5.similar[0].0, r4.id);
+    }
 }

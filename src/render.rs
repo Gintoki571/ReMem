@@ -55,14 +55,18 @@ fn fact_line(f: &FactHit, fmt: Fmt<'_>) -> String {
 
 /// `[e3] Mom (person; aka mother)`
 fn entity_card(c: &EntityCard) -> String {
-    let mut s = format!("[e{}] {} ({})", c.id, c.name, c.kind);
-    if !c.aliases.is_empty() {
-        s.pop();
-        s.push_str("; aka ");
-        s.push_str(&c.aliases.join(", "));
-        s.push(')');
+    let mut details = Vec::new();
+    if !c.kind.is_empty() {
+        details.push(c.kind.clone());
     }
-    s
+    if !c.aliases.is_empty() {
+        details.push(format!("aka {}", c.aliases.join(", ")));
+    }
+    if details.is_empty() {
+        format!("[e{}] {}", c.id, c.name)
+    } else {
+        format!("[e{}] {} ({})", c.id, c.name, details.join("; "))
+    }
 }
 
 fn id_list(prefix: char, ids: &[i64]) -> String {
@@ -551,5 +555,44 @@ mod tests {
         assert!(text.contains("db 128.0 KiB"), "{text}");
         assert!(text.contains("neocortex 0.1.4"), "{text}");
         assert_eq!(text.lines().count(), 2);
+    }
+
+    #[test]
+    fn entity_card_formatting_omits_parentheses_and_type_prefix() {
+        let bare = EntityCard {
+            id: 1,
+            name: "SQLite".into(),
+            kind: "".into(),
+            aliases: vec![],
+            description: "".into(),
+        };
+        assert_eq!(entity_card(&bare), "[e1] SQLite");
+
+        let typed = EntityCard {
+            id: 2,
+            name: "Postgres".into(),
+            kind: "database".into(),
+            aliases: vec![],
+            description: "".into(),
+        };
+        assert_eq!(entity_card(&typed), "[e2] Postgres (database)");
+
+        let aliased = EntityCard {
+            id: 3,
+            name: "Postgres".into(),
+            kind: "".into(),
+            aliases: vec!["pgsql".into(), "postgres".into()],
+            description: "".into(),
+        };
+        assert_eq!(entity_card(&aliased), "[e3] Postgres (aka pgsql, postgres)");
+
+        let full = EntityCard {
+            id: 4,
+            name: "Mom".into(),
+            kind: "person".into(),
+            aliases: vec!["mother".into()],
+            description: "".into(),
+        };
+        assert_eq!(entity_card(&full), "[e4] Mom (person; aka mother)");
     }
 }
