@@ -114,6 +114,7 @@ Steps, in one `BEGIN IMMEDIATE` transaction (embeddings computed before the tran
   - a backfilled fact (`new.valid_from < old.valid_from`) is stored already ended: `new.valid_to = min(existing later valid_from)`, and it is history;
   - equal valid_from: the newer write wins, and the old one gets `valid_to = valid_from` and `expired_at`.
   Invalidated relations keep their rows; `expired_at` is set only when the new write makes the old fact wrong (equal start). An ended-but-true-in-the-past fact keeps `expired_at` NULL with a non-NULL `valid_to`.
+- A memory whose evidenced relations have ALL ended gets `valid_to` = the latest relation end (if still open): "Alex lives in Austin" becomes history once "lives in Denver" is written. A memory that still evidences a live fact stays open.
 - Exclusivity is a property of the canonical predicate. It is global (entities are global across scopes) and applies per source entity: `(src, predicate)` has at most one valid object at any world time.
 
 ## 7. Entity and relation resolution
@@ -151,9 +152,10 @@ Input: `query`, `k` (default 8), `budget` tokens (default 1200, approx chars/4),
      - Walk: Andersen–Chung–Lang (ACL) local push PPR — implemented in neocortex, because graphqlite only has global PageRank — teleport α = 0.5, ε = 1e-5 (degree-normalised), with work capped at 200k pushes.
      - Output: memory nodes ranked by PPR mass.
    - **temporal** (only when W exists): memories whose `[valid_from, valid_to)` overlaps W, scored by cosine to the query (brute force over the window when it holds ≤ 5000 rows, otherwise KNN with oversampling and a filter).
-3. Fusion: weighted RRF, `score = Σ_c w_c / (60 + rank_c)`, defaults `w = {bm25: 1.0, vector: 1.0, graph: 1.0, temporal: 1.0}` (tuned by eval), then × (1 + 0.05 × (channels_agreeing − 1)).
+3. Fusion (calibrated 2026-10-23 on the eval set with `neocortex eval --sweep`; defaults in `engine::Config`: rrf_k 5, w_graph 2, memory-seed share 0.6, history boost 1.5, MMR lambda 0.9 — a low RRF k lets a strong single-channel hit such as a PPR-only multi-hop answer win; the original values below were the starting point): weighted RRF, `score = Σ_c w_c / (60 + rank_c)`, defaults `w = {bm25: 1.0, vector: 1.0, graph: 1.0, temporal: 1.0}` (tuned by eval), then × (1 + 0.05 × (channels_agreeing − 1)).
 4. Modifiers (multiplicative, small, so relevance dominates):
    - expired or invalidated without history intent: × 0.35;
+   - ended, with history intent and no as_of: × history_boost (1.5) — the past state is the answer;
    - inside W: × 1.25;
    - recency: × (0.9 + 0.1 · 2^(−age_days/90)) on valid_from;
    - importance: × (0.9 + 0.2 · importance).
