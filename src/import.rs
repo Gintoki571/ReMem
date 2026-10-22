@@ -27,9 +27,14 @@ fn read_memories(path: &Path) -> Result<(Vec<RememberInput>, usize)> {
     } else {
         "NULL"
     };
+    let ended = if column_exists(&conn, "memories", "ended")? {
+        "ended"
+    } else {
+        "0"
+    };
     let sql = format!(
         "SELECT kind, content, tags, agent_id, session_id, importance, created_at, \
-         occurred_at, deleted, {superseded} FROM memories"
+         occurred_at, deleted, {superseded}, {ended} FROM memories"
     );
     let mut stmt = conn.prepare(&sql)?;
     let mut rows = stmt.query([])?;
@@ -46,6 +51,8 @@ fn read_memories(path: &Path) -> Result<(Vec<RememberInput>, usize)> {
         let occurred_at: Option<i64> = row.get(7)?;
         let deleted: i64 = row.get(8)?;
         let superseded_at: Option<i64> = row.get(9)?;
+        let ended: i64 = row.get(10)?;
+        let valid_from = occurred_at.unwrap_or(created_at);
 
         if deleted != 0 || superseded_at.is_some() || content.trim().is_empty() {
             skipped += 1;
@@ -58,7 +65,9 @@ fn read_memories(path: &Path) -> Result<(Vec<RememberInput>, usize)> {
             importance: Some(importance as f32),
             source: Some(agent_id).filter(|s| !s.is_empty()),
             session: Some(session_id).filter(|s| !s.is_empty()),
-            valid_from: Some(occurred_at.unwrap_or(created_at).to_string()),
+            valid_from: Some(valid_from.to_string()),
+            // ReMem "ended, date unknown": the latest date we know it held is when it was written.
+            valid_to: (ended != 0).then(|| created_at.max(valid_from + 1).to_string()),
             ..RememberInput::default()
         });
     }

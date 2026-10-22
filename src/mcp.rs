@@ -464,7 +464,7 @@ fn tool_defs() -> Vec<Value> {
                 "type": "object",
                 "properties": {
                     "content": {"type": "string", "description": "One self-contained sentence with absolute dates: what future-you needs to recall."},
-                    "kind": {"type": "string", "enum": engine::KINDS, "description": "Defaults to fact. decision/preference/mistake/procedure are usually worth storing."},
+                    "kind": {"type": "string", "enum": engine::KINDS, "description": "Defaults to note. decision/preference/mistake/procedure are usually worth storing."},
                     "tags": {"type": "array", "items": {"type": "string"}, "description": "Lowercase labels used as filters, e.g. [\"family\", \"relocation\"]."},
                     "importance": {"type": "number", "minimum": 0, "maximum": 1, "description": "0..1; 0.7+ for things the user will ask about again."},
                     "scope": {"type": "string", "description": "Namespace such as \"personal\", \"work\", a repo or a project name."},

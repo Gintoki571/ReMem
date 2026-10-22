@@ -104,7 +104,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - Validity is half-open `[valid_from, valid_to)`; system retirement is `expired_at`. Times are unix seconds UTC.
 - Embedding-only similarity never merges entities; it only adds `similar` soft edges.
 - Ids shown to agents: `m<id>`, `e<id>`, `r<id>`; tools accept both forms.
-- Env: `NEOCORTEX_DB` (default `~/.neocortex/neocortex.db`), `NEOCORTEX_MODEL_DIR` (default `~/.neocortex/models/UltraBERT-Embed-150M`), `NEOCORTEX_TZ` (`+HH:MM`, default UTC), `NEOCORTEX_MAX_TOKENS` (default 1024).
+- Env: `NEOCORTEX_EMBEDDER=hash` (tests only; a DB records its embedder and refuses another), `NEOCORTEX_DB` (default `~/.neocortex/neocortex.db`), `NEOCORTEX_MODEL_DIR` (default `~/.neocortex/models/UltraBERT-Embed-150M`), `NEOCORTEX_TZ` (`+HH:MM`, default UTC), `NEOCORTEX_MAX_TOKENS` (default 1024).
 
 ## Layout
 
@@ -115,6 +115,10 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - `src/extract.rs` - heuristic entity candidates, n-grams for alias lookup.
 - `src/graph.rs` - CSR + ACL push personalized PageRank. `src/rank.rs` - RRF, MMR, cosine, packing.
 - `tests/fixtures/ultrabert_fixture.json` - authoritative embedding reference (sentence-transformers 6.2.0, fp32).
+- `src/engine.rs` - public API (Engine, input/output types = MCP tool schema), Config tunables.
+- `src/mcp.rs` - MCP stdio server (JSON-RPC 2.0, 8 tools, LazyEmbedder). `src/render.rs` - compact text output. `src/main.rs` - CLI. `src/import.rs` - one-shot ReMem v3 import.
+- `eval/fixtures.json` + `eval/README.md` - retrieval benchmark (95 memories, 84 queries, 11 categories) and scoring rules.
+- `skills/neocortex/SKILL.md` - agent-facing usage protocol; `README.md` - user docs.
 
 ## Work Guidance
 
