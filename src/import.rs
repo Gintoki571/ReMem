@@ -9,13 +9,23 @@ use std::path::Path;
 
 /// Import every live, non-superseded ReMem memory. Returns
 /// `(imported, skipped)` where skipped counts deleted/superseded rows.
+///
+/// All or nothing: the rows replay inside one write transaction, so a bad row
+/// leaves the database untouched and the error names that row. (`remember`
+/// joins an already-open transaction instead of nesting one.)
 pub fn import_remem(engine: &Engine, path: &Path) -> Result<(usize, usize)> {
     let (inputs, skipped) = read_memories(path)?;
     let mut imported = 0;
-    for inp in inputs {
-        engine.remember(inp)?;
-        imported += 1;
-    }
+    engine.db.write(|_| {
+        for (i, inp) in inputs.iter().enumerate() {
+            engine.remember(inp.clone()).map_err(|e| {
+                let preview: String = inp.content.chars().take(60).collect();
+                crate::err!("row {} ('{preview}'): {e}", i + 1)
+            })?;
+            imported += 1;
+        }
+        Ok(())
+    })?;
     Ok((imported, skipped))
 }
 

@@ -371,3 +371,162 @@ fn concurrent_writers_and_reader_leave_one_consistent_database() {
     assert_eq!(stats["memories"], 60, "{stats}");
     assert_eq!(stats["live_memories"], 60, "{stats}");
 }
+
+// --------------------------------------------------- audit regressions
+
+/// #8: the exact-duplicate guarantee is a database constraint, so concurrent
+/// identical writers leave exactly one live row and agree on its id.
+#[test]
+fn concurrent_identical_writes_keep_one_live_row() {
+    let dir = temp_dir("identical");
+    let db = dir.join("memory.db");
+    drop(engine(&db)); // create the schema once (a fresh WAL open races)
+    let content = "one sentence written by many agents at once";
+    let writers: Vec<_> = (0..8)
+        .map(|_| {
+            let db = db.clone();
+            std::thread::spawn(move || {
+                engine(&db)
+                    .remember(RememberInput {
+                        content: content.into(),
+                        ..RememberInput::default()
+                    })
+                    .unwrap()
+                    .id
+            })
+        })
+        .collect();
+    let ids: Vec<i64> = writers.into_iter().map(|w| w.join().unwrap()).collect();
+    assert!(
+        ids.windows(2).all(|pair| pair[0] == pair[1]),
+        "writers disagreed on the duplicate id: {ids:?}"
+    );
+    let target = engine(&db);
+    let live: i64 = target
+        .db
+        .sql()
+        .query_row(
+            "SELECT count(*) FROM memories WHERE expired_at IS NULL",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(live, 1);
+}
+
+/// #5: replaying an `--include-forgotten` export must never retire a live row
+/// that the import merely re-created as a duplicate.
+#[test]
+fn importing_an_expired_line_never_forgets_a_live_memory() {
+    let dir = temp_dir("no-forget");
+    let target = engine(&dir.join("target.db"));
+    target
+        .remember(RememberInput {
+            content: "Important live memory.".into(),
+            kind: Some("note".into()),
+            ..RememberInput::default()
+        })
+        .unwrap();
+    let lines = dir.join("in.jsonl");
+    std::fs::write(
+        &lines,
+        "{\"content\":\"Important live memory.\",\"kind\":\"note\",\"expired\":true}\n",
+    )
+    .unwrap();
+    let report = neocortex::export::import(&target, &lines).unwrap();
+    assert_eq!(report.forgotten, 0);
+    assert_eq!(live_contents(&target), vec!["Important live memory."]);
+}
+
+/// #6: import-remem is all or nothing and the error names the failing row.
+#[test]
+fn import_remem_is_atomic_and_names_the_bad_row() {
+    let dir = temp_dir("atomic");
+    let source = dir.join("remem.db");
+    {
+        let c = rusqlite::Connection::open(&source).unwrap();
+        c.execute_batch(
+            "CREATE TABLE memories (
+               id TEXT PRIMARY KEY, kind TEXT, content TEXT, tags TEXT,
+               agent_id TEXT, session_id TEXT, importance REAL,
+               created_at INTEGER, occurred_at INTEGER, deleted INTEGER DEFAULT 0);
+             INSERT INTO memories VALUES ('a','note','first row','[]','','',0.5,1000,NULL,0);
+             INSERT INTO memories VALUES ('b','bogus','second row','[]','','',0.5,1001,NULL,0);
+             INSERT INTO memories VALUES ('c','note','third row','[]','','',0.5,1002,NULL,0);",
+        )
+        .unwrap();
+    }
+    let target = engine(&dir.join("target.db"));
+    let error = neocortex::import::import_remem(&target, &source)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("row 2"), "{error}");
+    assert!(error.contains("bogus"), "{error}");
+    assert_eq!(all_contents(&target), Vec::<String>::new());
+}
+
+/// #6: pre-2001 unix seconds (including 0) are accepted as instants.
+#[test]
+fn import_remem_accepts_zero_and_old_unix_seconds() {
+    let dir = temp_dir("old-seconds");
+    let source = dir.join("remem.db");
+    {
+        let c = rusqlite::Connection::open(&source).unwrap();
+        c.execute_batch(
+            "CREATE TABLE memories (
+               id TEXT PRIMARY KEY, kind TEXT, content TEXT, tags TEXT,
+               agent_id TEXT, session_id TEXT, importance REAL,
+               created_at INTEGER, occurred_at INTEGER, deleted INTEGER DEFAULT 0);
+             INSERT INTO memories VALUES ('a','note','epoch row','[]','','',0.5,0,NULL,0);
+             INSERT INTO memories VALUES ('b','note','old row','[]','','',0.5,900,NULL,0);
+             INSERT INTO memories VALUES ('c','note','recent row','[]','','',0.5,1700000000,NULL,0);",
+        )
+        .unwrap();
+    }
+    let target = engine(&dir.join("target.db"));
+    let (imported, skipped) = neocortex::import::import_remem(&target, &source).unwrap();
+    assert_eq!((imported, skipped), (3, 0));
+    assert_eq!(all_contents(&target).len(), 3);
+}
+
+/// #13: an export file is a full copy of the memory and is private from birth.
+#[cfg(unix)]
+#[test]
+fn export_files_are_created_private() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = temp_dir("export-mode");
+    let e = engine(&dir.join("memory.db"));
+    seed(&e);
+    let out = dir.join("export.jsonl");
+    neocortex::export::export(&e, Some(&out), false).unwrap();
+    let mode = std::fs::metadata(&out).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600);
+}
+
+/// #13: the WAL/SHM side files hold full memory text; opening the database
+/// tightens them.
+#[cfg(unix)]
+#[test]
+fn the_wal_side_files_are_private() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = temp_dir("wal-mode");
+    let db = dir.join("memory.db");
+    let e = engine(&db);
+    e.remember(RememberInput {
+        content: "a write so the WAL exists".into(),
+        ..RememberInput::default()
+    })
+    .unwrap();
+    // A second open sees the side files and tightens them.
+    let second = engine(&db);
+    for suffix in ["-wal", "-shm"] {
+        let mut side = db.as_os_str().to_os_string();
+        side.push(suffix);
+        let side = PathBuf::from(side);
+        if side.exists() {
+            let mode = std::fs::metadata(&side).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600, "{} is world-readable", side.display());
+        }
+    }
+    drop(second);
+}

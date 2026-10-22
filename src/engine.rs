@@ -6,6 +6,7 @@ use crate::db::Db;
 use crate::embed::Embedder;
 use crate::error::Result;
 use crate::temporal::Clock;
+use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
@@ -413,7 +414,10 @@ impl Engine {
     }
 
     /// End validity of a memory (m<id>) or relation (r<id>) at `at` (default now).
+    /// A bare number is ambiguous and rejected: it used to mean a memory, so an
+    /// agent asking for `r12` silently ended `m12`.
     pub fn invalidate(&self, _id: &str, _at: Option<&str>) -> Result<ChangeOutput> {
+        let raw = _id.trim();
         let now = self.clock().now;
         let at = _at
             .map(|x| {
@@ -423,7 +427,9 @@ impl Engine {
             .transpose()?
             .unwrap_or(now);
         self.db.write(|db| {
-            if let Some(id) = parse_id(_id, 'm') {
+            if raw.starts_with('m') {
+                let id = parse_id(raw, 'm')
+                    .ok_or_else(|| crate::err!("invalid memory id '{raw}'; use m<id>"))?;
                 let vf: i64 = db
                     .sql()
                     .query_row("SELECT valid_from FROM memories WHERE id=?1", [id], |r| {
@@ -440,7 +446,9 @@ impl Engine {
                     changed: vec![format!("m{id} valid_to={at}")],
                 });
             }
-            if let Some(id) = parse_id(_id, 'r') {
+            if raw.starts_with('r') {
+                let id = parse_id(raw, 'r')
+                    .ok_or_else(|| crate::err!("invalid relation id '{raw}'; use r<id>"))?;
                 let vf: i64 = db
                     .sql()
                     .query_row("SELECT valid_from FROM relations WHERE id=?1", [id], |r| {
@@ -458,11 +466,17 @@ impl Engine {
                     changed: vec![format!("r{id} valid_to={at}")],
                 });
             }
-            Err(crate::err!("invalid id '{_id}'"))
+            if !raw.is_empty() && raw.bytes().all(|b| b.is_ascii_digit()) {
+                return Err(crate::err!(
+                    "id '{raw}' is ambiguous; use m<id> for a memory or r<id> for a relation"
+                ));
+            }
+            Err(crate::err!("invalid id '{_id}'; use m<id> or r<id>"))
         })
     }
 
     /// Retire a memory (soft) or delete it with vectors/mentions/evidence (hard).
+    /// Relations this memory was the only live evidence for end with it.
     pub fn forget(&self, _id: &str, _hard: bool) -> Result<ChangeOutput> {
         let now = self.clock().now;
         self.db.write(|db| {
@@ -477,6 +491,9 @@ impl Engine {
             if !exists {
                 return Err(crate::err!("unknown memory m{id}"));
             }
+            // Relations with no other live evidence stop being current.
+            let losing = crate::remember::relations_losing_their_last_evidence(db, id)?;
+            crate::remember::expire_relations(db, &losing, now)?;
             if _hard {
                 // Relations whose only evidence was this memory disappear with
                 // it, including their FTS/vector rows.
@@ -491,7 +508,7 @@ impl Engine {
                     let rows = st.query_map([id], |r| r.get(0))?;
                     rows.collect::<rusqlite::Result<_>>()?
                 };
-                for rid in orphaned {
+                for rid in &orphaned {
                     db.sql()
                         .execute("DELETE FROM relations_fts WHERE rowid=?1", [rid])?;
                     db.sql()
@@ -499,11 +516,22 @@ impl Engine {
                     db.sql()
                         .execute("DELETE FROM relations WHERE id=?1", [rid])?;
                 }
+                // A deleted memory can never be restored: drop dangling refs
+                // (the rows that pointed at it stay history).
+                db.sql().execute(
+                    "UPDATE memories SET superseded_by=NULL WHERE superseded_by=?1",
+                    [id],
+                )?;
                 db.sql()
                     .execute("DELETE FROM memories_vec WHERE rowid=?1", [id])?;
                 // Cascades mentions and relation_evidence.
                 db.sql().execute("DELETE FROM memories WHERE id=?1", [id])?;
-                crate::kg::rebuild_all(db)?;
+                // Incremental projection: only this node and the edges of the
+                // relations that went with it, never a full rebuild.
+                crate::kg::remove_memory(db, id)?;
+                for rid in &orphaned {
+                    crate::kg::remove_relation(db, *rid)?;
+                }
             } else {
                 // Soft forget keeps the projection node: it is history, and
                 // snapshot/validate exclude it from the live graph.
@@ -578,13 +606,19 @@ impl Engine {
                 let rows = st.query_map([k], |r| r.get::<_, i64>(0))?;
                 rows.collect::<rusqlite::Result<_>>()?
             };
-            for rid in loops {
+            for rid in &loops {
                 db.sql()
                     .execute("DELETE FROM relations_fts WHERE rowid=?1", [rid])?;
                 db.sql()
                     .execute("DELETE FROM relations_vec WHERE rowid=?1", [rid])?;
                 db.sql().execute("DELETE FROM relations WHERE id=?1", [rid])?;
+                crate::kg::remove_relation(db, *rid)?;
             }
+            // Two entities that described the same fact become one relation,
+            // and an exclusive predicate keeps at most one live object.
+            merge_duplicate_relations(db)?;
+            let invalidated = reapply_exclusivity(db, now)?;
+            crate::remember::end_memories_of_ended_facts(db, &invalidated)?;
             let merged_count: i64 = db.sql().query_row(
                 "SELECT mention_count FROM entities WHERE id=?1",
                 [m],
@@ -600,7 +634,10 @@ impl Engine {
                 .execute("DELETE FROM entities_vec WHERE rowid=?1", [m])?;
             db.sql().execute("DELETE FROM entities WHERE id=?1", [m])?;
             crate::resolve::refresh_entity_fts(db, k)?;
-            crate::kg::rebuild_all(db)?;
+            // Incremental projection: drop the merged node (with its edges) and
+            // re-project only what the surviving entity owns.
+            crate::kg::remove_entity(db, m)?;
+            crate::kg::reproject_entity(db, k)?;
             crate::kg::bump_gen(db)?;
             Ok(ChangeOutput {
                 changed: vec![format!("e{m} merged into e{k}")],
@@ -791,6 +828,104 @@ impl Engine {
         crate::remember::check_embedder(&self.db, self.emb.as_ref())
     }
 }
+/// Collapse live relations that became the same `(src, predicate, dst)` after
+/// an entity merge: keep the earliest start, sum the evidence, move the
+/// evidence rows and the projections of the rows that go away.
+fn merge_duplicate_relations(db: &Db) -> Result<()> {
+    let groups: Vec<(i64, i64, i64)> = {
+        let mut st = db.sql().prepare(
+            "SELECT src,predicate_id,dst FROM relations
+             WHERE expired_at IS NULL AND valid_to IS NULL
+             GROUP BY src,predicate_id,dst HAVING count(*)>1",
+        )?;
+        let rows = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
+    for (src, pid, dst) in groups {
+        let rows: Vec<(i64, i64)> = {
+            let mut st = db.sql().prepare(
+                "SELECT id,evidence_count FROM relations
+                 WHERE src=?1 AND predicate_id=?2 AND dst=?3
+                   AND expired_at IS NULL AND valid_to IS NULL
+                 ORDER BY valid_from, id",
+            )?;
+            let rows = st.query_map(rusqlite::params![src, pid, dst], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        let keep = rows[0].0;
+        let mut total = rows[0].1;
+        for (rid, count) in &rows[1..] {
+            total += count;
+            db.sql().execute(
+                "INSERT OR IGNORE INTO relation_evidence(relation_id,memory_id)
+                 SELECT ?1,memory_id FROM relation_evidence WHERE relation_id=?2",
+                rusqlite::params![keep, rid],
+            )?;
+            db.sql()
+                .execute("DELETE FROM relation_evidence WHERE relation_id=?1", [rid])?;
+            db.sql()
+                .execute("DELETE FROM relations_fts WHERE rowid=?1", [rid])?;
+            db.sql()
+                .execute("DELETE FROM relations_vec WHERE rowid=?1", [rid])?;
+            db.sql()
+                .execute("DELETE FROM relations WHERE id=?1", [rid])?;
+            crate::kg::remove_relation(db, *rid)?;
+        }
+        db.sql().execute(
+            "UPDATE relations SET evidence_count=?1, weight=?1 WHERE id=?2",
+            rusqlite::params![total, keep],
+        )?;
+    }
+    Ok(())
+}
+
+/// Re-apply exclusive invalidation after a merge: per `(src, exclusive
+/// predicate)` the newest `valid_from` wins; older rows end where it starts.
+fn reapply_exclusivity(db: &Db, now: i64) -> Result<Vec<i64>> {
+    let groups: Vec<(i64, i64)> = {
+        let mut st = db.sql().prepare(
+            "SELECT r.src,r.predicate_id FROM relations r
+             JOIN predicates p ON p.id=r.predicate_id
+             WHERE p.exclusive<>0 AND r.expired_at IS NULL AND r.valid_to IS NULL
+             GROUP BY r.src,r.predicate_id HAVING count(*)>1",
+        )?;
+        let rows = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
+    let mut invalidated = Vec::new();
+    for (src, pid) in groups {
+        let rows: Vec<(i64, i64)> = {
+            let mut st = db.sql().prepare(
+                "SELECT id,valid_from FROM relations
+                 WHERE src=?1 AND predicate_id=?2
+                   AND expired_at IS NULL AND valid_to IS NULL
+                 ORDER BY valid_from DESC, id DESC",
+            )?;
+            let rows = st.query_map(rusqlite::params![src, pid], |r| Ok((r.get(0)?, r.get(1)?)))?;
+            rows.collect::<rusqlite::Result<_>>()?
+        };
+        let (_, newest) = rows[0];
+        for (rid, from) in &rows[1..] {
+            if *from == newest {
+                // Equal start: the newer write wins outright.
+                db.sql().execute(
+                    "UPDATE relations SET valid_to=?1, expired_at=?2 WHERE id=?3",
+                    rusqlite::params![newest, now, rid],
+                )?;
+            } else {
+                db.sql().execute(
+                    "UPDATE relations SET valid_to=?1 WHERE id=?2",
+                    rusqlite::params![newest, rid],
+                )?;
+            }
+            invalidated.push(*rid);
+        }
+    }
+    Ok(invalidated)
+}
+
 fn parse_entity(db: &Db, s: &str) -> Result<i64> {
     if let Some(id) = parse_id(s, 'e') {
         return Ok(id);
@@ -803,16 +938,4 @@ fn parse_entity(db: &Db, s: &str) -> Result<i64> {
             |r| r.get(0),
         )
         .map_err(|_| crate::err!("unknown entity '{s}'"))
-}
-trait OptionalRow<T> {
-    fn optional(self) -> rusqlite::Result<Option<T>>;
-}
-impl<T> OptionalRow<T> for rusqlite::Result<T> {
-    fn optional(self) -> rusqlite::Result<Option<T>> {
-        match self {
-            Ok(v) => Ok(Some(v)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e),
-        }
-    }
 }

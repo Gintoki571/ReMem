@@ -1,4 +1,4 @@
--- neocortex schema v1. Relational tables are the source of truth; the
+-- neocortex schema v2. Relational tables are the source of truth; the
 -- graphqlite tables (nodes/edges/...) are a rebuildable projection.
 -- Times are unix seconds (UTC). Validity is half-open [valid_from, valid_to).
 
@@ -21,7 +21,10 @@ CREATE TABLE IF NOT EXISTS memories (
   content_hash TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_memories_valid ON memories(valid_from);
-CREATE INDEX IF NOT EXISTS idx_memories_hash ON memories(content_hash) WHERE expired_at IS NULL;
+-- One live row per content hash: the exact-duplicate guarantee is a constraint,
+-- not a read-then-insert race. Retired rows keep their history.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_hash ON memories(content_hash)
+  WHERE expired_at IS NULL;
 
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
   content, tags, content='memories', content_rowid='id', tokenize='porter unicode61');
@@ -116,6 +119,11 @@ CREATE TABLE IF NOT EXISTS communities (
   entity_id INTEGER PRIMARY KEY REFERENCES entities(id) ON DELETE CASCADE,
   community INTEGER NOT NULL,
   computed_at INTEGER NOT NULL
+);
+
+-- one row: the neocortex schema version (graphqlite owns PRAGMA user_version)
+CREATE TABLE IF NOT EXISTS schema_meta (
+  version INTEGER NOT NULL
 );
 
 -- key/value engine state: write_generation, communities_generation, ...

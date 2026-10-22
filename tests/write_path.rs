@@ -1292,3 +1292,490 @@ fn memory_ends_when_all_its_facts_end() {
     assert_eq!(valid_to(old), Some(denver));
     assert_eq!(valid_to(mixed), None, "still evidences a live fact");
 }
+
+// ------------------------------------------------- audit regressions (#2..#22)
+
+fn temp_dir(tag: &str) -> std::path::PathBuf {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let dir = std::env::temp_dir().join(format!(
+        "neocortex-writepath-{}-{tag}-{nanos}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+fn engine_at(path: &std::path::Path) -> Engine {
+    Engine::open(path, Arc::new(HashEmbedder))
+        .unwrap()
+        .with_clock(clock())
+}
+
+/// #2: hard forget must touch only the forgotten node/edges. A full rebuild of
+/// a 2k-memory projection takes seconds; the bound is deliberately generous.
+#[test]
+fn hard_forget_of_one_memory_does_not_rebuild_the_projection() {
+    let engine = engine();
+    let mut ids = Vec::new();
+    for i in 0..2000 {
+        ids.push(
+            engine
+                .remember(RememberInput {
+                    content: format!("bulk memory {i} about the staging host"),
+                    entities: vec![named("Bulk")],
+                    ..Default::default()
+                })
+                .unwrap()
+                .id,
+        );
+    }
+    assert_eq!(count(&engine, "SELECT count(*) FROM memories"), 2000);
+    let victim = ids[1000];
+    let started = std::time::Instant::now();
+    engine.forget(&format!("m{victim}"), true).unwrap();
+    let elapsed = started.elapsed();
+    println!("hard forget of one memory in a 2k DB: {elapsed:?}");
+    assert!(
+        elapsed < std::time::Duration::from_millis(500),
+        "hard forget took {elapsed:?}; the projection was probably rebuilt"
+    );
+    assert_eq!(count(&engine, "SELECT count(*) FROM memories"), 1999);
+    let nodes: i64 = engine
+        .db
+        .graph()
+        .cypher("MATCH (n:Memory) RETURN count(n) AS c")
+        .unwrap()
+        .iter()
+        .next()
+        .and_then(|r| r.get::<i64>("c").ok())
+        .unwrap_or(0);
+    assert_eq!(nodes, 1999);
+    assert!(engine.validate().unwrap().is_empty());
+}
+
+/// #2: merging entities must leave the projection exact without a rebuild.
+#[test]
+fn merge_entities_reprojects_only_the_surviving_entity() {
+    let engine = engine();
+    let first = remember(
+        &engine,
+        "Acme makes widgets",
+        vec![named("Acme"), named("Widget")],
+        vec![rel("Acme", "makes", "Widget")],
+    );
+    let second = remember(&engine, "Beta is a partner", vec![named("Beta")], vec![]);
+    assert!(engine.validate().unwrap().is_empty());
+    engine
+        .merge_entities(
+            &format!("e{}", first.entities[0].id),
+            &format!("e{}", second.entities[0].id),
+        )
+        .unwrap();
+    assert_eq!(count(&engine, "SELECT count(*) FROM entities"), 2);
+    assert_eq!(count(&engine, "SELECT count(*) FROM relations"), 1);
+    let problems = engine.validate().unwrap();
+    assert!(problems.is_empty(), "{problems:?}");
+    let facts = engine.entity("Acme", 10).unwrap().current_facts;
+    assert_eq!(facts.len(), 1, "{facts:?}");
+    assert_eq!(facts[0].target, "Widget");
+}
+
+/// #4: a soft forget ends relations whose only live evidence was that memory.
+#[test]
+fn soft_forget_ends_relations_with_no_other_live_evidence() {
+    let engine = engine();
+    let first = remember(
+        &engine,
+        "Mom lives in Delhi",
+        vec![named("Mom")],
+        vec![rel("Mom", "lives in", "Delhi")],
+    );
+    let rid = first.relations[0].id;
+    engine.forget(&format!("m{}", first.id), false).unwrap();
+    let (_, valid_to, expired_at) = relation_state(&engine, rid);
+    assert_eq!(valid_to, Some(NOW), "an open relation ends at forget time");
+    assert_eq!(expired_at, Some(NOW));
+    let current = engine.entity("Mom", 10).unwrap().current_facts;
+    assert!(
+        current.is_empty(),
+        "forgotten fact still current: {current:?}"
+    );
+}
+
+/// #4: evidence from another live memory keeps the relation current.
+#[test]
+fn soft_forget_keeps_relations_with_other_live_evidence() {
+    let engine = engine();
+    let first = remember(
+        &engine,
+        "Mom lives in Delhi",
+        vec![named("Mom")],
+        vec![rel("Mom", "lives in", "Delhi")],
+    );
+    let rid = first.relations[0].id;
+    let second = remember(
+        &engine,
+        "Mom still lives in Delhi",
+        vec![named("Mom")],
+        vec![rel("Mom", "lives in", "Delhi")],
+    );
+    assert_eq!(second.relations[0].id, rid, "the relation is shared");
+    engine.forget(&format!("m{}", first.id), false).unwrap();
+    let (_, valid_to, expired_at) = relation_state(&engine, rid);
+    assert_eq!(valid_to, None);
+    assert_eq!(expired_at, None);
+}
+
+/// #4: supersede ends the relation at the new memory's world-time start and
+/// leaves it true-in-the-past (expired_at stays NULL).
+#[test]
+fn supersede_ends_relations_at_the_new_valid_from() {
+    let engine = engine();
+    let old = remember_at(
+        &engine,
+        "Mom lives in Delhi",
+        vec![named("Mom")],
+        vec![rel("Mom", "lives in", "Delhi")],
+        NOW - 86_400,
+    );
+    let rid = old.relations[0].id;
+    engine
+        .remember(RememberInput {
+            content: "Mom lives in Pune".into(),
+            entities: vec![named("Mom")],
+            relations: vec![rel("Mom", "lives in", "Pune")],
+            supersedes: vec![format!("m{}", old.id)],
+            ..Default::default()
+        })
+        .unwrap();
+    let (_, valid_to, expired_at) = relation_state(&engine, rid);
+    assert_eq!(valid_to, Some(NOW), "ends where the new memory starts");
+    assert_eq!(expired_at, None, "it was true until then, not wrong");
+    let current: Vec<i64> = engine
+        .entity("Mom", 10)
+        .unwrap()
+        .current_facts
+        .iter()
+        .map(|f| f.id)
+        .collect();
+    assert!(!current.contains(&rid), "{current:?}");
+}
+
+/// #9: merging two entities that described the same fact leaves one relation,
+/// and an exclusive predicate keeps only the newest object.
+#[test]
+fn merge_entities_dedupes_relations_and_reapplies_exclusivity() {
+    let engine = engine_with(Arc::new(MapEmbedder::new(vec![
+        // Fact sentences first: the embedder matches on prefix, and predicate
+        // vectors must not look alike (that would alias the predicates).
+        ("Alicia lives in Pune", axis(2)),
+        ("Alicia works at Pune", axis(3)),
+        ("Alice lives in Denver", axis(0)),
+        ("Alice works at Pune", axis(1)),
+        ("Alice", axis(0)),
+        ("Alicia", axis(4)),
+        ("Pune", axis(5)),
+        ("Denver", axis(6)),
+    ])));
+    let alicia = remember_at(
+        &engine,
+        "Alicia lives in Pune",
+        vec![
+            EntityIn {
+                name: "Alicia".into(),
+                kind: Some("org".into()),
+                ..Default::default()
+            },
+            named("Pune"),
+        ],
+        vec![RelationIn {
+            exclusive: true,
+            ..rel("Alicia", "lives in", "Pune")
+        }],
+        T1,
+    );
+    let alice = remember_at(
+        &engine,
+        "Alice lives in Denver",
+        vec![named("Alice"), named("Denver")],
+        vec![RelationIn {
+            exclusive: true,
+            ..rel("Alice", "lives in", "Denver")
+        }],
+        T2,
+    );
+    assert_ne!(
+        alicia.entities[0].id, alice.entities[0].id,
+        "the two entities start apart"
+    );
+    // Both entities also describe the same non-exclusive fact.
+    let dup_a = remember_at(
+        &engine,
+        "Alicia works at Pune",
+        vec![],
+        vec![rel("Alicia", "works at", "Pune")],
+        T1,
+    );
+    let dup_b = remember_at(
+        &engine,
+        "Alice works at Pune",
+        vec![],
+        vec![rel("Alice", "works at", "Pune")],
+        T1,
+    );
+    assert_ne!(dup_a.relations[0].id, dup_b.relations[0].id);
+
+    let keep = alice.entities[0].id;
+    engine
+        .merge_entities(&format!("e{keep}"), &format!("e{}", alicia.entities[0].id))
+        .unwrap();
+
+    let live: Vec<(String, String, Option<i64>)> = {
+        let mut st = engine
+            .db
+            .sql()
+            .prepare(
+                "SELECT p.canonical,d.name,r.valid_to FROM relations r
+                 JOIN predicates p ON p.id=r.predicate_id
+                 JOIN entities d ON d.id=r.dst
+                 WHERE r.src=?1 AND r.expired_at IS NULL AND r.valid_to IS NULL",
+            )
+            .unwrap();
+        let rows = st
+            .query_map([keep], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .unwrap();
+        rows.collect::<rusqlite::Result<Vec<_>>>().unwrap()
+    };
+    assert_eq!(live.len(), 2, "{live:?}");
+    assert!(live.iter().any(|(p, d, _)| p == "live in" && d == "Denver"));
+    assert!(live.iter().any(|(p, d, _)| p == "work at" && d == "Pune"));
+    let pune: (Option<i64>, Option<i64>, i64) = engine
+        .db
+        .sql()
+        .query_row(
+            "SELECT valid_to,expired_at,evidence_count FROM relations
+             WHERE src=?1 AND dst=(SELECT id FROM entities WHERE name='Pune')
+               AND predicate_id=(SELECT id FROM predicates WHERE canonical='live in')",
+            [keep],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    assert_eq!(pune.0, Some(T2), "the older object ends at the newer start");
+    assert_eq!(pune.1, None);
+    let evidence: i64 = engine
+        .db
+        .sql()
+        .query_row(
+            "SELECT evidence_count FROM relations
+             WHERE src=?1 AND dst=(SELECT id FROM entities WHERE name='Pune')
+               AND predicate_id=(SELECT id FROM predicates WHERE canonical='work at')",
+            [keep],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(evidence, 2, "duplicate facts merge their evidence");
+    let problems = engine.validate().unwrap();
+    assert!(problems.is_empty(), "{problems:?}");
+}
+
+/// #10: a relation interval that cannot be true is rejected, naming it.
+#[test]
+fn relation_valid_to_must_be_after_valid_from() {
+    let engine = engine();
+    let mut r = rel("A", "lives in", "B");
+    r.valid_from = Some(T1.to_string());
+    r.valid_to = Some((T1 - 1).to_string());
+    let error = engine
+        .remember(RememberInput {
+            content: "A lives in B".into(),
+            entities: vec![named("A"), named("B")],
+            relations: vec![r],
+            ..Default::default()
+        })
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("valid_to must be after valid_from"),
+        "{error}"
+    );
+    assert!(
+        error.contains("A lives in B"),
+        "must name the relation: {error}"
+    );
+    assert_eq!(count(&engine, "SELECT count(*) FROM relations"), 0);
+}
+
+/// #14: a bare id is ambiguous for invalidate (it silently meant a memory).
+#[test]
+fn invalidate_rejects_a_bare_id_but_forget_accepts_one() {
+    let engine = engine();
+    let first = remember(&engine, "a memory", vec![named("A")], vec![]);
+    let error = engine.invalidate("1", None).unwrap_err().to_string();
+    assert!(error.contains("ambiguous"), "{error}");
+    assert!(
+        error.contains("m<id>") && error.contains("r<id>"),
+        "{error}"
+    );
+    engine.invalidate("m1", None).unwrap();
+    engine.forget(&format!("{}", first.id), false).unwrap();
+}
+
+/// #15: a hash hit whose kind/text differ is a collision, not a duplicate.
+#[test]
+fn a_hash_collision_with_other_text_is_not_a_duplicate() {
+    let engine = engine();
+    let content = "the staging host runs Debian";
+    let hash = neocortex::text::content_hash("note", content);
+    engine
+        .db
+        .write(|db| {
+            db.sql().execute(
+                "INSERT INTO memories(content,kind,created_at,valid_from,content_hash)
+                 VALUES ('a different sentence','note',0,0,?1)",
+                [&hash],
+            )?;
+            Ok(())
+        })
+        .unwrap();
+    let out = engine
+        .remember(RememberInput {
+            content: content.into(),
+            ..Default::default()
+        })
+        .unwrap();
+    assert!(out.duplicate_of.is_none(), "{out:?}");
+    assert_eq!(
+        count(
+            &engine,
+            "SELECT count(*) FROM memories WHERE expired_at IS NULL"
+        ),
+        2
+    );
+}
+
+/// #22: a hard-deleted memory must not leave `superseded by m<gone>` behind.
+#[test]
+fn hard_forget_clears_superseded_by_references() {
+    let engine = engine();
+    let old = remember(&engine, "the deploy day is Friday", vec![], vec![]);
+    let new = engine
+        .remember(RememberInput {
+            content: "the deploy day is Thursday".into(),
+            supersedes: vec![format!("m{}", old.id)],
+            ..Default::default()
+        })
+        .unwrap();
+    engine.forget(&format!("m{}", new.id), true).unwrap();
+    let (superseded_by, expired_at): (Option<i64>, Option<i64>) = engine
+        .db
+        .sql()
+        .query_row(
+            "SELECT superseded_by,expired_at FROM memories WHERE id=?1",
+            [old.id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(superseded_by, None);
+    assert!(expired_at.is_some(), "it stays history");
+}
+
+/// #3: opening a database must never chmod a directory it did not create.
+#[cfg(unix)]
+#[test]
+fn opening_a_db_does_not_chmod_an_existing_directory() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = temp_dir("chmod");
+    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+    drop(engine_at(&dir.join("mem.db")));
+    let mode = std::fs::metadata(&dir).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o755, "an existing directory must keep its mode");
+
+    let created = dir.join("fresh").join("nested");
+    drop(engine_at(&created.join("mem.db")));
+    let mode = std::fs::metadata(&created).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o700, "a directory this call created is private");
+}
+
+/// #17: a v1 database with duplicate live hashes migrates cleanly to v2.
+#[test]
+fn a_v1_database_with_duplicate_live_hashes_migrates_to_v2() {
+    let dir = temp_dir("migrate");
+    let path = dir.join("mem.db");
+    {
+        let engine = engine_at(&path);
+        remember(&engine, "the deploy day is Friday", vec![], vec![]);
+        remember(&engine, "the staging host runs Debian", vec![], vec![]);
+    }
+    let oldest;
+    {
+        // Rewind to the v1 shape: no schema_meta, a non-unique hash index and
+        // two live rows that share a content hash.
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute_batch(
+            "DROP TABLE schema_meta;
+             DROP INDEX idx_memories_hash;
+             CREATE INDEX idx_memories_hash ON memories(content_hash) WHERE expired_at IS NULL;",
+        )
+        .unwrap();
+        let hash: String = conn
+            .query_row(
+                "SELECT content_hash FROM memories WHERE content='the deploy day is Friday'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        oldest = conn
+            .query_row(
+                "SELECT id FROM memories WHERE content='the deploy day is Friday'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        conn.execute(
+            "INSERT INTO memories(content,kind,created_at,valid_from,content_hash)
+             VALUES ('the deploy day is Friday','note',0,0,?1)",
+            [&hash],
+        )
+        .unwrap();
+        conn.execute_batch("PRAGMA user_version=1").unwrap();
+    }
+    let engine = engine_at(&path);
+    let live: i64 = count(
+        &engine,
+        "SELECT count(*) FROM memories WHERE expired_at IS NULL",
+    );
+    assert_eq!(live, 2, "one live copy per hash after migration");
+    let newer: (Option<i64>, Option<i64>) = engine
+        .db
+        .sql()
+        .query_row(
+            "SELECT expired_at,superseded_by FROM memories
+             WHERE content='the deploy day is Friday' AND expired_at IS NOT NULL",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert!(newer.0.is_some());
+    assert_eq!(newer.1, Some(oldest), "the oldest copy is the survivor");
+    let version: i64 = engine
+        .db
+        .sql()
+        .query_row("SELECT version FROM schema_meta", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(version, 2);
+    // The unique index is live now.
+    let err = engine
+        .db
+        .sql()
+        .execute(
+            "INSERT INTO memories(content,kind,created_at,valid_from,content_hash)
+             VALUES ('another copy','note',0,0,(SELECT content_hash FROM memories
+                 WHERE content='the deploy day is Friday' AND expired_at IS NULL))",
+            [],
+        )
+        .unwrap_err();
+    assert!(neocortex::db::is_unique_violation(&err), "{err}");
+}

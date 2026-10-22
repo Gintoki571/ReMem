@@ -73,18 +73,26 @@ pub fn parse_instant(s: &str, clock: &Clock) -> Option<i64> {
     if expr.is_empty() {
         return None;
     }
-    if expr.bytes().all(|b| b.is_ascii_digit()) {
-        if let Ok(v) = expr.parse::<i64>() {
-            if v > 1_000_000_000 {
-                return Some(v);
-            }
-        }
+    let digits = expr.bytes().all(|b| b.is_ascii_digit());
+    // A 4-digit whole input is a year ("2024" -> that year's window); any
+    // other all-digit input is a unix second, including pre-2001 ones.
+    if digits && expr.len() != 4 {
+        return expr.parse::<i64>().ok();
     }
     let toks: Vec<&str> = expr.split_whitespace().collect();
     if let Some(t) = iso_instant(&toks, clock.tz_offset_secs) {
         return Some(t);
     }
-    parse_window(s, clock).map(|w| w.start)
+    let window = parse_window(s, clock).map(|w| w.start);
+    if window.is_some() {
+        return window;
+    }
+    // A 4-digit year the calendar parser rejected is still a real unix second
+    // (the first hours of 1970).
+    if digits {
+        return expr.parse::<i64>().ok();
+    }
+    None
 }
 
 /// A whole input string as an interval ("2026-03", "March 2025", "last week",
@@ -316,7 +324,21 @@ fn has_phrase(hay: &str, needle: &str) -> bool {
 
 fn tz_offset(raw: Option<&str>) -> i32 {
     match raw {
-        Some(r) => parse_offset(r).unwrap_or(0),
+        Some(r) => match parse_offset(r) {
+            Some(offset) => offset,
+            None => {
+                // A named zone ("Europe/Berlin") is not a UTC offset; say so
+                // instead of silently pretending it is UTC.
+                static WARNED: std::sync::Once = std::sync::Once::new();
+                WARNED.call_once(|| {
+                    eprintln!(
+                        "neocortex: NEOCORTEX_TZ='{r}' is not a UTC offset like +05:30; \
+                         using the system local offset"
+                    );
+                });
+                local_offset()
+            }
+        },
         None => local_offset(),
     }
 }
@@ -1131,8 +1153,27 @@ mod tests {
         assert_eq!(tz_offset(Some("+5")), 18_000);
         assert_eq!(tz_offset(Some("Z")), 0);
         assert_eq!(tz_offset(Some("utc")), 0);
-        assert_eq!(tz_offset(Some("")), 0);
-        assert_eq!(tz_offset(Some("Europe/Berlin")), 0);
+        // An unparsable value falls back to the machine's local offset (and
+        // warns) instead of silently meaning UTC. Compared to local_offset so
+        // the test does not depend on the machine's zone.
+        assert_eq!(tz_offset(Some("")), local_offset());
+        assert_eq!(tz_offset(Some("Europe/Berlin")), local_offset());
         assert_eq!(tz_offset(None), local_offset());
+    }
+
+    #[test]
+    fn whole_input_digits_are_unix_seconds_except_four_digit_years() {
+        // Pre-2001 seconds used to be rejected (only v > 1e9 passed).
+        assert_eq!(parse_instant("0", &utc()), Some(0));
+        assert_eq!(parse_instant("7", &utc()), Some(7));
+        assert_eq!(parse_instant("900", &utc()), Some(900));
+        // 4 digits that are not a usable year are seconds, not a rejection.
+        assert_eq!(parse_instant("1000", &utc()), Some(1000));
+        assert_eq!(parse_instant("1773484200", &utc()), Some(1_773_484_200));
+        // Four digits stay a year window.
+        assert_eq!(
+            parse_instant("2024", &utc()),
+            Some(days_from_civil(2024, 1, 1) * DAY)
+        );
     }
 }

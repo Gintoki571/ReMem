@@ -102,6 +102,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - Relational tables are the source of truth; graphqlite nodes/edges are a projection rebuilt by `neocortex reindex`.
 - One connection per process (`db::Db`): sqlite-vec via `sqlite3_auto_extension`, graphqlite via `Connection::from_rusqlite`. Writes go through `Db::write` (BEGIN IMMEDIATE). Cypher runs inside the same transaction.
 - Validity is half-open `[valid_from, valid_to)`; system retirement is `expired_at`. Times are unix seconds UTC.
+- One live memory per `content_hash` (unique partial index); a hash hit only counts as a duplicate when kind + folded text match. Retiring a memory (forget/supersede) ends the relations it alone still evidenced; hard forget and merge patch the graph projection incrementally, never `rebuild_all`.
 - Embedding-only similarity never merges entities; it only adds `similar` soft edges.
 - Ids shown to agents: `m<id>`, `e<id>`, `r<id>`; tools accept both forms.
 - The embedder sets `RAYON_NUM_THREADS` to candle's thread count at model load when unset (gemm and rayon pools must agree; 2x faster).
@@ -109,7 +110,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 
 ## Layout
 
-- `src/db.rs` + `src/schema.sql` - connection, extensions, schema (PRAGMA user_version).
+- `src/db.rs` + `src/schema.sql` - connection, extensions, schema. The schema version lives in the `schema_meta` table (v2), never in `PRAGMA user_version`: graphqlite owns that pragma (it stamps 1 and its cypher executor refuses any other value). Migrations are an explicit ladder in `Db::init`.
 - `src/embed.rs`, `src/ultrabert.rs` - Embedder trait, UltraBERT forward pass, HashEmbedder (tests).
 - `src/text.rs` - normalisation, singularise, Jaro-Winkler, trigrams, FTS query building, predicate keys, content hash.
 - `src/temporal.rs` - civil dates, instant/window parsing, query windows, history intent.

@@ -47,7 +47,7 @@ Anti-goals (would be a failure even if it "works")
 src/
   main.rs       CLI dispatch (hand-rolled args) + `mcp` subcommand
   lib.rs        pub use; Engine
-  db.rs         open, extensions, schema.sql, PRAGMA user_version migrations
+  db.rs         open, extensions, schema.sql, schema_meta version ladder
   schema.sql
   embed.rs      Embedder trait; UltraBERT (candle); HashEmbedder for tests
   ultrabert.rs  model forward pass
@@ -71,6 +71,7 @@ Ids are integers, shown to agents with a prefix (`m12`, `e7`, `r33`). Short ids 
 
 - `memories(id, content, kind, tags, importance REAL 0..1, scope, source, session, created_at, valid_from, valid_to NULL, expired_at NULL, superseded_by NULL, access_count, last_access, content_hash)`
   - `kind` ∈ {fact, event, decision, preference, mistake, procedure, observation, note}; any other value is rejected with the list.
+  - One live row per `content_hash` (unique partial index `WHERE expired_at IS NULL`); a hash hit is a duplicate only when kind and folded content also match. The schema version lives in `schema_meta`, not `PRAGMA user_version` (graphqlite owns that pragma).
   - World time: `valid_from` (defaults to created_at) and `valid_to` (NULL = still true or unknown). System time: `created_at` and `expired_at` (set by forget/supersede).
 - `memories_fts` FTS5 (content, tags), porter unicode61, external content + triggers.
 - `memories_vec` vec0 `embedding float[768] distance_metric=cosine`, plus a metadata column `live` (so KNN skips expired rows without oversampling); rowid = memory id.
@@ -97,13 +98,13 @@ Input (CLI flags or MCP JSON):
 ```
 Steps, in one `BEGIN IMMEDIATE` transaction (embeddings computed before the transaction opens):
 1. Validate input. Parse `valid_from`/`valid_to` (ISO date/datetime, unix seconds, or relative phrases, anchored at now).
-2. Exact duplicate (same normalised content + kind, live): bump access/evidence, return the existing id with `duplicate_of`.
+2. Exact duplicate (same content hash + kind + folded content, live): bump access/evidence, return the existing id with `duplicate_of`. The unique index enforces it under concurrency.
 3. Embed content (document mode). If the top live KNN neighbour has cosine ≥ `NEAR_DUP` (calibrated; starting value 0.97), report `near_duplicate: mN` and still store the new memory. Never silently drop.
 4. Entities = agent-supplied entities ∪ gazetteer matches (known aliases found as whole-word n-grams in the content) ∪ heuristic candidates. Heuristic candidates are used only when the agent supplied no entities: proper-noun spans, quoted spans, @handles, #tags, URLs, paths, identifiers. Resolve each one (§7), then insert `mentions`.
 5. Relations: resolve endpoints (unknown names create entities), canonicalise the predicate (§7), then upsert:
    - same (src, predicate, dst) live: weight/evidence += 1, add evidence, keep the earliest valid_from;
    - `exclusive: true` (or the predicate is marked exclusive by an earlier exclusive write): every other live relation with the same (src, predicate) and a different dst gets `valid_to = new.valid_from` and `expired_at = now`, and is reported as `invalidated`.
-6. `supersedes`: each target memory gets `valid_to` (if unset) = new valid_from, `expired_at = now`, `superseded_by = new id`, and its vec `live = 0`.
+6. `supersedes`: each target memory gets `valid_to` (if unset) = new valid_from, `expired_at = now`, `superseded_by = new id`, and its vec `live = 0`. Relations the target alone still evidenced get `valid_to = new valid_from` and keep `expired_at` NULL (true until then). `forget` does the same with `now`, also setting `expired_at`; hard forget deletes relations it alone evidenced and clears `superseded_by` pointers at it.
 7. Update the graphqlite projection and bump the write generation.
 8. Return a compact result: id, how each entity resolved (`new` | `matched e7` | `alias-of e7` | `similar-to e9 (0.81)`), relations created/merged, invalidated ids, and duplicate notes.
 

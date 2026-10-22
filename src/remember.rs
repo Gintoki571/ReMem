@@ -166,14 +166,6 @@ pub fn remember(
         }
     };
     let hash = text::content_hash(&kind, &content);
-    let duplicate: Option<i64> = db
-        .sql()
-        .query_row(
-            "SELECT id FROM memories WHERE content_hash=?1 AND expired_at IS NULL LIMIT 1",
-            [&hash],
-            |r| r.get(0),
-        )
-        .optional()?;
     let near = knn_memory(db, &vectors[0], cfg.near_dup)?;
     let supersedes: Vec<i64> = inp
         .supersedes
@@ -198,26 +190,48 @@ pub fn remember(
     }
     db.write(|db| {
         let now = clock.now;
-        let duplicate_of = duplicate;
+        // The duplicate decision is made under the write lock: a read outside
+        // it races with concurrent writers (the unique index is the backstop).
+        let mut duplicate_of = live_duplicate(db, &hash, &kind, &content)?;
+        let stored_hash = if duplicate_of.is_some() {
+            hash.clone()
+        } else {
+            // A live row with this hash but different text is a hash collision;
+            // salt the key so both memories can be stored.
+            free_hash(db, &hash)?
+        };
         db.sql().execute(
             "INSERT OR IGNORE INTO meta(key,value) VALUES('embedder',?1)",
             [emb.name()],
         )?;
-        let id = if let Some(id) = duplicate {
-            db.sql().execute(
-                "UPDATE memories SET access_count=access_count+1,last_access=?1 WHERE id=?2",
-                params![now, id],
-            )?;
+        let id = if let Some(id) = duplicate_of {
+            touch_memory(db, id, now)?;
             id
         } else {
-            db.sql().execute("INSERT INTO memories(content,kind,tags,importance,scope,source,session,created_at,valid_from,valid_to,content_hash) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",params![content,kind,tags,importance,inp.scope.unwrap_or_default(),inp.source.unwrap_or_default(),inp.session.unwrap_or_default(),now,valid_from,valid_to,hash])?;
-            let id = db.sql().last_insert_rowid();
-            db.sql().execute(
-                "INSERT INTO memories_vec(rowid,embedding,live) VALUES (?1,?2,1)",
-                params![id, vec_blob(&vectors[0])],
-            )?;
-            kg::project_memory(db, id, &kind)?;
-            id
+            let inserted = db.sql().execute("INSERT INTO memories(content,kind,tags,importance,scope,source,session,created_at,valid_from,valid_to,content_hash) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",params![content,kind,tags,importance,inp.scope.unwrap_or_default(),inp.source.unwrap_or_default(),inp.session.unwrap_or_default(),now,valid_from,valid_to,stored_hash]);
+            match inserted {
+                Ok(_) => {
+                    let id = db.sql().last_insert_rowid();
+                    db.sql().execute(
+                        "INSERT INTO memories_vec(rowid,embedding,live) VALUES (?1,?2,1)",
+                        params![id, vec_blob(&vectors[0])],
+                    )?;
+                    kg::project_memory(db, id, &kind)?;
+                    id
+                }
+                Err(e) if crate::db::is_unique_violation(&e) => {
+                    // An identical writer won the race; reuse its row.
+                    let id: i64 = db.sql().query_row(
+                        "SELECT id FROM memories WHERE content_hash=?1 AND expired_at IS NULL",
+                        [&stored_hash],
+                        |r| r.get(0),
+                    )?;
+                    touch_memory(db, id, now)?;
+                    duplicate_of = Some(id);
+                    id
+                }
+                Err(e) => return Err(e.into()),
+            }
         };
         let mut resolutions = Vec::new();
         let mut ids: HashMap<String, i64> = HashMap::new();
@@ -300,6 +314,11 @@ pub fn remember(
                 })
                 .transpose()?;
             let fact = facts[ri].clone();
+            if new_valid_to.is_some_and(|to| to <= rf) {
+                return Err(crate::err!(
+                    "relation '{fact}': valid_to must be after valid_from"
+                ));
+            }
             if relation.exclusive || predicate_exclusive {
                 let mut st = db.sql().prepare(
                     "SELECT id,valid_from,valid_to FROM relations
@@ -389,6 +408,17 @@ pub fn remember(
             });
         }
         for target in &supersedes {
+            // Relations this memory was the only live evidence for were true
+            // until the new memory's world-time starts; they end there and stay
+            // true-in-the-past (expired_at stays NULL).
+            let ending = relations_losing_their_last_evidence(db, *target)?;
+            for rid in &ending {
+                db.sql().execute(
+                    "UPDATE relations SET valid_to=MIN(COALESCE(valid_to,?1),?1)
+                     WHERE id=?2 AND expired_at IS NULL",
+                    params![valid_from, rid],
+                )?;
+            }
             db.sql().execute(
                 "UPDATE memories SET valid_to=COALESCE(valid_to,?1),expired_at=?2,superseded_by=?3 WHERE id=?4",
                 params![valid_from, now, id, target],
@@ -488,6 +518,77 @@ fn resolve_endpoint(
         write_similar(db, resolved.id, *other, *score)?;
     }
     Ok(resolved.id)
+}
+
+/// The live memory whose kind and folded text equal `kind` + `content`, if any.
+/// A hash hit with different text is a collision, not a duplicate.
+fn live_duplicate(db: &Db, hash: &str, kind: &str, content: &str) -> Result<Option<i64>> {
+    let row: Option<(i64, String, String)> = db
+        .sql()
+        .query_row(
+            "SELECT id,kind,content FROM memories
+             WHERE content_hash=?1 AND expired_at IS NULL LIMIT 1",
+            [hash],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()?;
+    let folded = text::fold(content);
+    Ok(row
+        .filter(|(_, k, c)| k == kind && text::fold(c) == folded)
+        .map(|(id, _, _)| id))
+}
+
+/// `hash`, or a salted variant when a live row already owns it with other text.
+fn free_hash(db: &Db, hash: &str) -> Result<String> {
+    let mut candidate = hash.to_string();
+    loop {
+        let taken: Option<i64> = db
+            .sql()
+            .query_row(
+                "SELECT 1 FROM memories WHERE content_hash=?1 AND expired_at IS NULL",
+                [&candidate],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if taken.is_none() {
+            return Ok(candidate);
+        }
+        candidate.push('#');
+    }
+}
+
+fn touch_memory(db: &Db, id: i64, now: i64) -> Result<()> {
+    db.sql().execute(
+        "UPDATE memories SET access_count=access_count+1,last_access=?1 WHERE id=?2",
+        params![now, id],
+    )?;
+    Ok(())
+}
+
+/// Relations evidenced by `memory` for which no *other live* memory is evidence.
+pub fn relations_losing_their_last_evidence(db: &Db, memory: i64) -> Result<Vec<i64>> {
+    let mut st = db.sql().prepare(
+        "SELECT DISTINCT e.relation_id FROM relation_evidence e
+         WHERE e.memory_id=?1
+           AND NOT EXISTS (
+             SELECT 1 FROM relation_evidence e2 JOIN memories m ON m.id=e2.memory_id
+             WHERE e2.relation_id=e.relation_id AND e2.memory_id<>?1
+               AND m.expired_at IS NULL)",
+    )?;
+    let rows = st.query_map([memory], |r| r.get::<_, i64>(0))?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+/// Soft-retire relations: `valid_to = now` when still open, `expired_at = now`.
+pub fn expire_relations(db: &Db, ids: &[i64], now: i64) -> Result<()> {
+    for rid in ids {
+        db.sql().execute(
+            "UPDATE relations SET valid_to=COALESCE(valid_to,?1), expired_at=?1
+             WHERE id=?2 AND expired_at IS NULL",
+            params![now, rid],
+        )?;
+    }
+    Ok(())
 }
 
 fn knn_memory(db: &Db, v: &[f32], threshold: f32) -> Result<Option<(i64, f32)>> {
