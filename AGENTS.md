@@ -104,6 +104,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - Validity is half-open `[valid_from, valid_to)`; system retirement is `expired_at`. Times are unix seconds UTC.
 - Embedding-only similarity never merges entities; it only adds `similar` soft edges.
 - Ids shown to agents: `m<id>`, `e<id>`, `r<id>`; tools accept both forms.
+- The embedder sets `RAYON_NUM_THREADS` to candle's thread count at model load when unset (gemm and rayon pools must agree; 2x faster).
 - Env: `NEOCORTEX_EMBEDDER=hash` (tests only; a DB records its embedder and refuses another), `NEOCORTEX_DB` (default `~/.neocortex/neocortex.db`), `NEOCORTEX_MODEL_DIR` (default `~/.neocortex/models/UltraBERT-Embed-150M`), `NEOCORTEX_TZ` (`+HH:MM`, default UTC), `NEOCORTEX_MAX_TOKENS` (default 1024).
 
 ## Layout
