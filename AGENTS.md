@@ -80,63 +80,52 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 
-This project is not yet indexed. Before continuing you must scan the project, build the DOX tree and replace this message with the actual index. Go deep and scan files recursively to properly evaluate complexity and create nested DOX files where needed.
+- No child AGENTS.md yet. `src/` modules are owned by this file (see Layout).
 
+# neocortex AGENTS.md
 
-# Remem AGENTS.md
+## Purpose
 
-Local-first long-term memory engine for AI agents. Rust (v3) is main since
-a9d18f6 retired the TypeScript tree; v2 is retired and kept only as
-README-v2.md.
+Long-term memory for AI agents, v0.1.4. Rust, one crate, one binary `neocortex` (CLI + MCP stdio server). One SQLite file holds memories (FTS5 BM25 + sqlite-vec), an entity/relation knowledge graph (graphqlite projection) and bi-temporal facts. Embeddings: UltraBERT-Embed-150M on candle (pure Rust, CPU). No LLM inside, no Python, no network.
 
-Docs: `docs/architecture-v3.md` (design), `docs/ops.md` (build/run). Read both before changing code.
+Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan: `docs/superpowers/plans/2026-10-23-neocortex-plan.md`. Pre-rewrite ReMem code: git tag `remem-final`.
 
-### Skills
-- Memory protocol: `skills/remem/SKILL.md` — dogfood remember/recall.
-- Worker contract: `skills/tdd-worker/SKILL.md` — failing test first, then fix.
+## Ownership
+
+- Orchestrator/validator: Claude (merges lanes, runs gates, owns this file and the design doc).
+- Lanes (external harness agents) own only the files named in their brief, on branch `lane-<name>` in a git worktree under `../neocortex-lanes/<name>`.
+
+## Local Contracts
+
+- Version stays `0.1.4` until the user says otherwise.
+- Dependencies: rusqlite (bundled), sqlite-vec `=0.1.9` (0.1.10-alpha does not compile), graphqlite `0.12`, candle-core/candle-nn `0.11`, tokenizers (`fancy-regex`, no default features), serde, serde_json. Adding any other crate needs a one-line reason here.
+- Relational tables are the source of truth; graphqlite nodes/edges are a projection rebuilt by `neocortex reindex`.
+- One connection per process (`db::Db`): sqlite-vec via `sqlite3_auto_extension`, graphqlite via `Connection::from_rusqlite`. Writes go through `Db::write` (BEGIN IMMEDIATE). Cypher runs inside the same transaction.
+- Validity is half-open `[valid_from, valid_to)`; system retirement is `expired_at`. Times are unix seconds UTC.
+- Embedding-only similarity never merges entities; it only adds `similar` soft edges.
+- Ids shown to agents: `m<id>`, `e<id>`, `r<id>`; tools accept both forms.
+- Env: `NEOCORTEX_DB` (default `~/.neocortex/neocortex.db`), `NEOCORTEX_MODEL_DIR` (default `~/.neocortex/models/UltraBERT-Embed-150M`), `NEOCORTEX_TZ` (`+HH:MM`, default UTC), `NEOCORTEX_MAX_TOKENS` (default 1024).
+
+## Layout
+
+- `src/db.rs` + `src/schema.sql` - connection, extensions, schema (PRAGMA user_version).
+- `src/embed.rs`, `src/ultrabert.rs` - Embedder trait, UltraBERT forward pass, HashEmbedder (tests).
+- `src/text.rs` - normalisation, singularise, Jaro-Winkler, trigrams, FTS query building, predicate keys, content hash.
+- `src/temporal.rs` - civil dates, instant/window parsing, query windows, history intent.
+- `src/extract.rs` - heuristic entity candidates, n-grams for alias lookup.
+- `src/graph.rs` - CSR + ACL push personalized PageRank. `src/rank.rs` - RRF, MMR, cosine, packing.
+- `tests/fixtures/ultrabert_fixture.json` - authoritative embedding reference (sentence-transformers 6.2.0, fp32).
+
+## Work Guidance
+
+- TDD: failing test first, then the smallest fix (skills: test-driven-development, systematic-debugging; ponytail style: smallest complete change, no speculative abstraction).
+- Write from the agent's perspective: compact outputs, short ids, forgiving inputs, errors that say what to do.
+- Lanes never commit outside their branch, never push, never edit files outside their brief.
+
+## Verification
 
 ```bash
-cargo test --workspace
-cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-```
-
-Local gate: `.git/hooks/pre-commit` runs `cargo fmt --check` (not tracked by git; reinstall if hooks dir reset).
-CI enforces fmt + clippy + test on every push.
-Always verify all three green before pushing.
-
-TDD: add/update the failing test first, then the fix; never commit a red workspace.
-
-### Layout (6 crates)
-
-- `crates/remem-types` - shared domain types (MemoryKind/Item, RecallQuery/Hit). Additive changes only.
-- `crates/remem-store` - rusqlite bundled + sqlite-vec **=0.1.9** (0.1.10-alpha.4 does not compile: missing sqlite-vec-diskann.c). Schema in `schema.sql`. Also records corroboration merges (issue #14) in the `merges` table (FTS aux `merges_fts` over absorbed content).
-- `crates/remem-graph` - graphqlite 0.8 over the same file. Hub ids `agent:`/`session:` namespaced; `neighbors()` returns Memory mids only.
-- `crates/remem-embed` - candle BERT (cadet-embed-base-v1), GPU via `--features cuda`, CPU fallback default. Tests skip when model dir absent (CI).
-- `crates/remem-recall` - RRF fusion + `remem` binary. Real embedder wired in `main.rs` with stub fallback.
-- `crates/remem-mcp` - MCP server (stdio) over the same engine. 11 tools: remember, recall, list, link, forget, purge, stats, validate, related, central, path.
-
-### CLI (`./target/debug/remem`, global `--db`, `$REMEM_DB`)
-
-- `remember <kind> <text> [--tags t1,t2] [--agent a] [--session s] [--importance f] [--occurred-at secs|YYYY-MM-DD]`
-- `recall <query> [--k n] [--json] [--agent a] [--session s] [--since x] [--until y] [--max-chars n] [--min-score f] [--no-recency] [--half-life-days d]`
-- `graph --html <file>` — export the whole knowledge graph as a self-contained HTML file (canvas spring layout, click node for content, kind filter; no CDN/server; data via remem-graph `Graph::edges()`)
-- `list [--json]` | `link <from> <to> [--rel r] [--provenance manual|recall-suggested|correction-chain|auto-link]` (default manual) | `correct <old-id> <kind> <text>` (supersede + correction-chain SUPERSEDES edge) | `forget <id>` | `purge <id>` | `stats` | `validate` (exit 1 on health: dangling/unreviewed/suspect-SUPERSEDES/ghost/missing-node; orphans via `--show-orphans`, exit 0) | `related <id>` (id/rel/provenance) | `central` (id/score/provenance-summary) | `path <from> <to>` | `trace <id>` (correction chain, oldest->newest, then `merged: <absorbed content>` lines; empty if unknown)` | `supersede <old-id> <kind> <text...>` (soft-supersede + replacement row with `supersedes` back-pointer; prints the new id; errors on unknown/deleted/already-superseded)
-- Edge provenance: missing prop reads as manual (old DBs validate clean); graph-fused recall hits carry `prov:<value>` reasons.
-- Write-time auto-link: `remember` runs vec0 kNN (top-3) post-insert; exactly ONE candidate at cosine >= 0.72 writes an `auto-link` edge, 2-3 park ALL in `suggested_edges` (query `(auto-link)`), 0 does nothing. Auto-link edges are excluded from recall graph expansion; validate reports them as unreviewed (machine-written).
-
-### Tests per crate
-
-```bash
-cargo test -p remem-types -p remem-store -p remem-graph -p remem-recall -p remem-mcp
-cargo test -p remem-embed                  # skips without model dir
-cargo test -p remem-embed --features cuda  # GPU path (needs CUDA 12.x; broken on 13.x, see docs/cuda-unblock.md)
-```
-
-### Agent memory protocol (dogfood v3)
-
-```bash
-export REMEM_DB="$HOME/.remem/remem.db"
-./target/debug/remem remember <kind> "<content>" --tags t1,t2 --agent <name> --importance 0.8
-./target/debug/remem recall "<query>" --k 5 [--agent x] [--session y]
+cargo clippy --all-targets -- -D warnings
+cargo test            # model-dependent tests skip when the model dir is absent
 ```

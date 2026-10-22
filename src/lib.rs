@@ -1,0 +1,13 @@
+//! neocortex: long-term memory for AI agents.
+
+pub mod db;
+pub mod embed;
+pub mod error;
+pub mod extract;
+pub mod graph;
+pub mod rank;
+pub mod temporal;
+pub mod text;
+pub mod ultrabert;
+
+pub use error::{Error, Result};
