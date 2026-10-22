@@ -246,7 +246,16 @@ fn path_end(text: &str, start: usize) -> Option<usize> {
         }
     }
     let end = trim_trailing_punct(text, start, end);
-    (end > start + prefix).then_some(end)
+    let path = &text[start..end];
+    let has_extension = path.contains('/')
+        && path
+            .rsplit('/')
+            .next()
+            .is_some_and(|part| part.contains('.'));
+    let has_segments = path.starts_with('/') && path[1..].matches('/').count() >= 1;
+    let explicit_relative =
+        path.starts_with("./") || path.starts_with("~/") || path.starts_with("../");
+    (end > start + prefix && (has_extension || has_segments || explicit_relative)).then_some(end)
 }
 
 fn quoted_span(text: &str, open: usize, quote: char) -> Option<(usize, usize)> {
@@ -356,12 +365,12 @@ pub fn is_status_word(word: &str) -> bool {
 }
 
 fn is_all_caps_status_word(name: &str) -> bool {
-    let words: Vec<&str> = name.split_whitespace().collect();
-    if words.len() == 1 {
-        is_status_word(words[0])
-    } else {
-        false
-    }
+    name.split_whitespace().any(|word| {
+        is_status_word(word)
+            || (word.chars().count() >= 5
+                && word.chars().all(|c| !c.is_lowercase())
+                && !word.chars().any(|c| c.is_ascii_digit()))
+    })
 }
 
 const ORDINARY_WORDS: &[&str] = &[
@@ -1006,6 +1015,11 @@ mod tests {
                 input: "Alice Johnson met SQLite in New York City.",
                 kept: &["Alice Johnson", "SQLite", "New York City"],
                 rejected: &[],
+            },
+            Case {
+                input: "LANES MERGED POSTGRES /session model ./run.sh /var/log/app.log BUILD42",
+                kept: &["./run.sh", "/var/log/app.log", "BUILD42"],
+                rejected: &["LANES", "MERGED", "POSTGRES", "/session", "model"],
             },
         ];
 
