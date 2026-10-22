@@ -101,6 +101,57 @@ pub fn remove_entity(db: &Db, id: i64) -> Result<()> {
     )
 }
 
+/// Delete one REL edge by its relation id, leaving both entities in place.
+pub fn remove_relation(db: &Db, id: i64) -> Result<()> {
+    run(
+        db,
+        "MATCH (a)-[r:REL {rid:$rid}]->(b) DELETE r",
+        &[("rid", id.into())],
+    )
+}
+
+/// Re-project the edges and the entity node owned by `entity` after a merge:
+/// the surviving node keeps its mentions and the relations that were moved
+/// onto it. Nothing else in the projection is touched.
+pub fn reproject_entity(db: &Db, entity: i64) -> Result<()> {
+    project_entity_from_db(db, entity)?;
+    let mentions: Vec<i64> = {
+        let mut st = db
+            .sql()
+            .prepare("SELECT memory_id FROM mentions WHERE entity_id=?1")?;
+        let rows = st.query_map([entity], |r| r.get(0))?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
+    for memory in mentions {
+        project_mention(db, memory, entity)?;
+    }
+    let similar: Vec<(i64, i64, f32)> = {
+        let mut st = db
+            .sql()
+            .prepare("SELECT a,b,score FROM similar WHERE a=?1 OR b=?1")?;
+        let rows = st.query_map([entity], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
+    for (a, b, score) in similar {
+        project_similar(db, a, b, score)?;
+    }
+    let relations: Vec<(i64, i64, i64, String)> = {
+        let mut st = db.sql().prepare(
+            "SELECT r.id,r.src,r.dst,p.canonical FROM relations r
+             JOIN predicates p ON p.id=r.predicate_id
+             WHERE r.src=?1 OR r.dst=?1",
+        )?;
+        let rows = st.query_map([entity], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+        })?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
+    for (id, src, dst, predicate) in relations {
+        project_relation(db, id, src, dst, &predicate)?;
+    }
+    Ok(())
+}
+
 pub fn rebuild_all(db: &Db) -> Result<()> {
     db.graph().cypher("MATCH (n) DETACH DELETE n")?;
     {

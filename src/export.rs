@@ -247,7 +247,7 @@ pub fn export(engine: &Engine, out: Option<&Path>, include_forgotten: bool) -> R
     let records = export_records(engine, include_forgotten)?;
     match out {
         Some(path) => {
-            let file = std::fs::File::create(path)?;
+            let file = create_private(path)?;
             let mut writer = std::io::BufWriter::new(file);
             let n = write_jsonl(&mut writer, &records)?;
             writer.flush()?;
@@ -263,25 +263,45 @@ pub fn export(engine: &Engine, out: Option<&Path>, include_forgotten: bool) -> R
     }
 }
 
+/// An export file is a full copy of the memory: 0600 from the first byte.
+fn create_private(path: &Path) -> Result<std::fs::File> {
+    let mut opts = std::fs::OpenOptions::new();
+    opts.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.mode(0o600);
+    }
+    let file = opts.open(path)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // mode() only applies at creation; tighten a file that already existed.
+        let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(file)
+}
+
 /// Replay a JSON Lines export through `Engine::remember`, in file order.
 pub fn import(engine: &Engine, path: &Path) -> Result<ImportReport> {
     let records = read_jsonl(path)?;
     let mut report = ImportReport::default();
-    let mut ids: HashMap<i64, i64> = HashMap::new();
+    // (new id, replayed into an existing live row) per old id.
+    let mut ids: HashMap<i64, (i64, bool)> = HashMap::new();
     for (line, record) in &records {
         let old = record.id.as_deref().and_then(|s| parse_id(s, 'm'));
         let supersedes: Vec<String> = record
             .supersedes
             .iter()
             .filter_map(|s| parse_id(s, 'm'))
-            .filter_map(|old| ids.get(&old))
+            .filter_map(|old| ids.get(&old).map(|(new, _)| *new))
             .map(|new| format!("m{new}"))
             .collect();
         let out = engine
             .remember(to_input(record, supersedes))
             .map_err(|e| crate::err!("line {line}: {e}"))?;
         if let Some(old) = old {
-            ids.insert(old, out.id);
+            ids.insert(old, (out.id, out.duplicate_of.is_some()));
         }
         report.imported += 1;
     }
@@ -291,14 +311,19 @@ pub fn import(engine: &Engine, path: &Path) -> Result<ImportReport> {
         if !record.expired {
             continue;
         }
-        let Some(new) = record
+        let Some((new, duplicate)) = record
             .id
             .as_deref()
             .and_then(|s| parse_id(s, 'm'))
-            .and_then(|old| ids.get(&old))
+            .and_then(|old| ids.get(&old).copied())
         else {
             continue;
         };
+        // A duplicate hit means this row is an existing live memory: never
+        // retire it (restoring an --include-forgotten export must not forget).
+        if duplicate {
+            continue;
+        }
         let state: (Option<i64>, Option<i64>) = engine.db.sql().query_row(
             "SELECT expired_at, superseded_by FROM memories WHERE id = ?1",
             [new],

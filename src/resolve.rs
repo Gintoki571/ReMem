@@ -5,8 +5,7 @@
 //! merge tool. Embedding similarity alone only creates soft `similar` edges.
 
 use crate::{
-    db::{vec_blob, Db},
-    embed::DIMS,
+    db::{blob_to_vec, vec_blob, Db},
     engine::{Config, EntityIn},
     error::Result,
     text,
@@ -23,17 +22,6 @@ pub struct Resolved {
 
 fn cosine(a: &[f32], b: &[f32]) -> f32 {
     a.iter().zip(b).map(|(x, y)| x * y).sum()
-}
-
-fn blob_to_vec(blob: &[u8]) -> Option<Vec<f32>> {
-    if blob.len() != DIMS * 4 {
-        return None;
-    }
-    Some(
-        blob.chunks(4)
-            .map(|x| f32::from_le_bytes([x[0], x[1], x[2], x[3]]))
-            .collect(),
-    )
 }
 
 /// Cosine of `mention` against each of `ids` in one query. Missing vectors
@@ -595,6 +583,7 @@ fn predicate_row(db: &Db, id: i64) -> Result<(i64, String, bool)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::embed::DIMS;
 
     fn axis(i: usize) -> Vec<f32> {
         let mut v = vec![0.0; DIMS];
