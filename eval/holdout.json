@@ -1,0 +1,3417 @@
+{
+  "now": "2026-10-21T15:00:00Z",
+  "memories": [
+    {
+      "key": "m001",
+      "content": "Ingrid Solberg is the principal investigator of the Solberg Lab in the Department of Molecular Biophysics at Nidaros University.",
+      "kind": "fact",
+      "tags": [
+        "lab",
+        "career"
+      ],
+      "importance": 0.9,
+      "valid_from": "2024-09-02",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI",
+            "PI",
+            "boss",
+            "advisor"
+          ],
+          "description": "principal investigator of the Solberg Lab"
+        },
+        {
+          "name": "Nidaros University",
+          "type": "organization",
+          "aliases": [
+            "the university"
+          ],
+          "description": "university in Trondheim"
+        },
+        {
+          "name": "Solberg Lab",
+          "type": "organization",
+          "aliases": [
+            "the lab"
+          ],
+          "description": "structural biology group"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "works at",
+          "target": "Nidaros University",
+          "fact": "Ingrid Solberg works at Nidaros University",
+          "exclusive": true,
+          "valid_from": "2024-09-02"
+        },
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "leads",
+          "target": "Solberg Lab",
+          "fact": "Ingrid Solberg leads the Solberg Lab",
+          "exclusive": true,
+          "valid_from": "2024-09-02"
+        }
+      ]
+    },
+    {
+      "key": "m002",
+      "content": "Aiden Fletcher is the lab manager of the Solberg Lab, handling ordering, safety training and equipment schedules.",
+      "kind": "fact",
+      "tags": [
+        "lab",
+        "operations"
+      ],
+      "importance": 0.7,
+      "valid_from": "2024-09-09",
+      "valid_to": "2025-06-30",
+      "entities": [
+        {
+          "name": "Aiden Fletcher",
+          "type": "person",
+          "aliases": [
+            "Aiden"
+          ],
+          "description": "lab manager of the Solberg Lab"
+        },
+        {
+          "name": "Solberg Lab",
+          "type": "organization",
+          "aliases": [
+            "the lab"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Solberg Lab",
+          "predicate": "lab manager",
+          "target": "Aiden Fletcher",
+          "fact": "Aiden Fletcher is lab manager of the Solberg Lab",
+          "exclusive": true,
+          "valid_from": "2024-09-09",
+          "valid_to": "2025-06-30"
+        }
+      ]
+    },
+    {
+      "key": "m003",
+      "content": "High-resolution cryo-EM data are collected on the lab's Talos Arctica microscope, nicknamed Ymir.",
+      "kind": "fact",
+      "tags": [
+        "equipment",
+        "cryo-em"
+      ],
+      "importance": 0.8,
+      "valid_from": "2024-09-16",
+      "valid_to": "2025-11-20",
+      "entities": [
+        {
+          "name": "Talos Arctica",
+          "type": "instrument",
+          "aliases": [
+            "Ymir",
+            "the Arctica"
+          ],
+          "description": "cryo-EM microscope for high-resolution data"
+        },
+        {
+          "name": "Solberg Lab",
+          "type": "organization",
+          "aliases": [
+            "the lab"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Solberg Lab",
+          "predicate": "high-resolution microscope",
+          "target": "Talos Arctica",
+          "fact": "Solberg Lab collects high-resolution cryo-EM data on the Talos Arctica",
+          "exclusive": true,
+          "valid_from": "2024-09-16",
+          "valid_to": "2025-11-20"
+        }
+      ]
+    },
+    {
+      "key": "m004",
+      "content": "Ingrid starts every working day with a mug of black filter coffee brewed in a Moccamaster.",
+      "kind": "preference",
+      "tags": [
+        "habits",
+        "drink"
+      ],
+      "importance": 0.5,
+      "valid_from": "2024-09-23",
+      "valid_to": "2025-05-06",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI"
+          ]
+        },
+        {
+          "name": "black filter coffee",
+          "type": "beverage",
+          "aliases": [
+            "filter coffee",
+            "coffee"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "morning drink",
+          "target": "black filter coffee",
+          "fact": "Ingrid's morning drink is black filter coffee",
+          "exclusive": true,
+          "valid_from": "2024-09-23",
+          "valid_to": "2025-05-06"
+        }
+      ]
+    },
+    {
+      "key": "m005",
+      "content": "Ingrid was diagnosed with hypothyroidism in October 2024 after routine blood tests.",
+      "kind": "fact",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2024-10-01",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI"
+          ]
+        },
+        {
+          "name": "hypothyroidism",
+          "type": "condition",
+          "aliases": [
+            "underactive thyroid",
+            "thyroid condition"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "has condition",
+          "target": "hypothyroidism",
+          "fact": "Ingrid Solberg has hypothyroidism",
+          "exclusive": true,
+          "valid_from": "2024-10-01"
+        }
+      ]
+    },
+    {
+      "key": "m006",
+      "content": "Ingrid began taking levothyroxine 50 micrograms daily for her thyroid.",
+      "kind": "fact",
+      "tags": [
+        "health",
+        "medication"
+      ],
+      "importance": 0.7,
+      "valid_from": "2024-10-08",
+      "valid_to": "2025-08-05",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI"
+          ]
+        },
+        {
+          "name": "levothyroxine 50 micrograms",
+          "type": "medication",
+          "aliases": [
+            "levothyroxine",
+            "thyroid medication",
+            "thyroid tablets"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "thyroid medication dose",
+          "target": "levothyroxine 50 micrograms",
+          "fact": "Ingrid takes levothyroxine 50 micrograms daily",
+          "exclusive": true,
+          "valid_from": "2024-10-08",
+          "valid_to": "2025-08-05"
+        }
+      ]
+    },
+    {
+      "key": "m007",
+      "content": "Lon protease is purified in 25 mM HEPES pH 7.5, 150 mM NaCl, 5% glycerol and 1 mM DTT.",
+      "kind": "procedure",
+      "tags": [
+        "protein-purification",
+        "buffer"
+      ],
+      "importance": 0.6,
+      "valid_from": "2024-10-15"
+    },
+    {
+      "key": "m008",
+      "content": "Rafael Duarte joined the Solberg Lab as a PhD student working on Lon protease purification.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people"
+      ],
+      "importance": 0.7,
+      "valid_from": "2024-10-29"
+    },
+    {
+      "key": "m009",
+      "content": "Rafael Duarte's PhD salary is paid from the Research Council of Norway FRIPRO grant PROTEAN.",
+      "kind": "fact",
+      "tags": [
+        "funding",
+        "lab",
+        "people"
+      ],
+      "importance": 0.7,
+      "valid_from": "2024-11-05",
+      "entities": [
+        {
+          "name": "Rafael Duarte",
+          "type": "person",
+          "aliases": [
+            "Rafael",
+            "the Lon purification student"
+          ],
+          "description": "PhD student working on Lon purification"
+        },
+        {
+          "name": "PROTEAN",
+          "type": "grant",
+          "aliases": [
+            "the PROTEAN grant"
+          ],
+          "description": "FRIPRO grant from the Research Council of Norway"
+        },
+        {
+          "name": "Research Council of Norway",
+          "type": "organization",
+          "aliases": [
+            "RCN"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "PROTEAN",
+          "predicate": "funds",
+          "target": "Rafael Duarte",
+          "fact": "PROTEAN funds Rafael Duarte's PhD salary",
+          "exclusive": true,
+          "valid_from": "2024-11-05"
+        }
+      ]
+    },
+    {
+      "key": "m010",
+      "content": "Grids are plunge-frozen on the Vitrobot Mark IV at 4 degrees Celsius and 100% humidity with a 4-second blot.",
+      "kind": "procedure",
+      "tags": [
+        "cryo-em",
+        "grids"
+      ],
+      "importance": 0.7,
+      "valid_from": "2024-11-12"
+    },
+    {
+      "key": "m011",
+      "content": "A 2-second blot produced grids that were too thin and collapsed in the beam; the 4-second blot is now the standard.",
+      "kind": "mistake",
+      "tags": [
+        "cryo-em",
+        "grids",
+        "lesson"
+      ],
+      "importance": 0.6,
+      "valid_from": "2024-11-19"
+    },
+    {
+      "key": "m012",
+      "content": "Ingrid lives with her husband Daniel Reyes and their son Mateo in a rented two-bedroom flat in Bakklandet, Trondheim.",
+      "kind": "fact",
+      "tags": [
+        "family",
+        "home"
+      ],
+      "importance": 0.9,
+      "valid_from": "2024-11-26",
+      "valid_to": "2026-05-05",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI"
+          ]
+        },
+        {
+          "name": "Daniel Reyes",
+          "type": "person",
+          "aliases": [
+            "Daniel",
+            "husband"
+          ],
+          "description": "Ingrid's husband, a luthier"
+        },
+        {
+          "name": "Mateo Reyes",
+          "type": "person",
+          "aliases": [
+            "Mateo",
+            "son",
+            "kid"
+          ],
+          "description": "Ingrid's young son"
+        },
+        {
+          "name": "Bakklandet flat",
+          "type": "place",
+          "aliases": [
+            "the flat",
+            "apartment",
+            "Bakklandet apartment"
+          ]
+        },
+        {
+          "name": "Trondheim",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "lives in",
+          "target": "Bakklandet flat",
+          "fact": "Ingrid lives in a flat in Bakklandet",
+          "exclusive": true,
+          "valid_from": "2024-11-26",
+          "valid_to": "2026-05-05"
+        },
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "spouse",
+          "target": "Daniel Reyes",
+          "fact": "Daniel Reyes is Ingrid's husband",
+          "exclusive": true,
+          "valid_from": "2024-11-26"
+        },
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "son",
+          "target": "Mateo Reyes",
+          "fact": "Mateo Reyes is Ingrid's son",
+          "exclusive": true,
+          "valid_from": "2024-11-26"
+        }
+      ]
+    },
+    {
+      "key": "m013",
+      "content": "Daniel Reyes is Ingrid Solberg's husband and a luthier who builds and repairs guitars from the workshop under the family flat.",
+      "kind": "fact",
+      "tags": [
+        "family",
+        "work"
+      ],
+      "importance": 0.6,
+      "valid_from": "2024-12-03",
+      "entities": [
+        {
+          "name": "Daniel Reyes",
+          "type": "person",
+          "aliases": [
+            "Daniel",
+            "husband"
+          ],
+          "description": "Ingrid's husband, a luthier"
+        },
+        {
+          "name": "luthier",
+          "type": "occupation",
+          "aliases": [
+            "guitar maker",
+            "instrument maker"
+          ]
+        },
+        {
+          "name": "guitar workshop",
+          "type": "place",
+          "aliases": [
+            "the workshop"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Daniel Reyes",
+          "predicate": "occupation",
+          "target": "luthier",
+          "fact": "Daniel Reyes works as a luthier",
+          "exclusive": true,
+          "valid_from": "2024-12-03"
+        }
+      ]
+    },
+    {
+      "key": "m014",
+      "content": "Mateo started at Bakklandet primary school at age eight.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "school"
+      ],
+      "importance": 0.5,
+      "valid_from": "2024-12-10"
+    },
+    {
+      "key": "m015",
+      "content": "Akta Pure 25 columns are stored in 20% ethanol and flushed with five column volumes of water before use.",
+      "kind": "procedure",
+      "tags": [
+        "equipment",
+        "chromatography"
+      ],
+      "importance": 0.6,
+      "valid_from": "2024-12-17"
+    },
+    {
+      "key": "m016",
+      "content": "Yusuf Adeyemi joined the lab as a postdoc leading single-particle data processing.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-01-07"
+    },
+    {
+      "key": "m017",
+      "content": "The Fjord compute cluster has eight A100 GPUs shared across all image-processing projects.",
+      "kind": "fact",
+      "tags": [
+        "compute",
+        "equipment"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-01-14",
+      "valid_to": "2026-06-02",
+      "entities": [
+        {
+          "name": "Fjord",
+          "type": "instrument",
+          "aliases": [
+            "Fjord cluster",
+            "the cluster"
+          ],
+          "description": "lab GPU compute cluster"
+        },
+        {
+          "name": "8 A100 GPUs",
+          "type": "capacity",
+          "aliases": [
+            "eight A100s"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Fjord",
+          "predicate": "compute capacity",
+          "target": "8 A100 GPUs",
+          "fact": "Fjord has eight A100 GPUs",
+          "exclusive": true,
+          "valid_from": "2025-01-14",
+          "valid_to": "2026-06-02"
+        }
+      ]
+    },
+    {
+      "key": "m018",
+      "content": "Weekly group meeting runs on Tuesdays at 10:00 in the Biophysics Annexe seminar room.",
+      "kind": "procedure",
+      "tags": [
+        "lab",
+        "schedule"
+      ],
+      "importance": 0.4,
+      "valid_from": "2025-01-21",
+      "valid_to": "2026-01-13"
+    },
+    {
+      "key": "m019",
+      "content": "A power cut overnight killed a -80 freezer in the cold room and thawed two months of Rafael's purified Lon samples.",
+      "kind": "mistake",
+      "tags": [
+        "equipment",
+        "samples",
+        "lesson"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-02-04"
+    },
+    {
+      "key": "m020",
+      "content": "Protein is now split into aliquots across two separate -80 freezers, and the alarm autodialler is tested monthly.",
+      "kind": "procedure",
+      "tags": [
+        "equipment",
+        "samples",
+        "lesson"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-02-11"
+    },
+    {
+      "key": "m021",
+      "content": "The failed cold-room freezer was replaced with a Stirling-engine -80 unit under the service contract.",
+      "kind": "event",
+      "tags": [
+        "equipment"
+      ],
+      "importance": 0.4,
+      "valid_from": "2025-02-18"
+    },
+    {
+      "key": "m022",
+      "content": "Lon constructs are expressed in E. coli BL21(DE3), captured on Ni-NTA and polished by size-exclusion chromatography.",
+      "kind": "fact",
+      "tags": [
+        "protein-purification"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-02-25",
+      "entities": [
+        {
+          "name": "Lon protease",
+          "type": "protein",
+          "aliases": [
+            "Lon"
+          ]
+        },
+        {
+          "name": "E. coli BL21(DE3)",
+          "type": "organism",
+          "aliases": [
+            "BL21"
+          ]
+        },
+        {
+          "name": "Ni-NTA",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lon protease",
+          "predicate": "expressed in",
+          "target": "E. coli BL21(DE3)",
+          "fact": "Lon is expressed in E. coli BL21(DE3)",
+          "exclusive": true,
+          "valid_from": "2025-02-25"
+        }
+      ]
+    },
+    {
+      "key": "m023",
+      "content": "Zoe Lindqvist joined as a PhD student working on molecular dynamics simulations of Lon.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people",
+        "simulation"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-03-04"
+    },
+    {
+      "key": "m024",
+      "content": "The lab moved from RELION 4 to RELION 5 because Bayesian polishing halved helical reconstruction time.",
+      "kind": "decision",
+      "tags": [
+        "software",
+        "cryo-em"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-03-11"
+    },
+    {
+      "key": "m025",
+      "content": "Ingrid's mother Astrid Solberg celebrated her 78th birthday in Bergen.",
+      "kind": "event",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-03-18"
+    },
+    {
+      "key": "m026",
+      "content": "Grant drafts go to two internal reviewers at least two weeks before the funder deadline.",
+      "kind": "procedure",
+      "tags": [
+        "grants",
+        "process"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-03-25"
+    },
+    {
+      "key": "m027",
+      "content": "The ClpXP substrate-handoff paper was accepted by the Journal of Molecular Biology.",
+      "kind": "event",
+      "tags": [
+        "papers",
+        "clpxp"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-04-01"
+    },
+    {
+      "key": "m028",
+      "content": "The Lon E240Q mutant abolishes ATP hydrolysis but still binds substrate.",
+      "kind": "observation",
+      "tags": [
+        "results",
+        "lon",
+        "mutant"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-04-08",
+      "entities": [
+        {
+          "name": "Lon E240Q mutant",
+          "type": "protein",
+          "aliases": [
+            "E240Q"
+          ]
+        },
+        {
+          "name": "ATP hydrolysis",
+          "type": "process"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lon E240Q mutant",
+          "predicate": "abolishes",
+          "target": "ATP hydrolysis",
+          "fact": "Lon E240Q abolishes ATP hydrolysis",
+          "exclusive": false,
+          "valid_from": "2025-04-08"
+        }
+      ]
+    },
+    {
+      "key": "m029",
+      "content": "Using R1.2/1.3 grids for the Lon sample wasted an EM session; R2/1 grids match the particle size.",
+      "kind": "mistake",
+      "tags": [
+        "cryo-em",
+        "grids",
+        "lesson"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-04-15"
+    },
+    {
+      "key": "m030",
+      "content": "Lucia Ferrante visited from the University of Bologna for two weeks of NMR experiments on Lon.",
+      "kind": "event",
+      "tags": [
+        "collaboration",
+        "nmr"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-04-22"
+    },
+    {
+      "key": "m031",
+      "content": "Lucia Ferrante runs the NMR facility at the University of Bologna and collaborates on the Lon allostery project.",
+      "kind": "fact",
+      "tags": [
+        "collaboration",
+        "nmr"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-04-29",
+      "entities": [
+        {
+          "name": "Lucia Ferrante",
+          "type": "person",
+          "aliases": [
+            "Lucia"
+          ],
+          "description": "NMR specialist at the University of Bologna"
+        },
+        {
+          "name": "University of Bologna",
+          "type": "organization",
+          "aliases": [
+            "Bologna"
+          ],
+          "description": "university in Italy"
+        },
+        {
+          "name": "NMR facility",
+          "type": "instrument",
+          "aliases": [
+            "NMR",
+            "nuclear magnetic resonance"
+          ]
+        },
+        {
+          "name": "Lon allostery project",
+          "type": "project",
+          "aliases": [
+            "Lon allostery"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lucia Ferrante",
+          "predicate": "runs",
+          "target": "NMR facility",
+          "fact": "Lucia Ferrante runs the NMR facility",
+          "exclusive": true,
+          "valid_from": "2025-04-29"
+        },
+        {
+          "source": "Lucia Ferrante",
+          "predicate": "works at",
+          "target": "University of Bologna",
+          "fact": "Lucia Ferrante works at the University of Bologna",
+          "exclusive": true,
+          "valid_from": "2025-04-29"
+        },
+        {
+          "source": "Lucia Ferrante",
+          "predicate": "collaborates on",
+          "target": "Lon allostery project",
+          "fact": "Lucia Ferrante collaborates on the Lon allostery project",
+          "exclusive": false,
+          "valid_from": "2025-04-29"
+        }
+      ]
+    },
+    {
+      "key": "m032",
+      "content": "Ingrid switched her morning coffee to a cortado with steamed oat milk on her GP's advice.",
+      "kind": "preference",
+      "tags": [
+        "habits",
+        "drink"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-05-06",
+      "valid_to": "2025-11-25",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI"
+          ]
+        },
+        {
+          "name": "cortado",
+          "type": "beverage",
+          "aliases": [
+            "oat cortado",
+            "coffee"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "morning drink",
+          "target": "cortado",
+          "fact": "Ingrid's morning drink is a cortado",
+          "exclusive": true,
+          "valid_from": "2025-05-06",
+          "valid_to": "2025-11-25"
+        }
+      ],
+      "supersedes": [
+        "m004"
+      ]
+    },
+    {
+      "key": "m033",
+      "content": "Ingrid drafts grants before 07:00 while the house is quiet and does not take meetings before 09:00.",
+      "kind": "preference",
+      "tags": [
+        "work",
+        "habits"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-05-13"
+    },
+    {
+      "key": "m034",
+      "content": "Ingrid rejoined the Trondheim Rowing Club and began training in a single scull on the Nidelva.",
+      "kind": "event",
+      "tags": [
+        "hobby",
+        "rowing"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-05-20"
+    },
+    {
+      "key": "m035",
+      "content": "Ingrid rows the single scull Vilje at the Trondheim Rowing Club on Tuesday and Thursday mornings.",
+      "kind": "fact",
+      "tags": [
+        "hobby",
+        "rowing"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-05-27",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI"
+          ]
+        },
+        {
+          "name": "Vilje",
+          "type": "boat",
+          "aliases": [
+            "the scull",
+            "the boat"
+          ]
+        },
+        {
+          "name": "Trondheim Rowing Club",
+          "type": "organization",
+          "aliases": [
+            "the rowing club"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "rows",
+          "target": "Vilje",
+          "fact": "Ingrid rows the single scull Vilje",
+          "exclusive": true,
+          "valid_from": "2025-05-27"
+        },
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "member of",
+          "target": "Trondheim Rowing Club",
+          "fact": "Ingrid is a member of the Trondheim Rowing Club",
+          "exclusive": false,
+          "valid_from": "2025-05-27"
+        }
+      ]
+    },
+    {
+      "key": "m036",
+      "content": "The faculty office set the internal deadline for the ERC Consolidator proposal DYNAMO at 15 June 2025.",
+      "kind": "event",
+      "tags": [
+        "grants",
+        "deadline"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-06-03",
+      "valid_to": "2025-06-10",
+      "entities": [
+        {
+          "name": "DYNAMO",
+          "type": "grant",
+          "aliases": [
+            "the DYNAMO proposal",
+            "the ERC proposal"
+          ]
+        },
+        {
+          "name": "ERC",
+          "type": "organization",
+          "aliases": [
+            "European Research Council"
+          ]
+        },
+        {
+          "name": "15 June 2025",
+          "type": "date"
+        }
+      ],
+      "relations": [
+        {
+          "source": "DYNAMO",
+          "predicate": "internal deadline",
+          "target": "15 June 2025",
+          "fact": "DYNAMO internal deadline was 15 June 2025",
+          "exclusive": true,
+          "valid_from": "2025-06-03",
+          "valid_to": "2025-06-10"
+        }
+      ]
+    },
+    {
+      "key": "m037",
+      "content": "The faculty extended the DYNAMO internal deadline to 1 September 2025 when the budget template changed.",
+      "kind": "event",
+      "tags": [
+        "grants",
+        "deadline"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-06-10",
+      "valid_to": "2026-03-03",
+      "entities": [
+        {
+          "name": "DYNAMO",
+          "type": "grant",
+          "aliases": [
+            "the DYNAMO proposal",
+            "the ERC proposal"
+          ]
+        },
+        {
+          "name": "ERC",
+          "type": "organization",
+          "aliases": [
+            "European Research Council"
+          ]
+        },
+        {
+          "name": "1 September 2025",
+          "type": "date"
+        }
+      ],
+      "relations": [
+        {
+          "source": "DYNAMO",
+          "predicate": "internal deadline",
+          "target": "1 September 2025",
+          "fact": "DYNAMO internal deadline moved to 1 September 2025",
+          "exclusive": true,
+          "valid_from": "2025-06-10"
+        }
+      ],
+      "supersedes": [
+        "m036"
+      ]
+    },
+    {
+      "key": "m038",
+      "content": "Mateo broke his wrist falling off his bike and wore a cast for six weeks.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "health"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-06-17"
+    },
+    {
+      "key": "m039",
+      "content": "Aiden Fletcher left the lab for a lab-operations job at a diagnostics company.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-06-24"
+    },
+    {
+      "key": "m040",
+      "content": "Sofia Marchetti became lab manager of the Solberg Lab, taking over ordering, safety and scheduling.",
+      "kind": "fact",
+      "tags": [
+        "lab",
+        "operations"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-07-01",
+      "entities": [
+        {
+          "name": "Sofia Marchetti",
+          "type": "person",
+          "aliases": [
+            "Sofia"
+          ],
+          "description": "lab manager of the Solberg Lab"
+        },
+        {
+          "name": "Solberg Lab",
+          "type": "organization",
+          "aliases": [
+            "the lab"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Solberg Lab",
+          "predicate": "lab manager",
+          "target": "Sofia Marchetti",
+          "fact": "Sofia Marchetti is lab manager of the Solberg Lab",
+          "exclusive": true,
+          "valid_from": "2025-07-01"
+        }
+      ],
+      "supersedes": [
+        "m002"
+      ]
+    },
+    {
+      "key": "m041",
+      "content": "Sofia approves purchases under 10,000 NOK; anything larger needs Ingrid's written sign-off.",
+      "kind": "procedure",
+      "tags": [
+        "lab",
+        "operations",
+        "purchasing"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-07-08"
+    },
+    {
+      "key": "m042",
+      "content": "The lab bought a sea kayak for team trips and weekend paddling on the fjord.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "hobby"
+      ],
+      "importance": 0.4,
+      "valid_from": "2025-07-15"
+    },
+    {
+      "key": "m043",
+      "content": "Ingrid and Daniel took Mateo and his cousin to the Lofoten islands for a week of hiking and fishing.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "travel"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-07-22"
+    },
+    {
+      "key": "m044",
+      "content": "The preprint 'Allosteric gating of the Lon protease' was posted on bioRxiv, led by Rafael and Hana.",
+      "kind": "event",
+      "tags": [
+        "papers",
+        "lon"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-07-29"
+    },
+    {
+      "key": "m045",
+      "content": "Ingrid's levothyroxine dose was raised from 50 to 75 micrograms after a TSH check.",
+      "kind": "fact",
+      "tags": [
+        "health",
+        "medication"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-08-05",
+      "valid_to": "2026-04-07",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI"
+          ]
+        },
+        {
+          "name": "levothyroxine 75 micrograms",
+          "type": "medication",
+          "aliases": [
+            "levothyroxine",
+            "thyroid medication",
+            "thyroid tablets"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "thyroid medication dose",
+          "target": "levothyroxine 75 micrograms",
+          "fact": "Ingrid takes levothyroxine 75 micrograms daily",
+          "exclusive": true,
+          "valid_from": "2025-08-05",
+          "valid_to": "2026-04-07"
+        }
+      ],
+      "supersedes": [
+        "m006"
+      ]
+    },
+    {
+      "key": "m046",
+      "content": "Mateo now attends Åsen middle school after the summer holidays.",
+      "kind": "fact",
+      "tags": [
+        "family",
+        "school"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-08-12",
+      "entities": [
+        {
+          "name": "Mateo Reyes",
+          "type": "person",
+          "aliases": [
+            "Mateo",
+            "son",
+            "kid"
+          ],
+          "description": "Ingrid's young son"
+        },
+        {
+          "name": "Åsen middle school",
+          "type": "organization",
+          "aliases": [
+            "Åsen school"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mateo Reyes",
+          "predicate": "attends",
+          "target": "Åsen middle school",
+          "fact": "Mateo attends Åsen middle school",
+          "exclusive": true,
+          "valid_from": "2025-08-12"
+        }
+      ]
+    },
+    {
+      "key": "m047",
+      "content": "Ingrid prefers dark chocolate with sea salt and keeps a bar in her desk drawer.",
+      "kind": "preference",
+      "tags": [
+        "habits",
+        "food"
+      ],
+      "importance": 0.4,
+      "valid_from": "2025-08-19"
+    },
+    {
+      "key": "m048",
+      "content": "Ingrid developed shoulder impingement from rowing and started physiotherapy at Nidaros Fysioterapi.",
+      "kind": "event",
+      "tags": [
+        "health",
+        "rowing"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-09-02"
+    },
+    {
+      "key": "m049",
+      "content": "Physio routine: band external rotations and scapular retractions three times a week, and no overhead pressing.",
+      "kind": "procedure",
+      "tags": [
+        "health",
+        "physio"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-09-09"
+    },
+    {
+      "key": "m050",
+      "content": "Ben Osei joined as an undergraduate researcher for a final-year project on ClpXP.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people"
+      ],
+      "importance": 0.4,
+      "valid_from": "2025-09-16"
+    },
+    {
+      "key": "m051",
+      "content": "Prof. Kenji Watanabe from the Kyoto Institute of Technology visited for a week to plan cryo-ET of Lon filaments.",
+      "kind": "event",
+      "tags": [
+        "collaboration",
+        "cryo-et"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-09-23"
+    },
+    {
+      "key": "m052",
+      "content": "The lab chose the Titan Krios G4 over upgrading the Glacios because the resolution gain justified the co-funding.",
+      "kind": "decision",
+      "tags": [
+        "equipment",
+        "cryo-em"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-09-30"
+    },
+    {
+      "key": "m053",
+      "content": "The Novo Nordisk Foundation awarded a 12 million NOK equipment grant co-funding the Krios.",
+      "kind": "event",
+      "tags": [
+        "funding",
+        "equipment"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-09-30",
+      "entities": [
+        {
+          "name": "Novo Nordisk Foundation",
+          "type": "organization",
+          "aliases": [
+            "Novo Nordisk"
+          ]
+        },
+        {
+          "name": "Titan Krios G4",
+          "type": "instrument",
+          "aliases": [
+            "the Krios"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Novo Nordisk Foundation",
+          "predicate": "co-funds",
+          "target": "Titan Krios G4",
+          "fact": "Novo Nordisk Foundation co-funds the Titan Krios G4",
+          "exclusive": false,
+          "valid_from": "2025-09-30"
+        }
+      ]
+    },
+    {
+      "key": "m054",
+      "content": "The Lon manuscript was submitted to Nature Structural & Molecular Biology.",
+      "kind": "event",
+      "tags": [
+        "papers",
+        "lon"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-10-07",
+      "valid_to": "2025-10-21",
+      "entities": [
+        {
+          "name": "Lon manuscript",
+          "type": "publication",
+          "aliases": [
+            "the Lon paper",
+            "the protease paper",
+            "Allosteric gating of the Lon protease"
+          ]
+        },
+        {
+          "name": "Nature Structural & Molecular Biology",
+          "type": "venue",
+          "aliases": [
+            "NSMB",
+            "Nature Structural and Molecular Biology"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lon manuscript",
+          "predicate": "submitted to",
+          "target": "Nature Structural & Molecular Biology",
+          "fact": "Lon manuscript submitted to NSMB",
+          "exclusive": true,
+          "valid_from": "2025-10-07",
+          "valid_to": "2025-10-21"
+        }
+      ]
+    },
+    {
+      "key": "m055",
+      "content": "Krios autoloader cartridges are loaded in a nitrogen glove bag and logged in the shared spreadsheet.",
+      "kind": "procedure",
+      "tags": [
+        "cryo-em",
+        "equipment"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-10-14"
+    },
+    {
+      "key": "m056",
+      "content": "NSMB desk-rejected the Lon manuscript within a week as incremental.",
+      "kind": "event",
+      "tags": [
+        "papers",
+        "lon"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-10-21"
+    },
+    {
+      "key": "m057",
+      "content": "Ingrid missed the Novo Nordisk reporting deadline because the reminder sat in a shared inbox while Sofia was on leave.",
+      "kind": "mistake",
+      "tags": [
+        "grants",
+        "process",
+        "lesson"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-10-28"
+    },
+    {
+      "key": "m058",
+      "content": "Funder deadlines now live in the grant owner's own calendar with two reminders, not in a shared inbox.",
+      "kind": "procedure",
+      "tags": [
+        "grants",
+        "process",
+        "lesson"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-11-04"
+    },
+    {
+      "key": "m059",
+      "content": "The Titan Krios G4, nicknamed Njord, is the lab's main high-resolution cryo-EM scope; the Talos Arctica stays for screening.",
+      "kind": "fact",
+      "tags": [
+        "equipment",
+        "cryo-em"
+      ],
+      "importance": 0.9,
+      "valid_from": "2025-11-20",
+      "entities": [
+        {
+          "name": "Titan Krios G4",
+          "type": "instrument",
+          "aliases": [
+            "Njord",
+            "the Krios",
+            "the cryo-EM",
+            "the microscope",
+            "the Titan"
+          ],
+          "description": "main high-resolution cryo-EM microscope of the lab"
+        },
+        {
+          "name": "Talos Arctica",
+          "type": "instrument",
+          "aliases": [
+            "Ymir",
+            "the Arctica"
+          ],
+          "description": "screening microscope"
+        },
+        {
+          "name": "Solberg Lab",
+          "type": "organization",
+          "aliases": [
+            "the lab"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Solberg Lab",
+          "predicate": "high-resolution microscope",
+          "target": "Titan Krios G4",
+          "fact": "Solberg Lab collects high-resolution data on the Titan Krios G4",
+          "exclusive": true,
+          "valid_from": "2025-11-20"
+        },
+        {
+          "source": "Solberg Lab",
+          "predicate": "screening microscope",
+          "target": "Talos Arctica",
+          "fact": "Solberg Lab screens grids on the Talos Arctica",
+          "exclusive": true,
+          "valid_from": "2025-11-20"
+        }
+      ],
+      "supersedes": [
+        "m003"
+      ]
+    },
+    {
+      "key": "m060",
+      "content": "Ingrid switched her morning drink to rooibos tea with honey because caffeine was hurting her sleep.",
+      "kind": "preference",
+      "tags": [
+        "habits",
+        "drink"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-11-25",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI"
+          ]
+        },
+        {
+          "name": "rooibos tea",
+          "type": "beverage",
+          "aliases": [
+            "rooibos",
+            "red bush tea"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "morning drink",
+          "target": "rooibos tea",
+          "fact": "Ingrid's morning drink is rooibos tea",
+          "exclusive": true,
+          "valid_from": "2025-11-25"
+        }
+      ],
+      "supersedes": [
+        "m032"
+      ]
+    },
+    {
+      "key": "m061",
+      "content": "Astrid fell at home in Bergen and had a hip replacement.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "health"
+      ],
+      "importance": 0.7,
+      "valid_from": "2025-12-02"
+    },
+    {
+      "key": "m062",
+      "content": "Ingrid spent the winter break in Bergen helping Astrid recover while Daniel and Mateo stayed in Trondheim.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "travel"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-09"
+    },
+    {
+      "key": "m063",
+      "content": "The annual safety drill now covers the freezer alarms and liquid nitrogen dewar levels.",
+      "kind": "procedure",
+      "tags": [
+        "lab",
+        "safety"
+      ],
+      "importance": 0.5,
+      "valid_from": "2025-12-16"
+    },
+    {
+      "key": "m064",
+      "content": "Hana Kimura was promoted to senior research scientist and now leads the lab's cryo-EM group.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-01-06",
+      "entities": [
+        {
+          "name": "Hana Kimura",
+          "type": "person",
+          "aliases": [
+            "Hana"
+          ],
+          "description": "senior scientist leading cryo-EM"
+        },
+        {
+          "name": "senior research scientist",
+          "type": "role"
+        },
+        {
+          "name": "cryo-EM group",
+          "type": "organization",
+          "aliases": [
+            "microscopy group"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hana Kimura",
+          "predicate": "role",
+          "target": "senior research scientist",
+          "fact": "Hana Kimura is a senior research scientist",
+          "exclusive": true,
+          "valid_from": "2026-01-06"
+        },
+        {
+          "source": "Hana Kimura",
+          "predicate": "leads",
+          "target": "cryo-EM group",
+          "fact": "Hana Kimura leads the cryo-EM group",
+          "exclusive": true,
+          "valid_from": "2026-01-06"
+        }
+      ]
+    },
+    {
+      "key": "m065",
+      "content": "Weekly group meeting moved to Wednesdays at 14:00 after the Tuesday slot was double-booked.",
+      "kind": "procedure",
+      "tags": [
+        "lab",
+        "schedule"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-01-13",
+      "supersedes": [
+        "m018"
+      ]
+    },
+    {
+      "key": "m066",
+      "content": "The Lon manuscript was resubmitted to eLife after strengthening the allostery analysis.",
+      "kind": "event",
+      "tags": [
+        "papers",
+        "lon"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-01-20",
+      "valid_to": "2026-03-17",
+      "entities": [
+        {
+          "name": "Lon manuscript",
+          "type": "publication",
+          "aliases": [
+            "the Lon paper",
+            "the protease paper",
+            "Allosteric gating of the Lon protease"
+          ]
+        },
+        {
+          "name": "eLife",
+          "type": "venue"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lon manuscript",
+          "predicate": "submitted to",
+          "target": "eLife",
+          "fact": "Lon manuscript submitted to eLife",
+          "exclusive": true,
+          "valid_from": "2026-01-20",
+          "valid_to": "2026-03-17"
+        }
+      ],
+      "supersedes": [
+        "m054"
+      ]
+    },
+    {
+      "key": "m067",
+      "content": "The DYNAMO proposal was shortlisted and Ingrid was invited to interview in Brussels.",
+      "kind": "event",
+      "tags": [
+        "grants"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-01-27"
+    },
+    {
+      "key": "m068",
+      "content": "An air bubble entered the Akta Pure 25 and ruined a Superdex 200 column during an overnight run.",
+      "kind": "mistake",
+      "tags": [
+        "equipment",
+        "chromatography",
+        "lesson"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-03"
+    },
+    {
+      "key": "m069",
+      "content": "Piotr Zielinski's mass-spectrometry group in Warsaw agreed to run crosslinking on the Lon mutant.",
+      "kind": "event",
+      "tags": [
+        "collaboration",
+        "mass-spec"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-10"
+    },
+    {
+      "key": "m070",
+      "content": "Buffers are degassed under vacuum for 30 minutes before any overnight Akta run.",
+      "kind": "procedure",
+      "tags": [
+        "equipment",
+        "chromatography",
+        "lesson"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-02-10"
+    },
+    {
+      "key": "m071",
+      "content": "Meera Raman began a rotation in the lab, working with Yusuf on particle picking.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-02-17"
+    },
+    {
+      "key": "m072",
+      "content": "Ingrid was invited to write a review on AAA+ protease allostery for the Annual Review of Biophysics, due in December 2026.",
+      "kind": "event",
+      "tags": [
+        "papers",
+        "review"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-24"
+    },
+    {
+      "key": "m073",
+      "content": "The ERC Consolidator Grant DYNAMO was awarded: two million euros over five years, starting September 2026.",
+      "kind": "event",
+      "tags": [
+        "grants",
+        "funding"
+      ],
+      "importance": 0.9,
+      "valid_from": "2026-03-03",
+      "entities": [
+        {
+          "name": "DYNAMO",
+          "type": "grant",
+          "aliases": [
+            "the DYNAMO grant",
+            "the ERC award"
+          ]
+        },
+        {
+          "name": "ERC",
+          "type": "organization",
+          "aliases": [
+            "European Research Council"
+          ]
+        },
+        {
+          "name": "awarded",
+          "type": "status"
+        },
+        {
+          "name": "EUR 2,000,000",
+          "type": "amount"
+        }
+      ],
+      "relations": [
+        {
+          "source": "DYNAMO",
+          "predicate": "status",
+          "target": "awarded",
+          "fact": "DYNAMO was awarded",
+          "exclusive": true,
+          "valid_from": "2026-03-03"
+        },
+        {
+          "source": "DYNAMO",
+          "predicate": "award amount",
+          "target": "EUR 2,000,000",
+          "fact": "DYNAMO is worth two million euros",
+          "exclusive": true,
+          "valid_from": "2026-03-03"
+        }
+      ],
+      "supersedes": [
+        "m037"
+      ]
+    },
+    {
+      "key": "m074",
+      "content": "Ingrid gave a talk on Lon gating at the Keystone Symposium on Protein Machines in Snowbird.",
+      "kind": "event",
+      "tags": [
+        "conference",
+        "travel"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-10"
+    },
+    {
+      "key": "m075",
+      "content": "eLife rejected the Lon manuscript after review, questioning the physiological relevance of the mutant.",
+      "kind": "event",
+      "tags": [
+        "papers",
+        "lon"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-17"
+    },
+    {
+      "key": "m076",
+      "content": "Ingrid edits manuscripts on paper with a red pen before typing her comments.",
+      "kind": "preference",
+      "tags": [
+        "work",
+        "habits"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-03-24"
+    },
+    {
+      "key": "m077",
+      "content": "Ingrid's levothyroxine dose was raised to 100 micrograms after another TSH check.",
+      "kind": "fact",
+      "tags": [
+        "health",
+        "medication"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-04-07",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI"
+          ]
+        },
+        {
+          "name": "levothyroxine 100 micrograms",
+          "type": "medication",
+          "aliases": [
+            "levothyroxine",
+            "thyroid medication",
+            "thyroid tablets"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "thyroid medication dose",
+          "target": "levothyroxine 100 micrograms",
+          "fact": "Ingrid takes levothyroxine 100 micrograms daily",
+          "exclusive": true,
+          "valid_from": "2026-04-07"
+        }
+      ],
+      "supersedes": [
+        "m045"
+      ]
+    },
+    {
+      "key": "m078",
+      "content": "Rafael collected a 3.2 angstrom cryo-EM map of the Lon E240Q mutant on the Krios.",
+      "kind": "event",
+      "tags": [
+        "results",
+        "cryo-em",
+        "lon"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-04-14"
+    },
+    {
+      "key": "m079",
+      "content": "Ingrid travelled to the ESRF in Grenoble for SAXS beamtime on the Lon complex.",
+      "kind": "event",
+      "tags": [
+        "travel",
+        "experiment"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-21"
+    },
+    {
+      "key": "m080",
+      "content": "Ingrid, Daniel and Mateo moved into a detached house in Byåsen with a garden and a workshop for Daniel.",
+      "kind": "fact",
+      "tags": [
+        "family",
+        "home"
+      ],
+      "importance": 0.9,
+      "valid_from": "2026-05-05",
+      "entities": [
+        {
+          "name": "Ingrid Solberg",
+          "type": "person",
+          "aliases": [
+            "Ingrid",
+            "the PI"
+          ]
+        },
+        {
+          "name": "Daniel Reyes",
+          "type": "person",
+          "aliases": [
+            "Daniel",
+            "husband"
+          ]
+        },
+        {
+          "name": "Mateo Reyes",
+          "type": "person",
+          "aliases": [
+            "Mateo",
+            "son",
+            "kid"
+          ]
+        },
+        {
+          "name": "Byåsen house",
+          "type": "place",
+          "aliases": [
+            "the house",
+            "home",
+            "family home"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Solberg",
+          "predicate": "lives in",
+          "target": "Byåsen house",
+          "fact": "Ingrid lives in the Byåsen house",
+          "exclusive": true,
+          "valid_from": "2026-05-05"
+        }
+      ],
+      "supersedes": [
+        "m012"
+      ]
+    },
+    {
+      "key": "m081",
+      "content": "Meera Raman joined the lab as a PhD student after her rotation.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-05-12",
+      "entities": [
+        {
+          "name": "Meera Raman",
+          "type": "person",
+          "aliases": [
+            "Meera"
+          ]
+        },
+        {
+          "name": "PhD student",
+          "type": "role"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Meera Raman",
+          "predicate": "role",
+          "target": "PhD student",
+          "fact": "Meera Raman is a PhD student in the lab",
+          "exclusive": true,
+          "valid_from": "2026-05-12"
+        }
+      ]
+    },
+    {
+      "key": "m082",
+      "content": "Ingrid and Daniel hosted a housewarming for lab members and neighbours.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "social"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-05-19"
+    },
+    {
+      "key": "m083",
+      "content": "Zoe's simulations showed the Lon gate opening on a 400 microsecond timescale.",
+      "kind": "event",
+      "tags": [
+        "results",
+        "simulation"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-05-26"
+    },
+    {
+      "key": "m084",
+      "content": "The Fjord cluster was expanded to sixteen H200 GPUs, doubling capacity for RELION and GROMACS.",
+      "kind": "fact",
+      "tags": [
+        "compute",
+        "equipment"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-02",
+      "entities": [
+        {
+          "name": "Fjord",
+          "type": "instrument",
+          "aliases": [
+            "Fjord cluster",
+            "the cluster"
+          ],
+          "description": "lab GPU compute cluster"
+        },
+        {
+          "name": "16 H200 GPUs",
+          "type": "capacity",
+          "aliases": [
+            "sixteen H200s"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Fjord",
+          "predicate": "compute capacity",
+          "target": "16 H200 GPUs",
+          "fact": "Fjord has sixteen H200 GPUs",
+          "exclusive": true,
+          "valid_from": "2026-06-02"
+        }
+      ],
+      "supersedes": [
+        "m017"
+      ]
+    },
+    {
+      "key": "m085",
+      "content": "Ben Osei graduated with a first-class degree and left the lab.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-06-09"
+    },
+    {
+      "key": "m086",
+      "content": "The Lon manuscript was submitted to PNAS with a new in vivo section.",
+      "kind": "event",
+      "tags": [
+        "papers",
+        "lon"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-06-16",
+      "valid_to": "2026-09-08",
+      "entities": [
+        {
+          "name": "Lon manuscript",
+          "type": "publication",
+          "aliases": [
+            "the Lon paper",
+            "the protease paper",
+            "Allosteric gating of the Lon protease"
+          ]
+        },
+        {
+          "name": "PNAS",
+          "type": "venue",
+          "aliases": [
+            "Proceedings of the National Academy of Sciences"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lon manuscript",
+          "predicate": "submitted to",
+          "target": "PNAS",
+          "fact": "Lon manuscript submitted to PNAS",
+          "exclusive": true,
+          "valid_from": "2026-06-16"
+        }
+      ],
+      "supersedes": [
+        "m066"
+      ]
+    },
+    {
+      "key": "m087",
+      "content": "Chose PNAS over another structural-biology journal because the in vivo data needed a broad audience and time was short.",
+      "kind": "decision",
+      "tags": [
+        "papers",
+        "decision"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-23"
+    },
+    {
+      "key": "m088",
+      "content": "Amara Nwosu at the University of Leeds joined as a simulation collaborator on the gate-opening study.",
+      "kind": "event",
+      "tags": [
+        "collaboration",
+        "simulation"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-06-30"
+    },
+    {
+      "key": "m089",
+      "content": "Ingrid prefers to hold one-on-one meetings while walking along the Nidelva rather than sitting in the office.",
+      "kind": "preference",
+      "tags": [
+        "work",
+        "habits"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-06-30"
+    },
+    {
+      "key": "m090",
+      "content": "Ingrid spoke at the Gordon Research Conference on Molecular Machines in New Hampshire.",
+      "kind": "event",
+      "tags": [
+        "conference",
+        "travel"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-07"
+    },
+    {
+      "key": "m091",
+      "content": "Yusuf Adeyemi accepted a faculty position at the University of Ibadan and will leave the lab at the end of July.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-07-14",
+      "entities": [
+        {
+          "name": "Yusuf Adeyemi",
+          "type": "person",
+          "aliases": [
+            "Yusuf",
+            "the West African postdoc"
+          ],
+          "description": "postdoc leaving for a faculty job in West Africa"
+        },
+        {
+          "name": "University of Ibadan",
+          "type": "organization",
+          "aliases": [
+            "Ibadan"
+          ],
+          "description": "university in Nigeria"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Yusuf Adeyemi",
+          "predicate": "accepted position at",
+          "target": "University of Ibadan",
+          "fact": "Yusuf Adeyemi accepted a faculty position at the University of Ibadan",
+          "exclusive": true,
+          "valid_from": "2026-07-14"
+        }
+      ]
+    },
+    {
+      "key": "m092",
+      "content": "Ingrid bought a used touring kayak because the lab sea kayak was too tippy for Mateo.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "hobby"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-07-21"
+    },
+    {
+      "key": "m093",
+      "content": "Hana Kimura absorbed Yusuf's single-particle portfolio when he departed for Ibadan.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-28",
+      "entities": [
+        {
+          "name": "Hana Kimura",
+          "type": "person",
+          "aliases": [
+            "Hana"
+          ]
+        },
+        {
+          "name": "Yusuf Adeyemi",
+          "type": "person",
+          "aliases": [
+            "Yusuf"
+          ]
+        },
+        {
+          "name": "single-particle processing",
+          "type": "process",
+          "aliases": [
+            "image processing",
+            "reconstruction"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hana Kimura",
+          "predicate": "took over",
+          "target": "single-particle processing",
+          "fact": "Hana Kimura took over single-particle processing from Yusuf",
+          "exclusive": true,
+          "valid_from": "2026-07-28"
+        }
+      ]
+    },
+    {
+      "key": "m094",
+      "content": "RELION projects are rsynced to the lab archive every Friday at 17:00 and checksummed.",
+      "kind": "procedure",
+      "tags": [
+        "compute",
+        "backup"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-04"
+    },
+    {
+      "key": "m095",
+      "content": "A disk failure on Fjord scratch wiped three weeks of particle stacks because the RELION project had no archive copy.",
+      "kind": "mistake",
+      "tags": [
+        "compute",
+        "backup",
+        "lesson"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-08-11"
+    },
+    {
+      "key": "m096",
+      "content": "Ingrid spent a week birdwatching at Ørlandet during the autumn migration.",
+      "kind": "event",
+      "tags": [
+        "hobby",
+        "travel"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-08-18"
+    },
+    {
+      "key": "m097",
+      "content": "Mateo joined Byåsen IL for the autumn football season.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "sport"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-08-25",
+      "entities": [
+        {
+          "name": "Mateo Reyes",
+          "type": "person",
+          "aliases": [
+            "Mateo",
+            "son",
+            "kid"
+          ]
+        },
+        {
+          "name": "Byåsen IL",
+          "type": "organization",
+          "aliases": [
+            "the football club"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mateo Reyes",
+          "predicate": "plays for",
+          "target": "Byåsen IL",
+          "fact": "Mateo plays football for Byåsen IL",
+          "exclusive": true,
+          "valid_from": "2026-08-25"
+        }
+      ]
+    },
+    {
+      "key": "m098",
+      "content": "Ingrid now prefers sea kayaking to rowing because scull sessions clash with Mateo's football matches.",
+      "kind": "preference",
+      "tags": [
+        "hobby",
+        "family"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-09-01"
+    },
+    {
+      "key": "m099",
+      "content": "PNAS accepted 'Allosteric gating of the Lon protease' pending minor revisions.",
+      "kind": "event",
+      "tags": [
+        "papers",
+        "lon"
+      ],
+      "importance": 0.9,
+      "valid_from": "2026-09-08",
+      "entities": [
+        {
+          "name": "Lon manuscript",
+          "type": "publication",
+          "aliases": [
+            "the Lon paper",
+            "the protease paper",
+            "Allosteric gating of the Lon protease"
+          ]
+        },
+        {
+          "name": "PNAS",
+          "type": "venue",
+          "aliases": [
+            "Proceedings of the National Academy of Sciences"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lon manuscript",
+          "predicate": "accepted at",
+          "target": "PNAS",
+          "fact": "Lon manuscript accepted at PNAS",
+          "exclusive": true,
+          "valid_from": "2026-09-08"
+        }
+      ],
+      "supersedes": [
+        "m086"
+      ]
+    },
+    {
+      "key": "m100",
+      "content": "The new Krios service quote came in 8 percent higher than last year.",
+      "kind": "event",
+      "tags": [
+        "equipment",
+        "budget"
+      ],
+      "importance": 0.4,
+      "valid_from": "2026-09-15"
+    },
+    {
+      "key": "m101",
+      "content": "The lab submitted an abstract on Lon allostery to the EMBO Workshop on Protein Folding and Assembly in Lisbon, held in December.",
+      "kind": "event",
+      "tags": [
+        "conference",
+        "lon"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-22",
+      "valid_to": "2026-10-07",
+      "entities": [
+        {
+          "name": "Lon abstract",
+          "type": "publication",
+          "aliases": [
+            "the abstract"
+          ]
+        },
+        {
+          "name": "EMBO Workshop on Protein Folding and Assembly",
+          "type": "venue",
+          "aliases": [
+            "the December conference",
+            "December workshop",
+            "the Lisbon meeting"
+          ]
+        },
+        {
+          "name": "Lisbon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lon abstract",
+          "predicate": "submitted to",
+          "target": "EMBO Workshop on Protein Folding and Assembly",
+          "fact": "Lon abstract submitted to the EMBO workshop in Lisbon",
+          "exclusive": true,
+          "valid_from": "2026-09-22",
+          "valid_to": "2026-10-07"
+        }
+      ]
+    },
+    {
+      "key": "m102",
+      "content": "The lab holiday lunch is booked for 11 December at a restaurant in Trondheim.",
+      "kind": "event",
+      "tags": [
+        "lab",
+        "social"
+      ],
+      "importance": 0.3,
+      "valid_from": "2026-09-29"
+    },
+    {
+      "key": "m103",
+      "content": "The EMBO workshop on protein folding in Lisbon accepted the lab's Lon abstract.",
+      "kind": "event",
+      "tags": [
+        "conference",
+        "lon"
+      ],
+      "importance": 0.7,
+      "valid_from": "2026-10-07",
+      "entities": [
+        {
+          "name": "Lon abstract",
+          "type": "publication",
+          "aliases": [
+            "the abstract"
+          ]
+        },
+        {
+          "name": "EMBO Workshop on Protein Folding and Assembly",
+          "type": "venue",
+          "aliases": [
+            "the December conference",
+            "December workshop",
+            "the Lisbon meeting"
+          ]
+        },
+        {
+          "name": "Lisbon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lon abstract",
+          "predicate": "accepted at",
+          "target": "EMBO Workshop on Protein Folding and Assembly",
+          "fact": "Lon abstract accepted at the EMBO workshop in Lisbon",
+          "exclusive": true,
+          "valid_from": "2026-10-07"
+        }
+      ],
+      "supersedes": [
+        "m101"
+      ]
+    },
+    {
+      "key": "m104",
+      "content": "Astrid moved into a care home in Bergen.",
+      "kind": "event",
+      "tags": [
+        "family",
+        "health"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-13"
+    },
+    {
+      "key": "m105",
+      "content": "Final PNAS proof revisions were returned to the editor after checking every figure legend.",
+      "kind": "procedure",
+      "tags": [
+        "papers",
+        "process"
+      ],
+      "importance": 0.5,
+      "valid_from": "2026-10-20"
+    }
+  ],
+  "queries": [
+    {
+      "q": "RELION 5 Bayesian polishing",
+      "category": "keyword",
+      "expect": [
+        "m024"
+      ],
+      "k": 5,
+      "note": "direct lexical hit on the reconstruction software decision"
+    },
+    {
+      "q": "Superdex 200 air bubble",
+      "category": "keyword",
+      "expect": [
+        "m068"
+      ],
+      "k": 5,
+      "note": "direct keyword match on the chromatography incident"
+    },
+    {
+      "q": "Ørlandet birdwatching",
+      "category": "keyword",
+      "expect": [
+        "m096"
+      ],
+      "k": 5,
+      "note": "direct keyword match on the PI's autumn trip"
+    },
+    {
+      "q": "Titan Krios G4 Njord",
+      "category": "keyword",
+      "expect": [
+        "m059"
+      ],
+      "k": 5,
+      "note": "direct keyword hit on the installed microscope"
+    },
+    {
+      "q": "levothyroxine TSH dose",
+      "category": "keyword",
+      "expect": [
+        "m077"
+      ],
+      "k": 5,
+      "note": "direct keyword match on the current thyroid dose"
+    },
+    {
+      "q": "Byåsen housewarming",
+      "category": "keyword",
+      "expect": [
+        "m082"
+      ],
+      "k": 5,
+      "note": "direct keyword match on the housewarming event"
+    },
+    {
+      "q": "EMBO Lisbon abstract",
+      "category": "keyword",
+      "expect": [
+        "m103"
+      ],
+      "k": 5,
+      "note": "direct keyword match on the accepted workshop abstract"
+    },
+    {
+      "q": "What settings are used when flash-cooling specimens?",
+      "category": "paraphrase",
+      "expect": [
+        "m010"
+      ],
+      "k": 5,
+      "note": "paraphrases the plunge-freezing protocol without sharing grid/blot/freezer vocabulary"
+    },
+    {
+      "q": "What does the chief investigator sip first thing?",
+      "category": "paraphrase",
+      "expect": [
+        "m060"
+      ],
+      "k": 5,
+      "note": "paraphrases the current morning drink preference"
+    },
+    {
+      "q": "Which device lets the team image single particles at atomic detail?",
+      "category": "paraphrase",
+      "expect": [
+        "m059"
+      ],
+      "k": 5,
+      "note": "paraphrases the high-resolution cryo-EM scope without the word microscope"
+    },
+    {
+      "q": "What changed after the cold-storage mishap?",
+      "category": "paraphrase",
+      "expect": [
+        "m020"
+      ],
+      "k": 5,
+      "note": "paraphrases the freezer-failure lesson using different vocabulary"
+    },
+    {
+      "q": "What kind of dwelling did they purchase in May?",
+      "category": "paraphrase",
+      "expect": [
+        "m080"
+      ],
+      "k": 5,
+      "note": "paraphrases the move into the Byåsen house"
+    },
+    {
+      "q": "Who handles the bureaucracy of running the group now?",
+      "category": "paraphrase",
+      "expect": [
+        "m040"
+      ],
+      "k": 5,
+      "note": "paraphrases the lab-manager role without using manager or ordering"
+    },
+    {
+      "q": "Which yearly exercise tests the lab's emergency systems?",
+      "category": "paraphrase",
+      "expect": [
+        "m063"
+      ],
+      "k": 5,
+      "note": "paraphrases the annual safety drill"
+    },
+    {
+      "q": "Which commissioned piece must be finished by Christmas?",
+      "category": "paraphrase",
+      "expect": [
+        "m072"
+      ],
+      "k": 5,
+      "note": "paraphrases the invited review due in December"
+    },
+    {
+      "q": "book a session on the microscope",
+      "category": "synonym",
+      "expect": [
+        "m059"
+      ],
+      "expect_absent": [
+        "m003"
+      ],
+      "k": 5,
+      "note": "synonym trap: microscope is an alias for the Krios; the Arctica is superseded"
+    },
+    {
+      "q": "who is the boss married to?",
+      "category": "synonym",
+      "expect": [
+        "m013"
+      ],
+      "k": 5,
+      "note": "synonym trap: boss and PI both alias Ingrid; husband is the relation"
+    },
+    {
+      "q": "the apartment they had before the move to Byåsen",
+      "category": "synonym",
+      "include_history": true,
+      "expect": [
+        "m012"
+      ],
+      "k": 5,
+      "note": "synonym trap: apartment vs flat; the old home is expired so history is enabled"
+    },
+    {
+      "q": "where does the PI's kid study?",
+      "category": "synonym",
+      "expect": [
+        "m046"
+      ],
+      "expect_absent": [
+        "m071"
+      ],
+      "k": 5,
+      "note": "synonym trap: kid vs son; a rotation student is a related-but-different person"
+    },
+    {
+      "q": "which talk got the nod for the December conference?",
+      "category": "synonym",
+      "expect": [
+        "m103"
+      ],
+      "expect_absent": [
+        "m102"
+      ],
+      "k": 5,
+      "note": "synonym trap: the December conference aliases the EMBO workshop; the holiday lunch is another December event"
+    },
+    {
+      "q": "where does the chromatography kit live?",
+      "category": "synonym",
+      "expect": [
+        "m015"
+      ],
+      "k": 5,
+      "note": "synonym trap: chromatography kit vs the Akta; no shared surface term"
+    },
+    {
+      "q": "the ultracold storage rule",
+      "category": "synonym",
+      "expect": [
+        "m020"
+      ],
+      "k": 5,
+      "note": "synonym trap: ultracold storage vs -80 freezers"
+    },
+    {
+      "q": "how large was the European funding package?",
+      "category": "synonym",
+      "expect": [
+        "m073"
+      ],
+      "k": 5,
+      "note": "synonym trap: European funding vs ERC; asks for the amount"
+    },
+    {
+      "q": "which outlet finally took the manuscript?",
+      "category": "synonym",
+      "expect": [
+        "m099"
+      ],
+      "expect_absent": [
+        "m054",
+        "m066"
+      ],
+      "k": 5,
+      "note": "synonym trap: outlet vs journal; earlier venues are superseded"
+    },
+    {
+      "q": "the boat she takes out on the river",
+      "category": "synonym",
+      "expect": [
+        "m035"
+      ],
+      "expect_absent": [
+        "m092"
+      ],
+      "k": 5,
+      "note": "synonym trap: boat vs single scull; the touring kayak is a related-but-different craft"
+    },
+    {
+      "q": "What does the boss's partner do for a living?",
+      "category": "multi-hop",
+      "expect": [
+        "m013"
+      ],
+      "k": 5,
+      "note": "boss -> Ingrid -> spouse Daniel -> luthier; target shares no content words"
+    },
+    {
+      "q": "What is in the boss's mug at breakfast these days?",
+      "category": "multi-hop",
+      "expect": [
+        "m060"
+      ],
+      "k": 5,
+      "note": "boss -> Ingrid -> current morning drink; target shares no content words"
+    },
+    {
+      "q": "Which machine superseded Ymir for the hardest structures?",
+      "category": "multi-hop",
+      "expect": [
+        "m059"
+      ],
+      "k": 5,
+      "note": "Ymir -> Arctica -> lab high-resolution microscope -> Krios; target shares no content words"
+    },
+    {
+      "q": "Which funding body supports the Lon purification student?",
+      "category": "multi-hop",
+      "expect": [
+        "m009"
+      ],
+      "k": 5,
+      "note": "Lon -> Rafael -> PROTEAN; target shares no content words"
+    },
+    {
+      "q": "Where does the luthier's spouse run a research group?",
+      "category": "multi-hop",
+      "expect": [
+        "m001"
+      ],
+      "k": 5,
+      "note": "luthier -> Daniel -> spouse Ingrid -> leads Solberg Lab; target shares no content words"
+    },
+    {
+      "q": "Which overseas partner provides the nuclear magnetic resonance support?",
+      "category": "multi-hop",
+      "expect": [
+        "m031"
+      ],
+      "k": 5,
+      "note": "NMR alias -> facility -> Lucia Ferrante -> Bologna; target shares no content words"
+    },
+    {
+      "q": "Who picked up the reconstruction workload when the West African postdoc left?",
+      "category": "multi-hop",
+      "expect": [
+        "m093"
+      ],
+      "k": 5,
+      "note": "West African postdoc -> Yusuf -> Hana took over processing; target shares no content words"
+    },
+    {
+      "q": "Where does the boss's child go to classes?",
+      "category": "multi-hop",
+      "expect": [
+        "m046"
+      ],
+      "k": 5,
+      "note": "boss -> Ingrid -> son Mateo -> Åsen middle school; target shares no content words"
+    },
+    {
+      "q": "What does the boss's son play at weekends?",
+      "category": "multi-hop",
+      "expect": [
+        "m097"
+      ],
+      "k": 5,
+      "note": "boss -> Ingrid -> son Mateo -> Byåsen IL football; target shares no content words"
+    },
+    {
+      "q": "what was sent back to the editor yesterday",
+      "category": "temporal-window",
+      "expect": [
+        "m105"
+      ],
+      "k": 5,
+      "note": "yesterday = 2026-10-20, the PNAS proof revisions"
+    },
+    {
+      "q": "who moved into a care home last week",
+      "category": "temporal-window",
+      "expect": [
+        "m104"
+      ],
+      "k": 5,
+      "note": "last week = week of 2026-10-12; Astrid's move on 2026-10-13"
+    },
+    {
+      "q": "what accepted our abstract two weeks ago",
+      "category": "temporal-window",
+      "expect": [
+        "m103"
+      ],
+      "k": 5,
+      "note": "two weeks ago = 2026-10-07, the EMBO acceptance"
+    },
+    {
+      "q": "progress on the protease manuscript last month",
+      "category": "temporal-window",
+      "expect": [
+        "m099"
+      ],
+      "k": 5,
+      "note": "last month = September 2026; PNAS acceptance on 2026-09-08"
+    },
+    {
+      "q": "which grant was won in March",
+      "category": "temporal-window",
+      "expect": [
+        "m073"
+      ],
+      "k": 5,
+      "note": "March 2026: the DYNAMO award"
+    },
+    {
+      "q": "which conferences did Ingrid attend this year",
+      "category": "temporal-window",
+      "expect": [
+        "m074",
+        "m090"
+      ],
+      "k": 8,
+      "note": "this year = 2026: Keystone in March and the Gordon conference in July"
+    },
+    {
+      "q": "papers accepted in 2025",
+      "category": "temporal-window",
+      "expect": [
+        "m027"
+      ],
+      "k": 5,
+      "note": "calendar year 2025: the ClpXP paper at JMB"
+    },
+    {
+      "q": "what went wrong on the cluster since August",
+      "category": "temporal-window",
+      "expect": [
+        "m095"
+      ],
+      "k": 5,
+      "note": "since 2026-08-01: the Fjord scratch disk failure on 2026-08-11"
+    },
+    {
+      "q": "which microscope was used for high-resolution work",
+      "category": "as-of",
+      "as_of": "2025-03-01",
+      "expect": [
+        "m003"
+      ],
+      "expect_absent": [
+        "m059"
+      ],
+      "k": 5,
+      "note": "on 2025-03-01 the Arctica was the high-resolution scope; the Krios was future"
+    },
+    {
+      "q": "where did the family live",
+      "category": "as-of",
+      "as_of": "2025-12-01",
+      "expect": [
+        "m012"
+      ],
+      "expect_absent": [
+        "m080"
+      ],
+      "k": 5,
+      "note": "on 2025-12-01 the family was in the Bakklandet flat; Byåsen came later"
+    },
+    {
+      "q": "who was the lab manager",
+      "category": "as-of",
+      "as_of": "2025-01-15",
+      "expect": [
+        "m002"
+      ],
+      "expect_absent": [
+        "m040"
+      ],
+      "k": 5,
+      "note": "Aiden held the role until mid-2025; Sofia started in July"
+    },
+    {
+      "q": "how much compute did the cluster have",
+      "category": "as-of",
+      "as_of": "2025-07-01",
+      "expect": [
+        "m017"
+      ],
+      "expect_absent": [
+        "m084"
+      ],
+      "k": 5,
+      "note": "Fjord still had eight A100s in July 2025"
+    },
+    {
+      "q": "what did Ingrid drink in the morning",
+      "category": "as-of",
+      "as_of": "2025-10-01",
+      "expect": [
+        "m032"
+      ],
+      "expect_absent": [
+        "m004",
+        "m060"
+      ],
+      "k": 5,
+      "note": "in October 2025 the morning drink was the oat cortado"
+    },
+    {
+      "q": "which journal had the Lon manuscript been sent to",
+      "category": "as-of",
+      "as_of": "2025-10-10",
+      "expect": [
+        "m054"
+      ],
+      "expect_absent": [
+        "m066",
+        "m086"
+      ],
+      "k": 5,
+      "note": "the first submission to NSMB was live on 2025-10-10"
+    },
+    {
+      "q": "which journal was the Lon manuscript with",
+      "category": "as-of",
+      "as_of": "2026-02-01",
+      "expect": [
+        "m066"
+      ],
+      "expect_absent": [
+        "m054",
+        "m086"
+      ],
+      "k": 5,
+      "note": "in February 2026 the manuscript was under review at eLife"
+    },
+    {
+      "q": "what dose of thyroid medication was Ingrid taking",
+      "category": "as-of",
+      "as_of": "2026-03-15",
+      "expect": [
+        "m045"
+      ],
+      "expect_absent": [
+        "m006",
+        "m077"
+      ],
+      "k": 5,
+      "note": "in March 2026 the dose was 75 micrograms before the latest increase"
+    },
+    {
+      "q": "who is the lab manager now",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m040"
+      ],
+      "expect_absent": [
+        "m002"
+      ],
+      "k": 5,
+      "note": "Sofia replaced Aiden in July 2025"
+    },
+    {
+      "q": "which microscope handles high-resolution work now",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m059"
+      ],
+      "expect_absent": [
+        "m003"
+      ],
+      "k": 5,
+      "note": "the Krios replaced the Arctica in November 2025"
+    },
+    {
+      "q": "what does Ingrid drink in the morning now",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m060"
+      ],
+      "expect_absent": [
+        "m004",
+        "m032"
+      ],
+      "k": 5,
+      "note": "current drink is rooibos; filter coffee and cortado are superseded"
+    },
+    {
+      "q": "current levothyroxine dose",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m077"
+      ],
+      "expect_absent": [
+        "m006",
+        "m045"
+      ],
+      "k": 5,
+      "note": "dose rose 50 -> 75 -> 100 micrograms"
+    },
+    {
+      "q": "where does the family live now",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m080"
+      ],
+      "expect_absent": [
+        "m012"
+      ],
+      "k": 5,
+      "note": "the Byåsen house superseded the Bakklandet flat in May 2026"
+    },
+    {
+      "q": "how much compute does Fjord have now",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m084"
+      ],
+      "expect_absent": [
+        "m017"
+      ],
+      "k": 5,
+      "note": "the cluster was expanded to sixteen H200s in June 2026"
+    },
+    {
+      "q": "where is the Lon paper now",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m099"
+      ],
+      "expect_absent": [
+        "m054",
+        "m066",
+        "m086"
+      ],
+      "k": 5,
+      "note": "accepted at PNAS in September 2026; earlier submission states are obsolete"
+    },
+    {
+      "q": "what is the state of the DYNAMO grant now",
+      "category": "current-vs-superseded",
+      "expect": [
+        "m073"
+      ],
+      "expect_absent": [
+        "m036",
+        "m037"
+      ],
+      "k": 5,
+      "note": "the proposal was awarded; the old deadline states are superseded"
+    },
+    {
+      "q": "what did Ingrid drink before switching to cortado",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m004"
+      ],
+      "k": 5,
+      "note": "recovering the superseded black filter coffee preference"
+    },
+    {
+      "q": "who was lab manager before Sofia",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m002"
+      ],
+      "k": 5,
+      "note": "recovering Aiden's tenure as lab manager"
+    },
+    {
+      "q": "what was the original internal deadline for DYNAMO",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m036"
+      ],
+      "k": 5,
+      "note": "the 15 June 2025 deadline before the extension"
+    },
+    {
+      "q": "where did the family live before the Byåsen house",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m012"
+      ],
+      "k": 5,
+      "note": "recovering the Bakklandet flat"
+    },
+    {
+      "q": "which journal first received the Lon manuscript",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m054"
+      ],
+      "k": 5,
+      "note": "first venue was NSMB before the desk rejection"
+    },
+    {
+      "q": "what morning drink came before rooibos",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m032"
+      ],
+      "k": 5,
+      "note": "recovering the cortado phase"
+    },
+    {
+      "q": "who led single-particle processing before Hana",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m016"
+      ],
+      "k": 5,
+      "note": "Yusuf led single-particle processing before leaving in July 2026"
+    },
+    {
+      "q": "what thyroid dose did Ingrid take before the latest increase",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m045"
+      ],
+      "k": 5,
+      "note": "recovering the 75 microgram dose superseded in April 2026"
+    },
+    {
+      "q": "which microscope came before the Krios",
+      "category": "history",
+      "include_history": true,
+      "expect": [
+        "m003"
+      ],
+      "k": 5,
+      "note": "the Talos Arctica was the high-resolution scope before the Krios arrived"
+    },
+    {
+      "q": "how does Ingrid like to start grant writing",
+      "category": "preference",
+      "expect": [
+        "m033"
+      ],
+      "k": 5,
+      "note": "early-morning writing habit"
+    },
+    {
+      "q": "what treat does she keep in her desk",
+      "category": "preference",
+      "expect": [
+        "m047"
+      ],
+      "k": 5,
+      "note": "dark chocolate with sea salt"
+    },
+    {
+      "q": "how does she like to edit manuscripts",
+      "category": "preference",
+      "expect": [
+        "m076"
+      ],
+      "k": 5,
+      "note": "paper and red pen before typing comments"
+    },
+    {
+      "q": "what is her morning drink these days",
+      "category": "preference",
+      "expect": [
+        "m060"
+      ],
+      "k": 5,
+      "note": "current rooibos preference"
+    },
+    {
+      "q": "does she prefer rowing or kayaking now",
+      "category": "preference",
+      "expect": [
+        "m098"
+      ],
+      "k": 5,
+      "note": "kayaking now fits around Mateo's football"
+    },
+    {
+      "q": "when does she row the scull",
+      "category": "preference",
+      "expect": [
+        "m035"
+      ],
+      "k": 5,
+      "note": "rowing routine on Tuesday and Thursday mornings"
+    },
+    {
+      "q": "how does she prefer to run one-on-ones",
+      "category": "preference",
+      "expect": [
+        "m089"
+      ],
+      "k": 5,
+      "note": "walking meetings along the Nidelva"
+    },
+    {
+      "q": "how should grids be plunge frozen",
+      "category": "procedure/lesson",
+      "expect": [
+        "m010"
+      ],
+      "k": 5,
+      "note": "Vitrobot settings for grid freezing"
+    },
+    {
+      "q": "what must be done before an overnight Akta run",
+      "category": "procedure/lesson",
+      "expect": [
+        "m070"
+      ],
+      "k": 5,
+      "note": "degas buffers for 30 minutes to avoid bubbles"
+    },
+    {
+      "q": "who approves small purchases",
+      "category": "procedure/lesson",
+      "expect": [
+        "m041"
+      ],
+      "k": 5,
+      "note": "Sofia under 10,000 NOK, Ingrid above"
+    },
+    {
+      "q": "what did we change after the freezer failure",
+      "category": "procedure/lesson",
+      "expect": [
+        "m020"
+      ],
+      "k": 5,
+      "note": "split aliquots across freezers and test the alarm"
+    },
+    {
+      "q": "how often are RELION projects archived",
+      "category": "procedure/lesson",
+      "expect": [
+        "m094"
+      ],
+      "k": 5,
+      "note": "weekly Friday rsync with checksums"
+    },
+    {
+      "q": "how are Krios autoloader cartridges loaded",
+      "category": "procedure/lesson",
+      "expect": [
+        "m055"
+      ],
+      "k": 5,
+      "note": "nitrogen glove bag and shared log"
+    },
+    {
+      "q": "what went wrong with the Novo Nordisk report",
+      "category": "procedure/lesson",
+      "expect": [
+        "m057"
+      ],
+      "k": 5,
+      "note": "shared-inbox reminder was missed; deadlines moved to the owner's calendar"
+    },
+    {
+      "q": "who works in the Solberg Lab",
+      "category": "aggregation",
+      "expect": [
+        "m008",
+        "m023",
+        "m016",
+        "m040",
+        "m064",
+        "m081",
+        "m050"
+      ],
+      "k": 8,
+      "note": "aggregating lab members and roles over the full period"
+    },
+    {
+      "q": "external collaborators and partner groups",
+      "category": "aggregation",
+      "expect": [
+        "m030",
+        "m031",
+        "m051",
+        "m069",
+        "m088"
+      ],
+      "k": 8,
+      "note": "aggregating Bologna, Kyoto, Warsaw and Leeds collaborations"
+    },
+    {
+      "q": "grants and funding sources",
+      "category": "aggregation",
+      "expect": [
+        "m009",
+        "m053",
+        "m073"
+      ],
+      "k": 8,
+      "note": "PROTEAN, the Novo Nordisk equipment grant and the ERC award"
+    },
+    {
+      "q": "major equipment in the lab",
+      "category": "aggregation",
+      "expect": [
+        "m059",
+        "m084",
+        "m021",
+        "m010",
+        "m015"
+      ],
+      "k": 8,
+      "note": "aggregating the current microscope, cluster, freezer and sample-prep gear"
+    },
+    {
+      "q": "papers and written outputs",
+      "category": "aggregation",
+      "expect": [
+        "m027",
+        "m044",
+        "m099",
+        "m072",
+        "m103"
+      ],
+      "k": 8,
+      "note": "aggregating journal papers, preprint, review and conference abstract"
+    },
+    {
+      "q": "family members and their news",
+      "category": "aggregation",
+      "expect": [
+        "m080",
+        "m013",
+        "m046",
+        "m097",
+        "m061",
+        "m104"
+      ],
+      "k": 8,
+      "note": "aggregating Daniel, Mateo and Astrid across the period"
+    },
+    {
+      "q": "lab mishaps and lessons",
+      "category": "aggregation",
+      "expect": [
+        "m019",
+        "m029",
+        "m068",
+        "m095",
+        "m057"
+      ],
+      "k": 8,
+      "note": "aggregating failures that produced new procedures"
+    }
+  ]
+}
