@@ -60,6 +60,10 @@ pub struct Config {
     pub mem_seed_share: f64,
     /// How many top dense-retrieval memories seed PPR.
     pub mem_seed_top: usize,
+    /// Boost relation endpoints that are also exact query entity seeds.
+    pub fact_entity_boost: f64,
+    /// Share of a relation-hit score used to seed its evidence memories.
+    pub fact_memory_seed: f64,
     /// Score multiplier for ended memories when the query asks about the past.
     pub history_boost: f64,
 }
@@ -86,6 +90,8 @@ impl Default for Config {
             mem_seed_share: 0.6,
             mem_seed_top: 20,
             history_boost: 1.5,
+            fact_entity_boost: 1.0,
+            fact_memory_seed: 0.0,
         }
     }
 }

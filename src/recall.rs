@@ -221,31 +221,61 @@ fn relation_visible(
 
 /// Relation-fact seeds: `relations_fts` hits and `relations_vec` KNN, both
 /// endpoints get half of the relation's score.
-fn relation_seeds(
+type SeedPairs = Vec<(i64, f64)>;
+
+struct RelationSeedOptions<'a> {
+    query_entities: &'a HashSet<i64>,
+    fact_entity_boost: f64,
+    fact_memory_seed: f64,
+}
+
+fn relation_seeds_with_config(
     db: &Db,
     query: &str,
     query_vec: &[f32],
     now: i64,
     history: bool,
     prefix_min: usize,
-) -> Result<Vec<(i64, f64)>> {
-    let mut out = Vec::new();
+    options: RelationSeedOptions<'_>,
+) -> Result<(SeedPairs, SeedPairs)> {
+    let mut entities = Vec::new();
+    let mut memories = Vec::new();
+    let mut add = |relation_id: i64, src: i64, dst: i64, score: f64| -> Result<()> {
+        let matched_endpoint =
+            options.query_entities.contains(&src) || options.query_entities.contains(&dst);
+        for id in [src, dst] {
+            let weight = if options.query_entities.contains(&id) {
+                score * options.fact_entity_boost
+            } else {
+                score
+            };
+            entities.push((id, weight));
+        }
+        if matched_endpoint && options.fact_memory_seed > 0.0 {
+            let mut st = db
+                .sql()
+                .prepare("SELECT memory_id FROM relation_evidence WHERE relation_id=?1")?;
+            for memory_id in st.query_map([relation_id], |r| r.get::<_, i64>(0))? {
+                memories.push((memory_id?, score * options.fact_memory_seed));
+            }
+        }
+        Ok(())
+    };
     if let Some(q) = text::fts_query_with(query, &[], prefix_min) {
         let mut st = db.sql().prepare(
-            "SELECT r.src,r.dst FROM relations_fts JOIN relations r ON r.id=relations_fts.rowid
+            "SELECT r.id,r.src,r.dst FROM relations_fts JOIN relations r ON r.id=relations_fts.rowid
              WHERE relations_fts MATCH ?1 AND r.valid_from<=?2
                AND (?3=1 OR ((r.valid_to IS NULL OR r.valid_to>?2) AND r.expired_at IS NULL))
              ORDER BY bm25(relations_fts,1.0,1.0) LIMIT 10",
         )?;
-        let hits: Vec<(i64, i64)> = st
+        let hits: Vec<(i64, i64, i64)> = st
             .query_map(params![q, now, i64::from(history)], |r| {
-                Ok((r.get(0)?, r.get(1)?))
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?))
             })?
             .collect::<rusqlite::Result<_>>()?;
-        for (rank, (src, dst)) in hits.iter().enumerate() {
+        for (rank, (relation_id, src, dst)) in hits.iter().enumerate() {
             let score = 0.5 / (1.0 + rank as f64);
-            out.push((*src, score));
-            out.push((*dst, score));
+            add(*relation_id, *src, *dst, score)?;
         }
     }
     {
@@ -286,14 +316,12 @@ fn relation_seeds(
             }
             for (id, cosine) in hits {
                 if let Some(&(src, dst)) = visible.get(&id) {
-                    let score = f64::from(cosine) * 0.5;
-                    out.push((src, score));
-                    out.push((dst, score));
+                    add(id, src, dst, f64::from(cosine) * 0.5)?;
                 }
             }
         }
     }
-    Ok(out)
+    Ok((entities, memories))
 }
 
 pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
@@ -446,8 +474,10 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     names.extend(input.entities.iter().map(|x| text::norm_name(x)));
     names.sort();
     names.dedup();
-    for id in alias_entities(&engine.db, &names)? {
-        seed_entity(id, 1.0);
+    let query_alias_entities: HashSet<i64> =
+        alias_entities(&engine.db, &names)?.into_iter().collect();
+    for id in &query_alias_entities {
+        seed_entity(*id, 1.0);
     }
     // (b) entity KNN against the query vector.
     {
@@ -467,14 +497,20 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         }
     }
     // (c) relation-fact hits.
-    for (id, weight) in relation_seeds(
+    let (relation_entities, relation_memories) = relation_seeds_with_config(
         &engine.db,
         &input.query,
         &query_vec,
         now,
         history,
         engine.cfg.fts_prefix_min,
-    )? {
+        RelationSeedOptions {
+            query_entities: &query_alias_entities,
+            fact_entity_boost: engine.cfg.fact_entity_boost,
+            fact_memory_seed: engine.cfg.fact_memory_seed,
+        },
+    )?;
+    for (id, weight) in relation_entities {
         seed_entity(id, weight);
     }
     // Specificity: one GROUP BY, not one query per seed.
@@ -496,11 +532,18 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         let mentions = specificity.get(id).copied().unwrap_or(0);
         *weight /= mentions.max(1) as f64;
     }
-    let mem_seeds: Vec<(i64, f64)> = vec_ranked
+    let mut mem_seed_weights: HashMap<i64, f64> = vec_ranked
         .iter()
         .take(engine.cfg.mem_seed_top)
         .map(|(id, cosine)| (*id, cosine.max(0.0)))
         .collect();
+    for (id, weight) in relation_memories {
+        mem_seed_weights
+            .entry(id)
+            .and_modify(|current| *current = current.max(weight))
+            .or_insert(weight);
+    }
+    let mem_seeds: Vec<(i64, f64)> = mem_seed_weights.into_iter().collect();
     let ent_total: f64 = ent_seeds.values().sum();
     let mem_total: f64 = mem_seeds.iter().map(|(_, w)| w).sum();
     let mut seeds: Vec<(u32, f64)> = Vec::new();
@@ -666,15 +709,25 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
             rusqlite::params_from_iter(p.iter().map(|x| x.as_ref())),
         )?;
     }
+    let mut relevant_entities: HashSet<i64> = ent_seeds.keys().copied().collect();
+    let returned_memory_ids: Vec<i64> = memories.iter().map(|memory| memory.id).collect();
+    for chunk in returned_memory_ids.chunks(400) {
+        if chunk.is_empty() {
+            continue;
+        }
+        let marks = std::iter::repeat_n("?", chunk.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        let sql = format!("SELECT DISTINCT entity_id FROM mentions WHERE memory_id IN ({marks})");
+        let mut st = engine.db.sql().prepare(&sql)?;
+        for entity_id in st.query_map(params_from_iter(chunk.iter()), |r| r.get::<_, i64>(0))? {
+            relevant_entities.insert(entity_id?);
+        }
+    }
     let top_entities: Vec<i64> = ppr_score
         .iter()
-        .filter_map(|(id, s)| {
-            if snap.ent_node.contains_key(id) {
-                Some((*id, *s))
-            } else {
-                None
-            }
-        })
+        .filter(|(id, _)| relevant_entities.contains(id) && snap.ent_node.contains_key(id))
+        .map(|(id, s)| (*id, *s))
         .sorted_by_score()
         .into_iter()
         .take(10)
@@ -684,7 +737,25 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     let entities = top_entities
         .iter()
         .take(3)
-        .map(|id| card(engine, *id))
+        .filter_map(|id| {
+            let keep = engine
+                .db
+                .sql()
+                .query_row(
+                    "SELECT type,description FROM entities WHERE id=?1",
+                    [id],
+                    |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
+                )
+                .ok()
+                .is_some_and(|(kind, description)| {
+                    relevant_entities.contains(id) && (!kind.is_empty() || !description.is_empty())
+                });
+            if keep || ent_seeds.contains_key(id) {
+                Some(card(engine, *id))
+            } else {
+                None
+            }
+        })
         .collect::<Result<Vec<_>>>()?;
     Ok(RecallOutput {
         memories,

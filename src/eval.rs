@@ -288,6 +288,8 @@ pub const CONFIG_KEYS: &[&str] = &[
     "mem_seed_share",
     "mem_seed_top",
     "history_boost",
+    "fact_entity_boost",
+    "fact_memory_seed",
 ];
 
 fn number(key: &str, value: &str) -> Result<f64> {
@@ -314,6 +316,8 @@ pub fn set_config(cfg: &mut Config, key: &str, value: &str) -> Result<()> {
         "mem_seed_share" => cfg.mem_seed_share = number(key, value)?,
         "mem_seed_top" => cfg.mem_seed_top = number(key, value)? as usize,
         "history_boost" => cfg.history_boost = number(key, value)?,
+        "fact_entity_boost" => cfg.fact_entity_boost = number(key, value)?,
+        "fact_memory_seed" => cfg.fact_memory_seed = number(key, value)?,
         other => {
             return Err(crate::err!(
                 "unknown config key '{other}'; valid: {}",
