@@ -9,6 +9,8 @@ use std::path::Path;
 use tokenizers::{tokenizer::TruncationDirection, Tokenizer};
 
 pub const DIMS: usize = 768;
+/// Padded tokens per forward: bounds activation memory for large batches.
+const MAX_BATCH_TOKENS: usize = 8192;
 /// Prompt prepended to queries (config_sentence_transformers.json "query").
 pub const QUERY_PREFIX: &str =
     "Instruct: Given a question, retrieve passages that answer the question\nQuery: ";
@@ -136,25 +138,40 @@ impl Embedder for UltraEmbedder {
         }
         let mut order: Vec<usize> = (0..encoded.len()).collect();
         order.sort_by_key(|&i| std::cmp::Reverse(encoded[i].len()));
-        let max_len = order.iter().map(|&i| encoded[i].len()).max().unwrap_or(0);
-        let mut ids = vec![0u32; order.len() * max_len];
-        let mut lengths = Vec::with_capacity(order.len());
-        for (row, &index) in order.iter().enumerate() {
-            let row_ids = encoded[index].get_ids();
-            lengths.push(row_ids.len());
-            ids[row * max_len..row * max_len + row_ids.len()].copy_from_slice(row_ids);
-        }
-        let ids = Tensor::from_vec(ids, (order.len(), max_len), &Device::Cpu)?;
-        let hidden = self.model.forward(&ids, &lengths)?;
-        let pooled = hidden.narrow(1, 0, 1)?.squeeze(1)?;
-        let norms = pooled.sqr()?.sum_keepdim(1)?.sqrt()?;
-        let result = pooled
-            .broadcast_div(&norms)?
-            .to_dtype(DType::F32)?
-            .to_vec2::<f32>()?;
+        // Group texts of similar length: padding a short text up to the longest
+        // text of the whole call wastes most of the compute when lengths vary.
         let mut output = vec![Vec::new(); texts.len()];
-        for (row, &index) in order.iter().enumerate() {
-            output[index] = result[row].clone();
+        let mut start = 0;
+        while start < order.len() {
+            let max_len = encoded[order[start]].len();
+            let mut end = start + 1;
+            while end < order.len() {
+                let len = encoded[order[end]].len();
+                if len * 2 < max_len || (end - start + 1) * max_len > MAX_BATCH_TOKENS {
+                    break;
+                }
+                end += 1;
+            }
+            let chunk = &order[start..end];
+            let mut ids = vec![0u32; chunk.len() * max_len];
+            let mut lengths = Vec::with_capacity(chunk.len());
+            for (row, &index) in chunk.iter().enumerate() {
+                let row_ids = encoded[index].get_ids();
+                lengths.push(row_ids.len());
+                ids[row * max_len..row * max_len + row_ids.len()].copy_from_slice(row_ids);
+            }
+            let ids = Tensor::from_vec(ids, (chunk.len(), max_len), &Device::Cpu)?;
+            let hidden = self.model.forward(&ids, &lengths)?;
+            let pooled = hidden.narrow(1, 0, 1)?.squeeze(1)?;
+            let norms = pooled.sqr()?.sum_keepdim(1)?.sqrt()?;
+            let result = pooled
+                .broadcast_div(&norms)?
+                .to_dtype(DType::F32)?
+                .to_vec2::<f32>()?;
+            for (row, &index) in chunk.iter().enumerate() {
+                output[index] = result[row].clone();
+            }
+            start = end;
         }
         Ok(output)
     }
