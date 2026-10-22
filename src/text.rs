@@ -158,6 +158,15 @@ pub fn singularize(w: &str) -> String {
         return format!("{stem}lf");
     }
     if let Some(stem) = w.strip_suffix("es") {
+        // buses/viruses -> bus/virus, but houses/causes -> house/cause.
+        let c: Vec<char> = stem.chars().collect();
+        if stem.ends_with("us") && c.len() >= 3 && !is_vowel(c[c.len() - 3]) {
+            return stem.to_string();
+        }
+        // heroes/potatoes -> hero/potato, but shoes/toes keep their e.
+        if stem.ends_with('o') && !["sho", "to", "cano", "obo", "do", "go", "flo"].contains(&stem) {
+            return stem.to_string();
+        }
         if ["ss", "sh", "ch", "x", "z"]
             .iter()
             .any(|ending| stem.ends_with(ending))
@@ -513,10 +522,22 @@ pub fn norm_predicate(p: &str) -> String {
         "currently",
         "now",
     ];
-    tokens(p)
+    let words: Vec<String> = tokens(p)
         .into_iter()
-        .filter(|word| !AUXILIARIES.contains(&word.as_str()))
-        .map(|word| lemma_verb(&word))
+        .filter(|w| !matches!(w.as_str(), "a" | "an" | "the"))
+        .collect();
+    let content: Vec<&String> = words
+        .iter()
+        .filter(|w| !AUXILIARIES.contains(&w.as_str()))
+        .collect();
+    // "has a" / "is" carry meaning only through the auxiliary itself.
+    let kept = if content.is_empty() {
+        words.iter().collect()
+    } else {
+        content
+    };
+    kept.iter()
+        .map(|w| lemma_verb(w))
         .collect::<Vec<_>>()
         .join(" ")
 }
@@ -526,8 +547,40 @@ fn lemma_verb(w: &str) -> String {
     if w == "married" {
         return w.to_string();
     }
+    const IRREGULAR: [(&str, &str); 24] = [
+        ("is", "be"),
+        ("are", "be"),
+        ("was", "be"),
+        ("were", "be"),
+        ("been", "be"),
+        ("being", "be"),
+        ("has", "have"),
+        ("had", "have"),
+        ("does", "do"),
+        ("did", "do"),
+        ("done", "do"),
+        ("went", "go"),
+        ("gone", "go"),
+        ("made", "make"),
+        ("got", "get"),
+        ("took", "take"),
+        ("knew", "know"),
+        ("met", "meet"),
+        ("bought", "buy"),
+        ("left", "leave"),
+        ("built", "build"),
+        ("ran", "run"),
+        ("wrote", "write"),
+        ("taught", "teach"),
+    ];
+    if let Some((_, base)) = IRREGULAR.iter().find(|(f, _)| *f == w) {
+        return base.to_string();
+    }
     if w.chars().count() <= 3 {
         return w.to_string();
+    }
+    if let Some(stem) = w.strip_suffix("ied") {
+        return format!("{stem}y");
     }
     if let Some(stem) = w.strip_suffix("ing") {
         return restore_stem(stem);
@@ -807,5 +860,34 @@ mod tests {
             .all(|c| c.is_ascii_digit() || ('a'..='f').contains(&c)));
         assert_eq!(h, content_hash("fact", "hello world"));
         assert_ne!(h, content_hash("event", "hello world"));
+    }
+}
+
+#[cfg(test)]
+mod regression_tests {
+    use super::*;
+
+    #[test]
+    fn singular_and_predicate_edge_cases() {
+        for (p, s) in [
+            ("buses", "bus"),
+            ("viruses", "virus"),
+            ("houses", "house"),
+            ("causes", "cause"),
+            ("heroes", "hero"),
+            ("shoes", "shoe"),
+        ] {
+            assert_eq!(singularize(p), s, "{p}");
+        }
+        for (p, k) in [
+            ("studied", "study"),
+            ("has a", "have"),
+            ("is the manager of", "manager of"),
+            ("is", "be"),
+            ("met", "meet"),
+            ("lives in", "live in"),
+        ] {
+            assert_eq!(norm_predicate(p), k, "{p}");
+        }
     }
 }
