@@ -7,7 +7,7 @@ use neocortex::embed::{Embedder, HashEmbedder};
 use neocortex::engine::{Engine, EntityIn, RecallInput, RelationIn, RememberInput};
 use neocortex::mcp::LazyEmbedder;
 use neocortex::render;
-use neocortex::{import, mcp, Error};
+use neocortex::{bench, export, import, mcp, Error};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -87,6 +87,9 @@ fn dispatch(args: &[String]) -> CmdResult {
         "validate" => cmd_validate(&globals),
         "cypher" => cmd_cypher(&globals, rest),
         "import-remem" => cmd_import(&globals, rest),
+        "export" => cmd_export(&globals, rest),
+        "import" => cmd_import_jsonl(&globals, rest),
+        "bench" => cmd_bench(&globals, rest),
         "eval" => cmd_eval(&globals, rest),
         "mcp" => {
             let engine = open_engine(&globals)?;
@@ -166,11 +169,14 @@ fn db_path(globals: &Globals) -> std::result::Result<PathBuf, Fail> {
 
 fn open_engine(globals: &Globals) -> std::result::Result<Engine, Fail> {
     let path = db_path(globals)?;
-    let embedder: Arc<dyn Embedder> = match std::env::var("NEOCORTEX_EMBEDDER").as_deref() {
+    Engine::open(&path, make_embedder()).map_err(runtime)
+}
+
+fn make_embedder() -> Arc<dyn Embedder> {
+    match std::env::var("NEOCORTEX_EMBEDDER").as_deref() {
         Ok("hash") => Arc::new(HashEmbedder),
         _ => Arc::new(LazyEmbedder::new()),
-    };
-    Engine::open(&path, embedder).map_err(runtime)
+    }
 }
 
 fn emit<T: Serialize>(globals: &Globals, out: &T, text: impl FnOnce() -> String) -> CmdResult {
@@ -465,6 +471,96 @@ fn cmd_import(globals: &Globals, args: &[String]) -> CmdResult {
     Ok(())
 }
 
+fn cmd_export(globals: &Globals, args: &[String]) -> CmdResult {
+    let mut out: Option<String> = None;
+    let mut include_forgotten = false;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--out" => out = Some(value(args, &mut i, "--out")?),
+            "--include-forgotten" => include_forgotten = true,
+            other => return Err(usage(format!("unknown option {other}"))),
+        }
+        i += 1;
+    }
+    let engine = open_engine(globals)?;
+    let count = export::export(&engine, out.as_deref().map(Path::new), include_forgotten)
+        .map_err(runtime)?;
+    match out {
+        Some(path) => println!("exported {count} memories to {path}"),
+        // stdout carries the JSON Lines, so the status goes to stderr.
+        None => eprintln!("exported {count} memories"),
+    }
+    Ok(())
+}
+
+fn cmd_import_jsonl(globals: &Globals, args: &[String]) -> CmdResult {
+    let path = args
+        .iter()
+        .find(|a| !a.starts_with('-'))
+        .ok_or_else(|| usage("import needs a JSON Lines file (see `neocortex export`)"))?;
+    let engine = open_engine(globals)?;
+    let report = export::import(&engine, Path::new(path)).map_err(runtime)?;
+    if globals.json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&report).map_err(|e| Fail::Run(e.to_string()))?
+        );
+    } else {
+        println!(
+            "imported {} memories ({} superseded, {} forgotten)",
+            report.imported, report.superseded, report.forgotten
+        );
+    }
+    Ok(())
+}
+
+fn cmd_bench(globals: &Globals, args: &[String]) -> CmdResult {
+    let mut opts = bench::Options::default();
+    let mut db: Option<PathBuf> = None;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--n" => opts.memories = number(args, &mut i, "--n")?,
+            "--queries" => opts.queries = number(args, &mut i, "--queries")?,
+            "--db" => db = Some(PathBuf::from(value(args, &mut i, "--db")?)),
+            other => return Err(usage(format!("unknown option {other}"))),
+        }
+        i += 1;
+    }
+    let (path, temporary) = match db.or_else(|| globals.db.clone().map(PathBuf::from)) {
+        Some(path) => (path, false),
+        None => {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0);
+            let path = std::env::temp_dir()
+                .join(format!("neocortex-bench-{}-{nanos}.db", std::process::id()));
+            (path, true)
+        }
+    };
+    eprintln!(
+        "bench: {} memories, {} queries, db {}",
+        opts.memories,
+        opts.queries,
+        path.display()
+    );
+    let result = bench::run(&path, make_embedder(), opts);
+    if temporary {
+        remove_db_files(&path);
+    }
+    let report = result.map_err(runtime)?;
+    emit(globals, &report, || report.render())
+}
+
+fn remove_db_files(path: &Path) {
+    let _ = std::fs::remove_file(path);
+    for suffix in ["-wal", "-shm"] {
+        let _ = std::fs::remove_file(format!("{}{suffix}", path.display()));
+    }
+}
+
 fn cmd_eval(globals: &Globals, args: &[String]) -> CmdResult {
     let path = args
         .first()
@@ -596,6 +692,10 @@ Commands:
   validate                 report integrity problems (exit 1 if any)
   cypher <query>           run read-only Cypher
   import-remem <path>      import a ReMem v3 SQLite file
+  export [--out FILE]      write memories as JSON Lines (--include-forgotten)
+  import <file.jsonl>      replay a JSON Lines export through remember
+  bench                    synthetic remember/recall latency report
+                           (--n 10000 --queries 200 --db PATH)
   eval <fixtures.json>     evaluate retrieval quality (--ablation --failures
                            --set key=value --sweep key=v1,v2)
   mcp                      run the MCP stdio server

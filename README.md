@@ -82,6 +82,9 @@ entities: [e1] Mom (person; aka mother) · [e2] Pune (place)
 | `validate` | report integrity problems (exit 1 when any) |
 | `cypher <query>` | read-only Cypher over the graph projection |
 | `import-remem <path>` | one-shot import of a ReMem v3 database |
+| `export [--out FILE]` | write memories as JSON Lines (`--include-forgotten`) |
+| `import <file.jsonl>` | replay a JSON Lines export through `remember` |
+| `bench` | synthetic remember/recall latency report |
 | `mcp` | run the MCP stdio server |
 
 `remember` flags: `--kind --tags --importance --scope --source --session --when
@@ -91,6 +94,31 @@ entities: [e1] Mom (person; aka mother) · [e2] Pune (place)
 --until --as-of --history --entities --keywords`.
 
 Exit codes: `0` ok, `1` runtime error, `2` usage error.
+
+### Export, import and benchmarks
+
+`neocortex export [--out FILE] [--include-forgotten]` writes one JSON object per
+memory, in id order, to `FILE` or stdout. Each line is a `RememberInput` plus
+`id` and `expired`, so a single line can be replayed with `neocortex remember -`.
+A line carries the memory's entities (name, type, description, aliases), the
+relations it is evidence for (canonical predicate, fact, validity, exclusive
+flag), validity times as ISO-8601 UTC, and `supersedes` (the ids it replaced).
+Superseded rows are exported too, marked `"expired": true`, so the history
+survives; forgotten rows are left out unless `--include-forgotten` is given.
+
+`neocortex import FILE.jsonl` replays a file through `remember` in file order
+and translates `m<id>` references in `supersedes` to the ids the new database
+assigns, then retires the rows that were forgotten. Use it to restore a backup
+or to move a database to another embedding model: export with the old model,
+import with the new one (a database records the embedder that built it).
+
+`neocortex bench [--n 10000] [--queries 200] [--db PATH]` generates a
+deterministic synthetic corpus (xorshift seed, ~300 fictional people, places,
+projects and tools, 20% with structured entities and relations, dates spread
+over three years) and reports remember and recall p50/p95, remember throughput,
+database size and peak RSS. It needs an empty database: without `--db` it uses
+a temporary file and deletes it afterwards. `NEOCORTEX_EMBEDDER=hash` runs the
+whole benchmark without the model.
 
 ## MCP registration
 

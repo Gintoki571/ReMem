@@ -1,10 +1,12 @@
 //! neocortex: long-term memory for AI agents.
 
+pub mod bench;
 pub mod db;
 pub mod embed;
 pub mod engine;
 pub mod error;
 pub mod eval;
+pub mod export;
 pub mod extract;
 pub mod graph;
 pub mod import;
