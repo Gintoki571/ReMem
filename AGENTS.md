@@ -115,6 +115,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - `src/extract.rs` - heuristic entity candidates, n-grams for alias lookup.
 - `src/graph.rs` - CSR + ACL push personalized PageRank. `src/rank.rs` - RRF, MMR, cosine, packing.
 - `src/remember.rs`, `src/resolve.rs`, `src/kg.rs` - write pipeline, entity/predicate resolution, and rebuildable graph projection.
+- `src/recall.rs` - ranked multi-channel memory, fact, and entity retrieval; `src/eval.rs` - fixture-based retrieval evaluation and ablations.
 - `tests/fixtures/ultrabert_fixture.json` - authoritative embedding reference (sentence-transformers 6.2.0, fp32).
 - `src/engine.rs` - public API (Engine, input/output types = MCP tool schema), Config tunables.
 - `src/mcp.rs` - MCP stdio server (JSON-RPC 2.0, 8 tools, LazyEmbedder). `src/render.rs` - compact text output. `src/main.rs` - CLI. `src/import.rs` - one-shot ReMem v3 import.

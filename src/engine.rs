@@ -9,6 +9,9 @@ use crate::temporal::Clock;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::Mutex;
+
+pub type SnapshotCache = Mutex<Option<(i64, Option<i64>, bool, Arc<crate::kg::Snapshot>)>>;
 
 pub const KINDS: &[&str] = &[
     "fact",
@@ -75,6 +78,7 @@ pub struct Engine {
     pub cfg: Config,
     /// Fixed "now" for tests/eval; None = system clock.
     pub fixed_clock: Option<Clock>,
+    pub snapshot_cache: SnapshotCache,
 }
 
 impl Engine {
@@ -84,6 +88,7 @@ impl Engine {
             emb,
             cfg: Config::default(),
             fixed_clock: None,
+            snapshot_cache: Mutex::new(None),
         })
     }
 
@@ -93,6 +98,7 @@ impl Engine {
             emb,
             cfg: Config::default(),
             fixed_clock: None,
+            snapshot_cache: Mutex::new(None),
         })
     }
 
@@ -369,13 +375,13 @@ impl Engine {
     }
 
     /// Retrieve (design §8).
-    pub fn recall(&self, _inp: &RecallInput) -> Result<RecallOutput> {
-        todo!("phase 2: read lane")
+    pub fn recall(&self, inp: &RecallInput) -> Result<RecallOutput> {
+        crate::recall::recall(self, inp)
     }
 
     /// Profile + timeline of one entity, by name, alias or e<id>.
-    pub fn entity(&self, _name_or_id: &str, _limit: usize) -> Result<EntityOutput> {
-        todo!("phase 2: read lane")
+    pub fn entity(&self, name_or_id: &str, limit: usize) -> Result<EntityOutput> {
+        crate::recall::entity(self, name_or_id, limit)
     }
 
     /// End validity of a memory (m<id>) or relation (r<id>) at `at` (default now).
@@ -609,8 +615,8 @@ impl Engine {
     }
 
     /// Communities of the entity graph, ranked by relevance to `query` (or size).
-    pub fn overview(&self, _query: Option<&str>, _k: usize) -> Result<OverviewOutput> {
-        todo!("phase 2: read lane")
+    pub fn overview(&self, query: Option<&str>, k: usize) -> Result<OverviewOutput> {
+        crate::recall::overview(self, query, k)
     }
 
     pub fn stats(&self) -> Result<Stats> {

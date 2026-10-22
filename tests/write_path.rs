@@ -1204,6 +1204,7 @@ fn embedder_identity_rejects_a_different_name() {
         emb: Arc::new(Other),
         cfg: Default::default(),
         fixed_clock: Some(clock()),
+        snapshot_cache: std::sync::Mutex::new(None),
     };
     assert!(other
         .remember(RememberInput {

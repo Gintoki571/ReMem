@@ -93,7 +93,6 @@ fn memory_cmd(db: &Path, args: &[&str]) -> Output {
 }
 
 #[test]
-#[ignore = "needs phase-2 engine"]
 fn remember_then_recall_from_the_cli() {
     let db = temp_db();
     let o = memory_cmd(
