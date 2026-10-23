@@ -1,0 +1,2897 @@
+[
+ {
+  "entities": [
+   {
+    "name": "Dr. Patel",
+    "type": "person"
+   },
+   {
+    "name": "Pune",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Dr. Patel",
+    "predicate": "lives in",
+    "target": "Pune",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Alicia",
+    "type": "person"
+   },
+   {
+    "name": "Jaipur",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Alicia",
+    "predicate": "lives in",
+    "target": "Jaipur",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Maria",
+    "type": "person"
+   },
+   {
+    "name": "Atlas project",
+    "type": "project"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Maria",
+    "predicate": "manages",
+    "target": "Atlas project",
+    "negated": false
+   },
+   {
+    "source": "Maria",
+    "predicate": "maintains",
+    "target": "Atlas project",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Neovim",
+    "type": "place"
+   },
+   {
+    "name": "dark mode",
+    "type": "software"
+   }
+  ],
+  "relations": [
+   {
+    "source": "I",
+    "predicate": "owns",
+    "target": "dark mode",
+    "negated": false
+   },
+   {
+    "source": "I",
+    "predicate": "prefers",
+    "target": "dark mode",
+    "negated": false
+   },
+   {
+    "source": "I",
+    "predicate": "likes",
+    "target": "dark mode",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "user",
+    "type": "person"
+   },
+   {
+    "name": "Acme Corp",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "user",
+    "predicate": "works at",
+    "target": "Acme Corp.",
+    "negated": false
+   },
+   {
+    "source": "user",
+    "predicate": "works for",
+    "target": "Acme Corp.",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Ivan",
+    "type": "person"
+   },
+   {
+    "name": "Acme",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Ivan",
+    "predicate": "works at",
+    "target": "Acme",
+    "negated": false
+   },
+   {
+    "source": "Ivan",
+    "predicate": "works for",
+    "target": "Acme",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Carol",
+    "type": "person"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Dan",
+    "type": "person"
+   },
+   {
+    "name": "2024",
+    "type": "place"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Eve",
+    "type": "person"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "standup",
+    "type": "project"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Nia",
+    "type": "person"
+   },
+   {
+    "name": "January 2019",
+    "type": "place"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Madrid",
+    "type": "place"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "API",
+    "type": "project"
+   },
+   {
+    "name": "Rust 1.82",
+    "type": "software"
+   },
+   {
+    "name": "SQLite",
+    "type": "software"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Dr. Singh",
+    "type": "person"
+   },
+   {
+    "name": "London",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Ravi",
+    "predicate": "reports to",
+    "target": "Dr. Singh",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Mina",
+    "type": "person"
+   },
+   {
+    "name": "Bright Labs",
+    "type": "organization"
+   },
+   {
+    "name": "CTO",
+    "type": "project"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Mina",
+    "predicate": "joined",
+    "target": "Bright Labs",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Sam",
+    "type": "person"
+   },
+   {
+    "name": "Project Orion",
+    "type": "project"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Sam",
+    "predicate": "works at",
+    "target": "Project Orion",
+    "negated": false
+   },
+   {
+    "source": "Sam",
+    "predicate": "works for",
+    "target": "Project Orion",
+    "negated": false
+   },
+   {
+    "source": "Sam",
+    "predicate": "manages",
+    "target": "Project Orion",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Leah",
+    "type": "person"
+   },
+   {
+    "name": "coffee",
+    "type": "food"
+   },
+   {
+    "name": "tea over coffee",
+    "type": "preference"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Leah",
+    "predicate": "prefers",
+    "target": "tea over coffee",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Noah",
+    "type": "person"
+   },
+   {
+    "name": "Model X",
+    "type": "product"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Noah",
+    "predicate": "owns",
+    "target": "Model X",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Yuki",
+    "type": "person"
+   },
+   {
+    "name": "Osaka",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Yuki",
+    "predicate": "lives in",
+    "target": "Osaka",
+    "negated": false
+   },
+   {
+    "source": "Yuki",
+    "predicate": "moved to",
+    "target": "Osaka",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Redis 7.2 migration",
+    "type": "project"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Priya",
+    "type": "person"
+   },
+   {
+    "name": "Data Forge",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Priya",
+    "predicate": "works at",
+    "target": "Data Forge",
+    "negated": false
+   },
+   {
+    "source": "Priya",
+    "predicate": "works for",
+    "target": "Data Forge",
+    "negated": false
+   },
+   {
+    "source": "Priya",
+    "predicate": "teaches at",
+    "target": "Data Forge",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Jamal",
+    "type": "person"
+   },
+   {
+    "name": "jazz",
+    "type": "place"
+   },
+   {
+    "name": "does not like jazz",
+    "type": "preference"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Jamal",
+    "predicate": "prefers",
+    "target": "jazz",
+    "negated": false
+   },
+   {
+    "source": "Jamal",
+    "predicate": "likes",
+    "target": "jazz",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Sofia",
+    "type": "person"
+   },
+   {
+    "name": "Lisboa",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Sofia",
+    "predicate": "lives in",
+    "target": "Lisboa",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Alex",
+    "type": "person"
+   },
+   {
+    "name": "Austin",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Alex",
+    "predicate": "lives in",
+    "target": "Austin",
+    "negated": false
+   },
+   {
+    "source": "Alex",
+    "predicate": "moved to",
+    "target": "Austin",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Bea",
+    "type": "person"
+   },
+   {
+    "name": "Helsinki",
+    "type": "place"
+   },
+   {
+    "name": "Helsinki Systems",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Bea",
+    "predicate": "works at",
+    "target": "Helsinki Systems",
+    "negated": false
+   },
+   {
+    "source": "Bea",
+    "predicate": "works for",
+    "target": "Helsinki Systems",
+    "negated": false
+   },
+   {
+    "source": "Bea",
+    "predicate": "teaches at",
+    "target": "Helsinki Systems",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Chen",
+    "type": "person"
+   },
+   {
+    "name": "Fatima",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Chen",
+    "predicate": "reports to",
+    "target": "Fatima",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Dina",
+    "type": "person"
+   },
+   {
+    "name": "PostgreSQL",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Dina",
+    "predicate": "uses",
+    "target": "PostgreSQL 16",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Eli",
+    "type": "person"
+   },
+   {
+    "name": "tea",
+    "type": "food"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Fatima",
+    "type": "person"
+   },
+   {
+    "name": "Lima Labs",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Fatima",
+    "predicate": "works at",
+    "target": "Lima Labs",
+    "negated": false
+   },
+   {
+    "source": "Fatima",
+    "predicate": "works for",
+    "target": "Lima Labs",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Gus",
+    "type": "person"
+   },
+   {
+    "name": "Seoul",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Gus",
+    "predicate": "lives in",
+    "target": "Seoul",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Hana",
+    "type": "person"
+   },
+   {
+    "name": "Berlin",
+    "type": "place"
+   },
+   {
+    "name": "Berlin Systems",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Hana",
+    "predicate": "works at",
+    "target": "Berlin Systems",
+    "negated": false
+   },
+   {
+    "source": "Hana",
+    "predicate": "works for",
+    "target": "Berlin Systems",
+    "negated": false
+   },
+   {
+    "source": "Hana",
+    "predicate": "teaches at",
+    "target": "Berlin Systems",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Luis",
+    "type": "person"
+   },
+   {
+    "name": "Iris",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Iris",
+    "predicate": "reports to",
+    "target": "Luis",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Jon",
+    "type": "person"
+   },
+   {
+    "name": "PostgreSQL",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Jon",
+    "predicate": "uses",
+    "target": "PostgreSQL 16",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Kira",
+    "type": "person"
+   },
+   {
+    "name": "tea",
+    "type": "food"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Kira",
+    "predicate": "owns",
+    "target": "tea",
+    "negated": false
+   },
+   {
+    "source": "Kira",
+    "predicate": "prefers",
+    "target": "tea",
+    "negated": false
+   },
+   {
+    "source": "Kira",
+    "predicate": "likes",
+    "target": "tea",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Luis",
+    "type": "person"
+   },
+   {
+    "name": "Florence",
+    "type": "place"
+   },
+   {
+    "name": "Florence Labs",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Luis",
+    "predicate": "works at",
+    "target": "Florence Labs",
+    "negated": false
+   },
+   {
+    "source": "Luis",
+    "predicate": "works for",
+    "target": "Florence Labs",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Maya",
+    "type": "person"
+   },
+   {
+    "name": "Mumbai",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Maya",
+    "predicate": "lives in",
+    "target": "Mumbai",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Nora",
+    "type": "person"
+   },
+   {
+    "name": "Taipei Systems",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Nora",
+    "predicate": "works at",
+    "target": "Taipei Systems",
+    "negated": false
+   },
+   {
+    "source": "Nora",
+    "predicate": "works for",
+    "target": "Taipei Systems",
+    "negated": false
+   },
+   {
+    "source": "Nora",
+    "predicate": "teaches at",
+    "target": "Taipei Systems",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Omar",
+    "type": "person"
+   },
+   {
+    "name": "Rosa",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Omar",
+    "predicate": "reports to",
+    "target": "Rosa",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Pia",
+    "type": "person"
+   },
+   {
+    "name": "PostgreSQL",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Pia",
+    "predicate": "uses",
+    "target": "PostgreSQL 16",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Quinn",
+    "type": "person"
+   },
+   {
+    "name": "tea",
+    "type": "food"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Quinn",
+    "predicate": "owns",
+    "target": "tea",
+    "negated": false
+   },
+   {
+    "source": "Quinn",
+    "predicate": "prefers",
+    "target": "tea",
+    "negated": false
+   },
+   {
+    "source": "Quinn",
+    "predicate": "likes",
+    "target": "tea",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Rosa",
+    "type": "person"
+   },
+   {
+    "name": "Xian Labs",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Rosa",
+    "predicate": "works at",
+    "target": "Xian Labs",
+    "negated": false
+   },
+   {
+    "source": "Rosa",
+    "predicate": "works for",
+    "target": "Xian Labs",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Seth",
+    "type": "person"
+   },
+   {
+    "name": "Geneva",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Seth",
+    "predicate": "lives in",
+    "target": "Geneva",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Tara",
+    "type": "person"
+   },
+   {
+    "name": "Nairobi Systems",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Tara",
+    "predicate": "works at",
+    "target": "Nairobi Systems",
+    "negated": false
+   },
+   {
+    "source": "Tara",
+    "predicate": "works for",
+    "target": "Nairobi Systems",
+    "negated": false
+   },
+   {
+    "source": "Tara",
+    "predicate": "teaches at",
+    "target": "Nairobi Systems",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Uma",
+    "type": "person"
+   },
+   {
+    "name": "Xena",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Uma",
+    "predicate": "reports to",
+    "target": "Xena",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Vik",
+    "type": "person"
+   },
+   {
+    "name": "PostgreSQL",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Vik",
+    "predicate": "uses",
+    "target": "PostgreSQL",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Wes",
+    "type": "person"
+   },
+   {
+    "name": "tea",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Wes",
+    "predicate": "owns",
+    "target": "tea",
+    "negated": false
+   },
+   {
+    "source": "Wes",
+    "predicate": "prefers",
+    "target": "tea",
+    "negated": false
+   },
+   {
+    "source": "Wes",
+    "predicate": "likes",
+    "target": "tea",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Xena",
+    "type": "person"
+   },
+   {
+    "name": "Rome",
+    "type": "place"
+   },
+   {
+    "name": "Rome Labs",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Xena",
+    "predicate": "works at",
+    "target": "Rome Labs",
+    "negated": false
+   },
+   {
+    "source": "Xena",
+    "predicate": "works for",
+    "target": "Rome Labs",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "She",
+    "type": "person"
+   },
+   {
+    "name": "Lyon",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "She",
+    "predicate": "moved to",
+    "target": "Lyon",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Kestrel Bio",
+    "type": "organization"
+   },
+   {
+    "name": "data engineer",
+    "type": "project"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Jonas Weber",
+    "type": "person"
+   },
+   {
+    "name": "Team lead",
+    "type": "team"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Tomas",
+    "type": "person"
+   },
+   {
+    "name": "Brightwater",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Tomas",
+    "predicate": "lives in",
+    "target": "Brightwater",
+    "negated": false
+   },
+   {
+    "source": "Tomas",
+    "predicate": "works at",
+    "target": "Brightwater",
+    "negated": false
+   },
+   {
+    "source": "Tomas",
+    "predicate": "moved to",
+    "target": "Brightwater",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Priya",
+    "type": "person"
+   },
+   {
+    "name": "Nimbus Analytics",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Priya",
+    "predicate": "works at",
+    "target": "Nimbus Analytics",
+    "negated": false
+   },
+   {
+    "source": "Priya",
+    "predicate": "joined",
+    "target": "Nimbus Analytics",
+    "negated": false
+   },
+   {
+    "source": "Priya",
+    "predicate": "teaches at",
+    "target": "Nimbus Analytics",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Lena",
+    "type": "person"
+   },
+   {
+    "name": "Orion",
+    "type": "organization"
+   },
+   {
+    "name": "Orion roadmap",
+    "type": "project"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Lena",
+    "predicate": "works at",
+    "target": "Orion roadmap",
+    "negated": false
+   },
+   {
+    "source": "Lena",
+    "predicate": "works for",
+    "target": "Orion roadmap",
+    "negated": false
+   },
+   {
+    "source": "Lena",
+    "predicate": "teaches at",
+    "target": "Orion roadmap",
+    "negated": false
+   },
+   {
+    "source": "Lena",
+    "predicate": "reviews",
+    "target": "Orion roadmap",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Project Atlas",
+    "type": "project"
+   },
+   {
+    "name": "14 engineers",
+    "type": "team"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Node 20.11",
+    "type": "project"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Lukas wohnt",
+    "type": "person"
+   },
+   {
+    "name": "Berlin",
+    "type": "place"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Camille",
+    "type": "person"
+   },
+   {
+    "name": "Vertex Labs",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Camille",
+    "predicate": "works at",
+    "target": "Vertex Labs",
+    "negated": false
+   },
+   {
+    "source": "Camille",
+    "predicate": "works for",
+    "target": "Vertex Labs",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Hiroshi",
+    "type": "person"
+   },
+   {
+    "name": "Osaka",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Hiroshi",
+    "predicate": "lives in",
+    "target": "Osaka",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Marta",
+    "type": "person"
+   },
+   {
+    "name": "Sigma",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Marta",
+    "predicate": "works at",
+    "target": "Sigma",
+    "negated": false
+   },
+   {
+    "source": "Marta",
+    "predicate": "works for",
+    "target": "Sigma",
+    "negated": false
+   },
+   {
+    "source": "Marta",
+    "predicate": "teaches at",
+    "target": "Sigma",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Friday",
+    "type": "place"
+   },
+   {
+    "name": "deploy freeze",
+    "type": "project"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Alex Kim",
+    "type": "person"
+   },
+   {
+    "name": "Orbit Robotics",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Alex Kim",
+    "predicate": "joined",
+    "target": "Orbit Robotics",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Alex Kim",
+    "type": "person"
+   },
+   {
+    "name": "Toronto",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Alex Kim",
+    "predicate": "lives in",
+    "target": "Toronto",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Alex Ramirez",
+    "type": "person"
+   },
+   {
+    "name": "Madrid",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Alex Ramirez",
+    "predicate": "lives in",
+    "target": "Madrid",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Dana Okafor",
+    "type": "person"
+   },
+   {
+    "name": "billing service",
+    "type": "project"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Dana Okafor",
+    "predicate": "owns",
+    "target": "billing service",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Sarah Chen",
+    "type": "person"
+   },
+   {
+    "name": "Tom Lee",
+    "type": "person"
+   },
+   {
+    "name": "Acme Corp",
+    "type": "organization"
+   },
+   {
+    "name": "CTO",
+    "type": "project"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Sarah Chen",
+    "predicate": "reports to",
+    "target": "Tom Lee",
+    "negated": false
+   },
+   {
+    "source": "Sarah Chen",
+    "predicate": "joined",
+    "target": "Acme Corp",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Tom Lee",
+    "type": "person"
+   },
+   {
+    "name": "Austin",
+    "type": "place"
+   },
+   {
+    "name": "platform team",
+    "type": "project"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Tom Lee",
+    "predicate": "lives in",
+    "target": "Austin",
+    "negated": false
+   },
+   {
+    "source": "Tom Lee",
+    "predicate": "manages",
+    "target": "platform team",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Ana",
+    "type": "person"
+   },
+   {
+    "name": "Python",
+    "type": "software"
+   },
+   {
+    "name": "scripts",
+    "type": "product"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Ana",
+    "predicate": "prefers",
+    "target": "Python",
+    "negated": false
+   },
+   {
+    "source": "Ana",
+    "predicate": "likes",
+    "target": "Python",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Ben",
+    "type": "person"
+   },
+   {
+    "name": "cilantro",
+    "type": "food"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Ben",
+    "predicate": "prefers",
+    "target": "cilantro",
+    "negated": false
+   },
+   {
+    "source": "Ben",
+    "predicate": "likes",
+    "target": "cilantro",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Chloe",
+    "type": "person"
+   },
+   {
+    "name": "Vance Capital",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Chloe",
+    "predicate": "works at",
+    "target": "Vance Capital",
+    "negated": false
+   },
+   {
+    "source": "Chloe",
+    "predicate": "works for",
+    "target": "Vance Capital",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Diego",
+    "type": "person"
+   },
+   {
+    "name": "Priya Nair",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Diego",
+    "predicate": "reports to",
+    "target": "Priya Nair",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Ellen",
+    "type": "person"
+   },
+   {
+    "name": "Denver",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Ellen",
+    "predicate": "lives in",
+    "target": "Denver",
+    "negated": false
+   },
+   {
+    "source": "Ellen",
+    "predicate": "moved to",
+    "target": "Denver",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Felix",
+    "type": "person"
+   },
+   {
+    "name": "Quill Studio",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Felix",
+    "predicate": "works at",
+    "target": "Quill Studio",
+    "negated": false
+   },
+   {
+    "source": "Felix",
+    "predicate": "works for",
+    "target": "Quill Studio",
+    "negated": false
+   },
+   {
+    "source": "Felix",
+    "predicate": "teaches at",
+    "target": "Quill Studio",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Grace",
+    "type": "person"
+   },
+   {
+    "name": "Portland",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Grace",
+    "predicate": "lives in",
+    "target": "Portland",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Redis 7.2",
+    "type": "software"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "GitHub",
+    "type": "organization"
+   },
+   {
+    "name": "CI",
+    "type": "project"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Ravi",
+    "type": "person"
+   },
+   {
+    "name": "parser repo",
+    "type": "project"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "port 5433",
+    "type": "place"
+   },
+   {
+    "name": "staging database",
+    "type": "project"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Mateo",
+    "type": "person"
+   },
+   {
+    "name": "Lima",
+    "type": "place"
+   },
+   {
+    "name": "Quito",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Mateo",
+    "predicate": "moved to",
+    "target": "Lima",
+    "negated": false
+   },
+   {
+    "source": "Mateo",
+    "predicate": "moved to",
+    "target": "Quito",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Sakura",
+    "type": "person"
+   },
+   {
+    "name": "Kyoto Bank",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Sakura",
+    "predicate": "works at",
+    "target": "Kyoto Bank",
+    "negated": false
+   },
+   {
+    "source": "Sakura",
+    "predicate": "joined",
+    "target": "Kyoto Bank",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Ruth",
+    "type": "person"
+   },
+   {
+    "name": "flights",
+    "type": "place"
+   },
+   {
+    "name": "window seats on flights",
+    "type": "preference"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Ruth",
+    "predicate": "prefers",
+    "target": "window seats on flights",
+    "negated": false
+   },
+   {
+    "source": "Ruth",
+    "predicate": "likes",
+    "target": "window seats on flights",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Gareth",
+    "type": "person"
+   },
+   {
+    "name": "York",
+    "type": "place"
+   },
+   {
+    "name": "Leeds",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Gareth",
+    "predicate": "lives in",
+    "target": "Leeds",
+    "negated": false
+   },
+   {
+    "source": "Gareth",
+    "predicate": "lives in",
+    "target": "York",
+    "negated": false
+   },
+   {
+    "source": "Gareth",
+    "predicate": "moved to",
+    "target": "York",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Q3 OKR",
+    "type": "project"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Nikolai",
+    "type": "person"
+   },
+   {
+    "name": "Helix Energy",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Nikolai",
+    "predicate": "works at",
+    "target": "Helix Energy",
+    "negated": false
+   },
+   {
+    "source": "Nikolai",
+    "predicate": "works for",
+    "target": "Helix Energy",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Ingrid",
+    "type": "person"
+   },
+   {
+    "name": "Tesla Model 3",
+    "type": "product"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Ingrid",
+    "predicate": "owns",
+    "target": "Tesla Model 3",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Kenji",
+    "type": "person"
+   },
+   {
+    "name": "Ito Motors",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Kenji",
+    "predicate": "works at",
+    "target": "Ito Motors",
+    "negated": false
+   },
+   {
+    "source": "Kenji",
+    "predicate": "works for",
+    "target": "Ito Motors",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Priyanka",
+    "type": "person"
+   },
+   {
+    "name": "Bengaluru",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Priyanka",
+    "predicate": "lives in",
+    "target": "Bengaluru",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Phoenix migration",
+    "type": "project"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Mina",
+    "type": "person"
+   },
+   {
+    "name": "Oscar",
+    "type": "person"
+   },
+   {
+    "name": "Lumen Health",
+    "type": "organization"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Victor",
+    "type": "person"
+   },
+   {
+    "name": "Zurich",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Victor",
+    "predicate": "moved to",
+    "target": "Zurich",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Team standup",
+    "type": "organization"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Rhea",
+    "type": "person"
+   },
+   {
+    "name": "Vim",
+    "type": "software"
+   },
+   {
+    "name": "Emacs",
+    "type": "product"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Rhea",
+    "predicate": "uses",
+    "target": "Vim",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Bruno",
+    "type": "person"
+   },
+   {
+    "name": "Porto",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Bruno",
+    "predicate": "lives in",
+    "target": "Porto",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Lina",
+    "type": "person"
+   },
+   {
+    "name": "Orca Biotech",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Lina",
+    "predicate": "works at",
+    "target": "Orca Biotech",
+    "negated": false
+   },
+   {
+    "source": "Lina",
+    "predicate": "works for",
+    "target": "Orca Biotech",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Frank Ogunleye",
+    "type": "person"
+   },
+   {
+    "name": "Mei Ling",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Mei Ling",
+    "predicate": "reports to",
+    "target": "Frank Ogunleye",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Frank Ogunleye",
+    "type": "person"
+   },
+   {
+    "name": "Team Nova",
+    "type": "team"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Frank Ogunleye",
+    "predicate": "works at",
+    "target": "Team Nova",
+    "negated": false
+   },
+   {
+    "source": "Frank Ogunleye",
+    "predicate": "works for",
+    "target": "Team Nova",
+    "negated": false
+   },
+   {
+    "source": "Frank Ogunleye",
+    "predicate": "manages",
+    "target": "Team Nova",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Simone",
+    "type": "person"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Simone",
+    "predicate": "owns",
+    "target": "async standups",
+    "negated": false
+   },
+   {
+    "source": "Simone",
+    "predicate": "prefers",
+    "target": "async standups",
+    "negated": false
+   },
+   {
+    "source": "Simone",
+    "predicate": "likes",
+    "target": "async standups",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Yusuf",
+    "type": "person"
+   },
+   {
+    "name": "Istanbul",
+    "type": "place"
+   },
+   {
+    "name": "Bloom Foods",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Yusuf",
+    "predicate": "lives in",
+    "target": "Istanbul",
+    "negated": false
+   },
+   {
+    "source": "Yusuf",
+    "predicate": "works at",
+    "target": "Bloom Foods",
+    "negated": false
+   },
+   {
+    "source": "Yusuf",
+    "predicate": "works for",
+    "target": "Bloom Foods",
+    "negated": false
+   },
+   {
+    "source": "Yusuf",
+    "predicate": "prefers",
+    "target": "Bloom Foods",
+    "negated": false
+   },
+   {
+    "source": "Yusuf",
+    "predicate": "teaches at",
+    "target": "Bloom Foods",
+    "negated": false
+   },
+   {
+    "source": "Yusuf",
+    "predicate": "reviews",
+    "target": "Bloom Foods",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Hector",
+    "type": "person"
+   },
+   {
+    "name": "Project Lighthouse",
+    "type": "project"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Hector",
+    "predicate": "manages",
+    "target": "Project Lighthouse",
+    "negated": false
+   },
+   {
+    "source": "Hector",
+    "predicate": "owns",
+    "target": "Project Lighthouse",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Elif",
+    "type": "person"
+   },
+   {
+    "name": "Nordwind",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Elif",
+    "predicate": "joined",
+    "target": "Nordwind",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Akira",
+    "type": "person"
+   },
+   {
+    "name": "Mei Ling",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Akira",
+    "predicate": "reports to",
+    "target": "Mei Ling",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Hannah",
+    "type": "person"
+   },
+   {
+    "name": "staff engineer",
+    "type": "organization"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Ferdinand",
+    "type": "person"
+   },
+   {
+    "name": "jazz",
+    "type": "preference"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Ferdinand",
+    "predicate": "owns",
+    "target": "jazz",
+    "negated": false
+   },
+   {
+    "source": "Ferdinand",
+    "predicate": "prefers",
+    "target": "jazz",
+    "negated": false
+   },
+   {
+    "source": "Ferdinand",
+    "predicate": "likes",
+    "target": "jazz",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Rita",
+    "type": "person"
+   },
+   {
+    "name": "Lisbon",
+    "type": "place"
+   },
+   {
+    "name": "Tidewater",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Rita",
+    "predicate": "lives in",
+    "target": "Lisbon",
+    "negated": false
+   },
+   {
+    "source": "Rita",
+    "predicate": "works at",
+    "target": "Tidewater",
+    "negated": false
+   },
+   {
+    "source": "Rita",
+    "predicate": "works for",
+    "target": "Tidewater",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "John Smith",
+    "type": "person"
+   },
+   {
+    "name": "Boston",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "John Smith",
+    "predicate": "lives in",
+    "target": "Boston",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Jane Smith",
+    "type": "person"
+   },
+   {
+    "name": "Chicago",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Jane Smith",
+    "predicate": "lives in",
+    "target": "Chicago",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "user",
+    "type": "person"
+   },
+   {
+    "name": "Neovim",
+    "type": "software"
+   }
+  ],
+  "relations": [
+   {
+    "source": "user",
+    "predicate": "uses",
+    "target": "Neovim",
+    "negated": false
+   },
+   {
+    "source": "user",
+    "predicate": "prefers",
+    "target": "Neovim",
+    "negated": false
+   },
+   {
+    "source": "user",
+    "predicate": "likes",
+    "target": "Neovim",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "I",
+    "type": "person"
+   },
+   {
+    "name": "Montreal",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "I",
+    "predicate": "lives in",
+    "target": "Montreal",
+    "negated": false
+   },
+   {
+    "source": "I",
+    "predicate": "moved to",
+    "target": "Montreal",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Kestrel Bio",
+    "type": "place"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Dr. Okonkwo",
+    "type": "person"
+   },
+   {
+    "name": "Mercy General",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Dr. Okonkwo",
+    "predicate": "works at",
+    "target": "Mercy General",
+    "negated": false
+   },
+   {
+    "source": "Dr. Okonkwo",
+    "predicate": "works for",
+    "target": "Mercy General",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Ilse Brandt",
+    "type": "person"
+   },
+   {
+    "name": "TU Delft",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Ilse Brandt",
+    "predicate": "works at",
+    "target": "TU Delft",
+    "negated": false
+   },
+   {
+    "source": "Prof. Ilse Brandt",
+    "predicate": "teaches at",
+    "target": "TU Delft",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Helios",
+    "type": "person"
+   },
+   {
+    "name": "Postgres 16",
+    "type": "project"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Helios",
+    "predicate": "uses",
+    "target": "Postgres 16",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Iva",
+    "type": "person"
+   },
+   {
+    "name": "Sofia",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Iva",
+    "predicate": "lives in",
+    "target": "Sofia",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Julian",
+    "type": "person"
+   },
+   {
+    "name": "Nadia",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Julian",
+    "predicate": "works at",
+    "target": "Nadia",
+    "negated": false
+   },
+   {
+    "source": "Julian",
+    "predicate": "reports to",
+    "target": "Nadia",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Omar",
+    "type": "person"
+   },
+   {
+    "name": "Solstice",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Omar",
+    "predicate": "works at",
+    "target": "Solstice",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Peter Lang",
+    "type": "person"
+   },
+   {
+    "name": "Munich",
+    "type": "place"
+   },
+   {
+    "name": "Hamburg",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Peter Lang",
+    "predicate": "moved to",
+    "target": "Munich",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Zeynep",
+    "type": "person"
+   },
+   {
+    "name": "Kite Coffee",
+    "type": "product"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Zeynep",
+    "predicate": "owns",
+    "target": "Kite Coffee",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Nadia",
+    "type": "person"
+   },
+   {
+    "name": "Team Helios",
+    "type": "team"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Nadia",
+    "predicate": "manages",
+    "target": "Team Helios",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Marcus",
+    "type": "person"
+   },
+   {
+    "name": "Dublin",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Marcus",
+    "predicate": "lives in",
+    "target": "Dublin",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Wei",
+    "type": "person"
+   },
+   {
+    "name": "Lattice Robotics",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Wei",
+    "predicate": "works at",
+    "target": "Lattice Robotics",
+    "negated": false
+   },
+   {
+    "source": "Wei",
+    "predicate": "works for",
+    "target": "Lattice Robotics",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Kubernetes",
+    "type": "place"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "build farm",
+    "type": "project"
+   },
+   {
+    "name": "Python 3.12",
+    "type": "software"
+   },
+   {
+    "name": "default interpreter",
+    "type": "preference"
+   }
+  ],
+  "relations": []
+ },
+ {
+  "entities": [
+   {
+    "name": "Jorge",
+    "type": "person"
+   },
+   {
+    "name": "Valencia",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Jorge",
+    "predicate": "lives in",
+    "target": "Valencia",
+    "negated": false
+   },
+   {
+    "source": "Jorge",
+    "predicate": "moved to",
+    "target": "Valencia",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Eva",
+    "type": "person"
+   },
+   {
+    "name": "Sevilla",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Eva",
+    "predicate": "lives in",
+    "target": "Sevilla",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Kofi",
+    "type": "person"
+   },
+   {
+    "name": "Vantage",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Kofi",
+    "predicate": "works at",
+    "target": "Vantage",
+    "negated": false
+   },
+   {
+    "source": "Kofi",
+    "predicate": "works for",
+    "target": "Vantage",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Felix Brandt",
+    "type": "person"
+   },
+   {
+    "name": "Leonie",
+    "type": "person"
+   },
+   {
+    "name": "Brightline",
+    "type": "organization"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Leonie",
+    "predicate": "works at",
+    "target": "Brightline",
+    "negated": false
+   },
+   {
+    "source": "Leonie",
+    "predicate": "works for",
+    "target": "Brightline",
+    "negated": false
+   },
+   {
+    "source": "Leonie",
+    "predicate": "reports to",
+    "target": "Felix Brandt",
+    "negated": false
+   },
+   {
+    "source": "Leonie",
+    "predicate": "joined",
+    "target": "Brightline",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Noor",
+    "type": "person"
+   },
+   {
+    "name": "infra team",
+    "type": "project"
+   }
+  ],
+  "relations": [
+   {
+    "source": "Noor",
+    "predicate": "works at",
+    "target": "infra team",
+    "negated": false
+   },
+   {
+    "source": "Noor",
+    "predicate": "works for",
+    "target": "infra team",
+    "negated": false
+   },
+   {
+    "source": "Noor",
+    "predicate": "manages",
+    "target": "infra team",
+    "negated": false
+   }
+  ]
+ },
+ {
+  "entities": [
+   {
+    "name": "Stripe",
+    "type": "place"
+   }
+  ],
+  "relations": [
+   {
+    "source": "billing service",
+    "predicate": "uses",
+    "target": "Stripe",
+    "negated": false
+   }
+  ]
+ }
+]

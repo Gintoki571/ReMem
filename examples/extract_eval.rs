@@ -44,7 +44,7 @@ fn main() {
     let path = env::args()
         .nth(1)
         .unwrap_or_else(|| "eval/extract/gold.json".to_string());
-    let gold: Gold =
+    let mut gold: Gold =
         serde_json::from_str(&fs::read_to_string(path).expect("read extraction gold")).unwrap();
     // Optional second argument: predictions JSON aligned with gold.memories
     // (same shape as gold memories), used to score external systems.
@@ -52,6 +52,10 @@ fn main() {
         serde_json::from_str(&fs::read_to_string(path).expect("read predictions"))
             .expect("parse predictions")
     });
+    // A partial predictions file scores only its prefix, for every row alike.
+    if let Some(predictions) = &external {
+        gold.memories.truncate(predictions.len());
+    }
     let baseline = score(&gold, |_, text| {
         let entities = extract::heuristic_entities(text)
             .into_iter()
@@ -86,7 +90,7 @@ fn main() {
             result.valid_from,
         )
     });
-    println!("system,entity_p,entity_r,entity_f1,relation_p,relation_r,relation_f1,date_accuracy,negation_accuracy,median_us");
+    println!("system,entity_p,entity_r,entity_f1,relation_p,relation_r,relation_f1,date_accuracy,negation_accuracy,mean_us");
     println!(
         "heuristic,{},{},{},{},{},{},{},{},{}",
         baseline.0,

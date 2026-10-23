@@ -3,6 +3,9 @@
 //! This is intentionally a small System-1 pass, not a language model. It
 //! handles high-value agent sentence patterns and returns no guess when a
 //! pattern is ambiguous. Set `NEOCORTEX_EXTRACTOR=rules` to enable it.
+//!
+//! shortcut: 16 verb patterns and 2 subject shapes, not a parser; upgrade or
+//! replace with the GLiNER2.5 candle port in docs/research/extraction.md.
 
 use crate::engine::{EntityIn, RelationIn};
 use crate::extract;

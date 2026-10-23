@@ -115,7 +115,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - `src/text.rs` - normalisation, singularise, Jaro-Winkler, trigrams, FTS query building, predicate keys, content hash.
 - `src/temporal.rs` - civil dates, instant/window parsing, query windows, history intent.
 - `src/extract.rs` - heuristic entity candidates, n-grams for alias lookup.
-- `src/extract_model.rs` - optional deterministic relation/date tier (off by default). Scored by `examples/extract_eval.rs` on `eval/extract/gold.json` (128 memories; `cargo run --release --example extract_eval [gold] [predictions.json] [name]`). Research and reference numbers: `docs/research/extraction.md`.
+- `src/extract_model.rs` - optional deterministic relation/date tier (off by default). Scored by `examples/extract_eval.rs` on `eval/extract/gold.json` (128 memories; `cargo run --release --example extract_eval -- [gold] [predictions.json] [name]`). Reference predictions and runner scripts: `eval/extract/preds/`, `eval/extract/reference/`. Comparison and candle port plan: `docs/research/extraction.md`.
 - `src/graph.rs` - CSR + ACL push personalized PageRank. `src/rank.rs` - RRF, MMR, cosine, packing.
 - `src/remember.rs`, `src/resolve.rs`, `src/kg.rs` - write pipeline, entity/predicate resolution, and rebuildable graph projection. `remember` and `remember_batch` share `prepare` + `write_prepared`; a batch chunk of <= 256 inputs is one embed call and one transaction with a SAVEPOINT per item.
 - `src/recall.rs` - ranked multi-channel memory, fact, and entity retrieval; `src/eval.rs` - fixture-based retrieval evaluation and ablations.
