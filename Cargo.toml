@@ -4,7 +4,7 @@ version = "0.1.4"
 edition = "2021"
 description = "Long-term memory for AI agents: BM25 + vector + graph + temporal retrieval in one SQLite file"
 license = "MIT"
-repository = "https://github.com/Gintoki571/ReMem"
+repository = "https://github.com/Gintoki571/neocortex"
 
 [dependencies]
 rusqlite = { version = "0.40", features = ["bundled"] }
