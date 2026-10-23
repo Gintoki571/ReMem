@@ -134,3 +134,15 @@ a one-line justification in the root AGENTS.md. Licence is Apache-2.0 for the ch
 - The test suite opens the default DB through `neocortex eval` when `NEOCORTEX_DB` is unset
   (`tests/cli.rs` and `cmd_eval` in `src/main.rs`). Run tests with `NEOCORTEX_DB` pointed at a
   scratch file. That is a separate fix, outside this lane's files.
+
+## Held-out check (2026-10-23)
+
+`eval/extract/holdout.json`: 150 memories written independently (the author did not see the rules tier, the first gold set or this document). Scored with `cargo run --release --example extract_eval -- eval/extract/holdout.json [preds.json]`:
+
+| system | entity F1 | relation F1 | date acc | negation acc |
+|---|---|---|---|---|
+| heuristic | 0.698 | 0.000 | 0.000 | 1.000 |
+| rules tier | 0.682 | 0.066 | 0.765 | 0.833 |
+| GLiNER2.5-small (Python, same label lists) | 0.707 | 0.200 | – | 0.783 |
+
+The rules tier's 0.62 relation F1 on `gold.json` was overfitting to its author's phrasing. No CPU-sized extractor measured here (rules, GLiNER2.5-small, Qwen2.5-1.5B) extracts relations from free text reliably. Decision: the calling agent (an LLM) is the extractor of record; neocortex keeps the rules tier opt-in, nudges agents to pass `entities`/`relations`, and treats a GLiNER port as optional background enrichment, not a write-path dependency.

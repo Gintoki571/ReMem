@@ -1,0 +1,3444 @@
+{
+  "now": "2026-10-23",
+  "memories": [
+    {
+      "content": "Daniel Reyes told me his younger sister Camille lives in Porto.",
+      "entities": [
+        {
+          "name": "Daniel Reyes",
+          "type": "person"
+        },
+        {
+          "name": "Camille",
+          "type": "person"
+        },
+        {
+          "name": "Porto",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Camille",
+          "predicate": "sibling of",
+          "target": "Daniel Reyes",
+          "negated": false
+        },
+        {
+          "source": "Camille",
+          "predicate": "lives in",
+          "target": "Porto",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I'm married to Ana, and we've been together since 2015.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Ana",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "married to",
+          "target": "Ana",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "My dog Biscuit is a beagle who hates the rain.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Biscuit",
+          "type": "pet"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "owns",
+          "target": "Biscuit",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Hal Brennan in Accounts approves my expense reports every Friday.",
+      "entities": [
+        {
+          "name": "Hal Brennan",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Prof. Elena Vasquez supervised my thesis at the University of Lisbon, and she still reviews my drafts.",
+      "entities": [
+        {
+          "name": "Elena Vasquez",
+          "type": "person"
+        },
+        {
+          "name": "University of Lisbon",
+          "type": "org"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Elena Vasquez",
+          "predicate": "supervises",
+          "target": "the user",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Tomas moved to Lyon in June.",
+      "entities": [
+        {
+          "name": "Tomas",
+          "type": "person"
+        },
+        {
+          "name": "Lyon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Tomas",
+          "predicate": "moved to",
+          "target": "Lyon",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "She moved to Lyon last spring and loves the bakeries there.",
+      "entities": [
+        {
+          "name": "Lyon",
+          "type": "place"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Maya is my sister. She moved to Lyon last spring.",
+      "entities": [
+        {
+          "name": "Maya",
+          "type": "person"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Lyon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Maya",
+          "predicate": "sibling of",
+          "target": "the user",
+          "negated": false
+        },
+        {
+          "source": "Maya",
+          "predicate": "moved to",
+          "target": "Lyon",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Ravi doesn't live in Berlin anymore; he relocated to Munich.",
+      "entities": [
+        {
+          "name": "Ravi",
+          "type": "person"
+        },
+        {
+          "name": "Berlin",
+          "type": "place"
+        },
+        {
+          "name": "Munich",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ravi",
+          "predicate": "lives in",
+          "target": "Berlin",
+          "negated": true
+        },
+        {
+          "source": "Ravi",
+          "predicate": "moved to",
+          "target": "Munich",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Not Bob, but Alice manages the Helix platform team.",
+      "entities": [
+        {
+          "name": "Alice",
+          "type": "person"
+        },
+        {
+          "name": "Bob",
+          "type": "person"
+        },
+        {
+          "name": "Helix",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alice",
+          "predicate": "manages",
+          "target": "Helix",
+          "negated": false
+        },
+        {
+          "source": "Bob",
+          "predicate": "manages",
+          "target": "Helix",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Alice, not Bob, is the on-call lead for Atlas.",
+      "entities": [
+        {
+          "name": "Alice",
+          "type": "person"
+        },
+        {
+          "name": "Bob",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Alice",
+          "predicate": "leads",
+          "target": "Atlas",
+          "negated": false
+        },
+        {
+          "source": "Bob",
+          "predicate": "leads",
+          "target": "Atlas",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Dr. Ingrid Sørensen is my GP in Oslo.",
+      "entities": [
+        {
+          "name": "Ingrid Sørensen",
+          "type": "person"
+        },
+        {
+          "name": "Oslo",
+          "type": "place"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "treated by",
+          "target": "Ingrid Sørensen",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Priya's birthday is 14 March, and she wants pancakes, not cake.",
+      "entities": [
+        {
+          "name": "Priya",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Mum lives in Cork with her sister Eilis.",
+      "entities": [
+        {
+          "name": "Cork",
+          "type": "place"
+        },
+        {
+          "name": "Eilis",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "I don't like Marcus Hale's cooking shows; too much shouting.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Marcus Hale",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Eilis and her husband Conor just bought a house in Galway.",
+      "entities": [
+        {
+          "name": "Eilis",
+          "type": "person"
+        },
+        {
+          "name": "Conor",
+          "type": "person"
+        },
+        {
+          "name": "Galway",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Eilis",
+          "predicate": "married to",
+          "target": "Conor",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Our daughter Lea started kindergarten on 2026-09-01.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Lea",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "parent of",
+          "target": "Lea",
+          "negated": false
+        }
+      ],
+      "valid_from": "2026-09-01"
+    },
+    {
+      "content": "Sam and I went to Kyoto in April 2024 for my cousin's wedding.",
+      "entities": [
+        {
+          "name": "Sam",
+          "type": "person"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Kyoto",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "visited",
+          "target": "Kyoto",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "My manager Lucia Ferrer approved the trip to Kyoto.",
+      "entities": [
+        {
+          "name": "Lucia Ferrer",
+          "type": "person"
+        },
+        {
+          "name": "Kyoto",
+          "type": "place"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lucia Ferrer",
+          "predicate": "manages",
+          "target": "the user",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Fiona is a friend of mine from university; we still play chess on Sundays.",
+      "entities": [
+        {
+          "name": "Fiona",
+          "type": "person"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Fiona",
+          "predicate": "friend of",
+          "target": "the user",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I work at Northwind Labs as a data engineer.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Northwind Labs",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "works at",
+          "target": "Northwind Labs",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Daniel Reyes works at Brightline Health and reports to Mira Chen.",
+      "entities": [
+        {
+          "name": "Daniel Reyes",
+          "type": "person"
+        },
+        {
+          "name": "Brightline Health",
+          "type": "org"
+        },
+        {
+          "name": "Mira Chen",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Daniel Reyes",
+          "predicate": "works at",
+          "target": "Brightline Health",
+          "negated": false
+        },
+        {
+          "source": "Daniel Reyes",
+          "predicate": "reports to",
+          "target": "Mira Chen",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Since March 3, 2026 I've been on the Orion team under Jun Park.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Orion",
+          "type": "project"
+        },
+        {
+          "name": "Jun Park",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "member of",
+          "target": "Orion",
+          "negated": false
+        },
+        {
+          "source": "Jun Park",
+          "predicate": "manages",
+          "target": "the user",
+          "negated": false
+        }
+      ],
+      "valid_from": "2026-03-03"
+    },
+    {
+      "content": "Jun Park no longer manages me; the reorg moved me to Orion.",
+      "entities": [
+        {
+          "name": "Jun Park",
+          "type": "person"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Orion",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Jun Park",
+          "predicate": "manages",
+          "target": "the user",
+          "negated": true
+        },
+        {
+          "source": "the user",
+          "predicate": "member of",
+          "target": "Orion",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Sofia Lind joined Northwind Labs in January.",
+      "entities": [
+        {
+          "name": "Sofia Lind",
+          "type": "person"
+        },
+        {
+          "name": "Northwind Labs",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sofia Lind",
+          "predicate": "works at",
+          "target": "Northwind Labs",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Northwind Labs is not my current employer; I left in August.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Northwind Labs",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "works at",
+          "target": "Northwind Labs",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "My former boss Kenji Ito retired from Halcyon in 2025.",
+      "entities": [
+        {
+          "name": "Kenji Ito",
+          "type": "person"
+        },
+        {
+          "name": "Halcyon",
+          "type": "org"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kenji Ito",
+          "predicate": "works at",
+          "target": "Halcyon",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Priya Raman is the product lead for Halcyon's search team.",
+      "entities": [
+        {
+          "name": "Priya Raman",
+          "type": "person"
+        },
+        {
+          "name": "Halcyon",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Priya Raman",
+          "predicate": "works at",
+          "target": "Halcyon",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Mira Chen manages the platform group, and Jun Park is on her team.",
+      "entities": [
+        {
+          "name": "Mira Chen",
+          "type": "person"
+        },
+        {
+          "name": "Jun Park",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Chen",
+          "predicate": "manages",
+          "target": "Jun Park",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Hiroshi and Lena both work in the Berlin office of Quanta Systems.",
+      "entities": [
+        {
+          "name": "Hiroshi",
+          "type": "person"
+        },
+        {
+          "name": "Lena",
+          "type": "person"
+        },
+        {
+          "name": "Berlin",
+          "type": "place"
+        },
+        {
+          "name": "Quanta Systems",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hiroshi",
+          "predicate": "works at",
+          "target": "Quanta Systems",
+          "negated": false
+        },
+        {
+          "source": "Lena",
+          "predicate": "works at",
+          "target": "Quanta Systems",
+          "negated": false
+        },
+        {
+          "source": "Quanta Systems",
+          "predicate": "located in",
+          "target": "Berlin",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Dmitri reports to Lucia Ferrer, not to Mira Chen.",
+      "entities": [
+        {
+          "name": "Dmitri",
+          "type": "person"
+        },
+        {
+          "name": "Lucia Ferrer",
+          "type": "person"
+        },
+        {
+          "name": "Mira Chen",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dmitri",
+          "predicate": "reports to",
+          "target": "Lucia Ferrer",
+          "negated": false
+        },
+        {
+          "source": "Dmitri",
+          "predicate": "reports to",
+          "target": "Mira Chen",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I'm a contractor, not a full-time employee, at Quanta Systems.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Quanta Systems",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "works at",
+          "target": "Quanta Systems",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Elena works as a nurse in Porto.",
+      "entities": [
+        {
+          "name": "Elena",
+          "type": "person"
+        },
+        {
+          "name": "Porto",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Elena",
+          "predicate": "works in",
+          "target": "Porto",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "After the merger, Halcyon's platform team now sits under Quanta Systems.",
+      "entities": [
+        {
+          "name": "Halcyon",
+          "type": "org"
+        },
+        {
+          "name": "Quanta Systems",
+          "type": "org"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Trabalho na Quanta Systems desde março.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Quanta Systems",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "works at",
+          "target": "Quanta Systems",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Mi hermana Maya vive en Lyon desde 2025.",
+      "entities": [
+        {
+          "name": "Maya",
+          "type": "person"
+        },
+        {
+          "name": "Lyon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Maya",
+          "predicate": "lives in",
+          "target": "Lyon",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I live in Ghent now, not Antwerp.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Ghent",
+          "type": "place"
+        },
+        {
+          "name": "Antwerp",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "lives in",
+          "target": "Ghent",
+          "negated": false
+        },
+        {
+          "source": "the user",
+          "predicate": "lives in",
+          "target": "Antwerp",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Biscuit and I moved to Coimbra in 2022.",
+      "entities": [
+        {
+          "name": "Biscuit",
+          "type": "pet"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Coimbra",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "moved to",
+          "target": "Coimbra",
+          "negated": false
+        },
+        {
+          "source": "Biscuit",
+          "predicate": "lives in",
+          "target": "Coimbra",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Lea was born in Toronto but has never lived there.",
+      "entities": [
+        {
+          "name": "Lea",
+          "type": "person"
+        },
+        {
+          "name": "Toronto",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lea",
+          "predicate": "born in",
+          "target": "Toronto",
+          "negated": false
+        },
+        {
+          "source": "Lea",
+          "predicate": "lives in",
+          "target": "Toronto",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Mira Chen relocated from Seattle to Vancouver last year.",
+      "entities": [
+        {
+          "name": "Mira Chen",
+          "type": "person"
+        },
+        {
+          "name": "Seattle",
+          "type": "place"
+        },
+        {
+          "name": "Vancouver",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Chen",
+          "predicate": "moved to",
+          "target": "Vancouver",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Camille's new flat in Porto is near the river, which she loves.",
+      "entities": [
+        {
+          "name": "Camille",
+          "type": "person"
+        },
+        {
+          "name": "Porto",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Camille",
+          "predicate": "lives in",
+          "target": "Porto",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I rent a studio in Florence, but my permanent address is still Milan.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Florence",
+          "type": "place"
+        },
+        {
+          "name": "Milan",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "lives in",
+          "target": "Florence",
+          "negated": false
+        },
+        {
+          "source": "the user",
+          "predicate": "lives in",
+          "target": "Milan",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Quanta Systems opened a new office in Austin.",
+      "entities": [
+        {
+          "name": "Quanta Systems",
+          "type": "org"
+        },
+        {
+          "name": "Austin",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Quanta Systems",
+          "predicate": "located in",
+          "target": "Austin",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Konstantin is from Kraków and speaks Polish at home.",
+      "entities": [
+        {
+          "name": "Konstantin",
+          "type": "person"
+        },
+        {
+          "name": "Kraków",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Konstantin",
+          "predicate": "from",
+          "target": "Kraków",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "O Daniel mudou-se para Coimbra em 2024.",
+      "entities": [
+        {
+          "name": "Daniel",
+          "type": "person"
+        },
+        {
+          "name": "Coimbra",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Daniel",
+          "predicate": "moved to",
+          "target": "Coimbra",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "The trip to Lisbon was booked for the week of 2026-04-06.",
+      "entities": [
+        {
+          "name": "Lisbon",
+          "type": "place"
+        }
+      ],
+      "relations": [],
+      "valid_from": "2026-04-06"
+    },
+    {
+      "content": "I prefer Neovim to VS Code for Rust work.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Neovim",
+          "type": "tool"
+        },
+        {
+          "name": "VS Code",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "prefers",
+          "target": "Neovim",
+          "negated": false
+        },
+        {
+          "source": "the user",
+          "predicate": "prefers",
+          "target": "VS Code",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I dislike Notion; it makes me slow.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Notion",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "likes",
+          "target": "Notion",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Dmitri likes Grafana dashboards more than anything else.",
+      "entities": [
+        {
+          "name": "Dmitri",
+          "type": "person"
+        },
+        {
+          "name": "Grafana",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dmitri",
+          "predicate": "likes",
+          "target": "Grafana",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I'm not a fan of Jira. Linear is fine.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Jira",
+          "type": "product"
+        },
+        {
+          "name": "Linear",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "likes",
+          "target": "Jira",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Fiona can't stand Microsoft Teams calls.",
+      "entities": [
+        {
+          "name": "Fiona",
+          "type": "person"
+        },
+        {
+          "name": "Microsoft Teams",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Fiona",
+          "predicate": "likes",
+          "target": "Microsoft Teams",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Maya loves Lyon's food scene.",
+      "entities": [
+        {
+          "name": "Maya",
+          "type": "person"
+        },
+        {
+          "name": "Lyon",
+          "type": "place"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "I always pick Postgres over MySQL for new services.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Postgres",
+          "type": "product"
+        },
+        {
+          "name": "MySQL",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "prefers",
+          "target": "Postgres",
+          "negated": false
+        },
+        {
+          "source": "the user",
+          "predicate": "prefers",
+          "target": "MySQL",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Sam doesn't use Slack anymore; they moved everything to Matrix.",
+      "entities": [
+        {
+          "name": "Sam",
+          "type": "person"
+        },
+        {
+          "name": "Slack",
+          "type": "product"
+        },
+        {
+          "name": "Matrix",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sam",
+          "predicate": "uses",
+          "target": "Slack",
+          "negated": true
+        },
+        {
+          "source": "Sam",
+          "predicate": "uses",
+          "target": "Matrix",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Ana loves cycling but hates running in winter.",
+      "entities": [
+        {
+          "name": "Ana",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "I'd rather use Tailwind than plain CSS for dashboards.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Tailwind",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "prefers",
+          "target": "Tailwind",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Daniel Reyes can't work without Docker on his laptop.",
+      "entities": [
+        {
+          "name": "Daniel Reyes",
+          "type": "person"
+        },
+        {
+          "name": "Docker",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Daniel Reyes",
+          "predicate": "uses",
+          "target": "Docker",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Ich wohne in Berlin, nicht in München.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Berlin",
+          "type": "place"
+        },
+        {
+          "name": "München",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "lives in",
+          "target": "Berlin",
+          "negated": false
+        },
+        {
+          "source": "the user",
+          "predicate": "lives in",
+          "target": "München",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I stopped using Spotify in May; now I use Apple Music.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Spotify",
+          "type": "product"
+        },
+        {
+          "name": "Apple Music",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "uses",
+          "target": "Spotify",
+          "negated": true
+        },
+        {
+          "source": "the user",
+          "predicate": "uses",
+          "target": "Apple Music",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Je travaille chez Halcyon depuis 2024.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Halcyon",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "works at",
+          "target": "Halcyon",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "We picked Rust for Atlas because of memory safety.",
+      "entities": [
+        {
+          "name": "Rust",
+          "type": "tool"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Atlas",
+          "predicate": "uses",
+          "target": "Rust",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Decision: Atlas will store embeddings in sqlite-vec, not Qdrant.",
+      "entities": [
+        {
+          "name": "Atlas",
+          "type": "project"
+        },
+        {
+          "name": "sqlite-vec",
+          "type": "tool"
+        },
+        {
+          "name": "Qdrant",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Atlas",
+          "predicate": "uses",
+          "target": "sqlite-vec",
+          "negated": false
+        },
+        {
+          "source": "Atlas",
+          "predicate": "uses",
+          "target": "Qdrant",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Helix runs on Kubernetes 1.31 in the eu-west cluster.",
+      "entities": [
+        {
+          "name": "Helix",
+          "type": "project"
+        },
+        {
+          "name": "Kubernetes",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Helix",
+          "predicate": "uses",
+          "target": "Kubernetes",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "The Helix dashboard is at https://helix.example.internal/status.",
+      "entities": [
+        {
+          "name": "Helix",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Atlas ingestion now runs from /srv/atlas/ingest/worker.py.",
+      "entities": [
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Priya Raman deployed Atlas v2.3.1 to staging on 2026-10-02.",
+      "entities": [
+        {
+          "name": "Priya Raman",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Priya Raman",
+          "predicate": "deployed",
+          "target": "Atlas",
+          "negated": false
+        }
+      ],
+      "valid_from": "2026-10-02"
+    },
+    {
+      "content": "We chose PostgreSQL over CockroachDB because the team already knows it.",
+      "entities": [
+        {
+          "name": "PostgreSQL",
+          "type": "tool"
+        },
+        {
+          "name": "CockroachDB",
+          "type": "tool"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Orion's auth service depends on Keycloak 24.",
+      "entities": [
+        {
+          "name": "Orion",
+          "type": "project"
+        },
+        {
+          "name": "Keycloak",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Orion",
+          "predicate": "uses",
+          "target": "Keycloak",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I installed ripgrep 14.1 and fd 10 with cargo install.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "ripgrep",
+          "type": "tool"
+        },
+        {
+          "name": "fd",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "uses",
+          "target": "ripgrep",
+          "negated": false
+        },
+        {
+          "source": "the user",
+          "predicate": "uses",
+          "target": "fd",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "The quill repo is at github.com/example-lab/quill, branch main.",
+      "entities": [
+        {
+          "name": "Quill",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Quill's CI runs on GitHub Actions, and releases go to crates.io.",
+      "entities": [
+        {
+          "name": "Quill",
+          "type": "project"
+        },
+        {
+          "name": "GitHub Actions",
+          "type": "tool"
+        },
+        {
+          "name": "crates.io",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Quill",
+          "predicate": "uses",
+          "target": "GitHub Actions",
+          "negated": false
+        },
+        {
+          "source": "Quill",
+          "predicate": "publishes to",
+          "target": "crates.io",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I switched Helix's logging from Fluentd to Vector last week.",
+      "entities": [
+        {
+          "name": "Helix",
+          "type": "project"
+        },
+        {
+          "name": "Fluentd",
+          "type": "tool"
+        },
+        {
+          "name": "Vector",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Helix",
+          "predicate": "uses",
+          "target": "Vector",
+          "negated": false
+        },
+        {
+          "source": "Helix",
+          "predicate": "uses",
+          "target": "Fluentd",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Hal Brennan says Atlas will not ship without the migration tests.",
+      "entities": [
+        {
+          "name": "Hal Brennan",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Dmitri's PR for Atlas was merged on 2026-09-14.",
+      "entities": [
+        {
+          "name": "Dmitri",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dmitri",
+          "predicate": "contributes to",
+          "target": "Atlas",
+          "negated": false
+        }
+      ],
+      "valid_from": "2026-09-14"
+    },
+    {
+      "content": "Quanta Systems is now the parent company of Halcyon.",
+      "entities": [
+        {
+          "name": "Quanta Systems",
+          "type": "org"
+        },
+        {
+          "name": "Halcyon",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Halcyon",
+          "predicate": "owned by",
+          "target": "Quanta Systems",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Helix moved from Heroku to Fly.io in 2025.",
+      "entities": [
+        {
+          "name": "Helix",
+          "type": "project"
+        },
+        {
+          "name": "Heroku",
+          "type": "product"
+        },
+        {
+          "name": "Fly.io",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Helix",
+          "predicate": "uses",
+          "target": "Fly.io",
+          "negated": false
+        },
+        {
+          "source": "Helix",
+          "predicate": "uses",
+          "target": "Heroku",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Lucia Ferrer approved the budget for Atlas and Helix.",
+      "entities": [
+        {
+          "name": "Lucia Ferrer",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        },
+        {
+          "name": "Helix",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lucia Ferrer",
+          "predicate": "approves",
+          "target": "Atlas",
+          "negated": false
+        },
+        {
+          "source": "Lucia Ferrer",
+          "predicate": "approves",
+          "target": "Helix",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "The neocortex MCP server exposes eight tools over stdio.",
+      "entities": [
+        {
+          "name": "neocortex",
+          "type": "product"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "I'm building a CLI called tidy for personal finance.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "tidy",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "builds",
+          "target": "tidy",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Team decided to pin sqlite-vec at 0.1.9 because 0.1.10-alpha fails to compile.",
+      "entities": [
+        {
+          "name": "sqlite-vec",
+          "type": "tool"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Maya's startup, Lumen Labs, is hiring Rust developers.",
+      "entities": [
+        {
+          "name": "Maya",
+          "type": "person"
+        },
+        {
+          "name": "Lumen Labs",
+          "type": "org"
+        },
+        {
+          "name": "Rust",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Maya",
+          "predicate": "founded",
+          "target": "Lumen Labs",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Our Q4 budget review is titled 'Budget Review 2026 Q4' with Lucia.",
+      "entities": [
+        {
+          "name": "Budget Review 2026 Q4",
+          "type": "event"
+        },
+        {
+          "name": "Lucia",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Ravi asked to use Helix's staging database, but Mira said no.",
+      "entities": [
+        {
+          "name": "Ravi",
+          "type": "person"
+        },
+        {
+          "name": "Helix",
+          "type": "project"
+        },
+        {
+          "name": "Mira",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "On 2026-05-18 Lucia Ferrer announced that Atlas would ship in July.",
+      "entities": [
+        {
+          "name": "Lucia Ferrer",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": "2026-05-18"
+    },
+    {
+      "content": "Kickoff for Helix phase two happened on 12 January 2026 in Lisbon.",
+      "entities": [
+        {
+          "name": "Helix",
+          "type": "project"
+        },
+        {
+          "name": "Lisbon",
+          "type": "place"
+        }
+      ],
+      "relations": [],
+      "valid_from": "2026-01-12"
+    },
+    {
+      "content": "Daniel Reyes was promoted to staff engineer on 2025-11-01.",
+      "entities": [
+        {
+          "name": "Daniel Reyes",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": "2025-11-01"
+    },
+    {
+      "content": "Biscuit had surgery at the Lisbon Vet Clinic on 2026-02-14.",
+      "entities": [
+        {
+          "name": "Biscuit",
+          "type": "pet"
+        },
+        {
+          "name": "Lisbon Vet Clinic",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Biscuit",
+          "predicate": "treated at",
+          "target": "Lisbon Vet Clinic",
+          "negated": false
+        }
+      ],
+      "valid_from": "2026-02-14"
+    },
+    {
+      "content": "Mira Chen will present the Atlas roadmap at the 2026-11-05 offsite.",
+      "entities": [
+        {
+          "name": "Mira Chen",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Chen",
+          "predicate": "presents",
+          "target": "Atlas",
+          "negated": false
+        }
+      ],
+      "valid_from": "2026-11-05"
+    },
+    {
+      "content": "In 2024 Fiona won the Lisbon Half Marathon.",
+      "entities": [
+        {
+          "name": "Fiona",
+          "type": "person"
+        },
+        {
+          "name": "Lisbon Half Marathon",
+          "type": "event"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Fiona",
+          "predicate": "won",
+          "target": "Lisbon Half Marathon",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Elena's retirement party is on 30 April 2027.",
+      "entities": [
+        {
+          "name": "Elena",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": "2027-04-30"
+    },
+    {
+      "content": "Since 1 Feb 2026 Ravi has been the Helix release manager.",
+      "entities": [
+        {
+          "name": "Ravi",
+          "type": "person"
+        },
+        {
+          "name": "Helix",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ravi",
+          "predicate": "manages",
+          "target": "Helix",
+          "negated": false
+        }
+      ],
+      "valid_from": "2026-02-01"
+    },
+    {
+      "content": "The Atlas v1 release went out on 2025-07-21, before the migration.",
+      "entities": [
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": "2025-07-21"
+    },
+    {
+      "content": "Yesterday Priya and I shipped the search reindex.",
+      "entities": [
+        {
+          "name": "Priya",
+          "type": "person"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Last week, Hiroshi left Quanta Systems for Vanta.",
+      "entities": [
+        {
+          "name": "Hiroshi",
+          "type": "person"
+        },
+        {
+          "name": "Quanta Systems",
+          "type": "org"
+        },
+        {
+          "name": "Vanta",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hiroshi",
+          "predicate": "works at",
+          "target": "Quanta Systems",
+          "negated": true
+        },
+        {
+          "source": "Hiroshi",
+          "predicate": "works at",
+          "target": "Vanta",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Camille got her PhD from the University of Porto in 2021.",
+      "entities": [
+        {
+          "name": "Camille",
+          "type": "person"
+        },
+        {
+          "name": "University of Porto",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Camille",
+          "predicate": "graduated from",
+          "target": "University of Porto",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Eilis moved in with Conor on 2024-04-01.",
+      "entities": [
+        {
+          "name": "Eilis",
+          "type": "person"
+        },
+        {
+          "name": "Conor",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Eilis",
+          "predicate": "lives with",
+          "target": "Conor",
+          "negated": false
+        }
+      ],
+      "valid_from": "2024-04-01"
+    },
+    {
+      "content": "Priya went to the Tokyo conference in October.",
+      "entities": [
+        {
+          "name": "Priya",
+          "type": "person"
+        },
+        {
+          "name": "Tokyo",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Priya",
+          "predicate": "visited",
+          "target": "Tokyo",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Sam quit Halcyon on 2026-08-30 after the offsite.",
+      "entities": [
+        {
+          "name": "Sam",
+          "type": "person"
+        },
+        {
+          "name": "Halcyon",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sam",
+          "predicate": "works at",
+          "target": "Halcyon",
+          "negated": true
+        }
+      ],
+      "valid_from": "2026-08-30"
+    },
+    {
+      "content": "Atlas needs Python 3.12 or newer; 3.11 segfaults on the parser.",
+      "entities": [
+        {
+          "name": "Atlas",
+          "type": "project"
+        },
+        {
+          "name": "Python",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Atlas",
+          "predicate": "uses",
+          "target": "Python",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "The migration script lives at scripts/db/migrate_v7.sql in the Atlas repo.",
+      "entities": [
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Quill 0.9.4 fixed the panic when the config file is missing.",
+      "entities": [
+        {
+          "name": "Quill",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "I run Arch Linux with kernel 6.12 on my ThinkPad.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Arch Linux",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "uses",
+          "target": "Arch Linux",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Set NEOCORTEX_TZ=+02:00 when the system clock is wrong.",
+      "entities": [
+        {
+          "name": "neocortex",
+          "type": "product"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Helix's Postgres replica is pinned to 16.4, and the primary is on 16.3.",
+      "entities": [
+        {
+          "name": "Helix",
+          "type": "project"
+        },
+        {
+          "name": "Postgres",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Helix",
+          "predicate": "uses",
+          "target": "Postgres",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Mira Chen owns the Redis 7.2 cluster in eu-west-1.",
+      "entities": [
+        {
+          "name": "Mira Chen",
+          "type": "person"
+        },
+        {
+          "name": "Redis",
+          "type": "tool"
+        },
+        {
+          "name": "eu-west-1",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Chen",
+          "predicate": "owns",
+          "target": "Redis",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "The ingest worker crashes when /var/lib/atlas/queue is full.",
+      "entities": [],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Grafana dashboards for Helix are under the ops folder.",
+      "entities": [
+        {
+          "name": "Grafana",
+          "type": "product"
+        },
+        {
+          "name": "Helix",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Kafka topic atlas.events has 12 partitions; keep the key as tenant_id.",
+      "entities": [
+        {
+          "name": "Kafka",
+          "type": "tool"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Atlas",
+          "predicate": "uses",
+          "target": "Kafka",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Fly.io machines for Helix are sized shared-cpu-2x; see fly.toml.",
+      "entities": [
+        {
+          "name": "Helix",
+          "type": "project"
+        },
+        {
+          "name": "Fly.io",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Helix",
+          "predicate": "uses",
+          "target": "Fly.io",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "The docs site runs on Astro 4.16 and deploys from main.",
+      "entities": [
+        {
+          "name": "Astro",
+          "type": "tool"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "I moved my notes from Obsidian to Logseq in 2025.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Obsidian",
+          "type": "tool"
+        },
+        {
+          "name": "Logseq",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "uses",
+          "target": "Logseq",
+          "negated": false
+        },
+        {
+          "source": "the user",
+          "predicate": "uses",
+          "target": "Obsidian",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Dmitri set the Atlas CI cache TTL to 14 days.",
+      "entities": [
+        {
+          "name": "Dmitri",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Priya says the staging database on Neon is down again.",
+      "entities": [
+        {
+          "name": "Priya",
+          "type": "person"
+        },
+        {
+          "name": "Neon",
+          "type": "product"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Meeting with Prof. Elena Vasquez on 2026-06-10 about the thesis viva date.",
+      "entities": [
+        {
+          "name": "Elena Vasquez",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": "2026-06-10"
+    },
+    {
+      "content": "Sync with Dr. Hadi Karimi re: Atlas data retention, Thursday.",
+      "entities": [
+        {
+          "name": "Hadi Karimi",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Dr. Hadi Karimi from Kaiser Labs will join the Helix review.",
+      "entities": [
+        {
+          "name": "Hadi Karimi",
+          "type": "person"
+        },
+        {
+          "name": "Kaiser Labs",
+          "type": "org"
+        },
+        {
+          "name": "Helix",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hadi Karimi",
+          "predicate": "works at",
+          "target": "Kaiser Labs",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Notes from the 'Helix Architecture Review' with Mira Chen: pick Fly.io for the edge.",
+      "entities": [
+        {
+          "name": "Helix Architecture Review",
+          "type": "event"
+        },
+        {
+          "name": "Mira Chen",
+          "type": "person"
+        },
+        {
+          "name": "Fly.io",
+          "type": "product"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Prof. Yuki Tanaka wants the thesis PDF by 2026-12-01.",
+      "entities": [
+        {
+          "name": "Yuki Tanaka",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Mr. Okonkwo, the bank's relationship manager, says my mortgage is approved.",
+      "entities": [
+        {
+          "name": "Okonkwo",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Meeting 'Atlas Retention Sync' on 2026-07-14 was moved to Friday by Lucia Ferrer.",
+      "entities": [
+        {
+          "name": "Atlas Retention Sync",
+          "type": "event"
+        },
+        {
+          "name": "Lucia Ferrer",
+          "type": "person"
+        }
+      ],
+      "relations": [],
+      "valid_from": "2026-07-14"
+    },
+    {
+      "content": "Dr. Ruth Adeyemi sits on the board of Halcyon.",
+      "entities": [
+        {
+          "name": "Ruth Adeyemi",
+          "type": "person"
+        },
+        {
+          "name": "Halcyon",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ruth Adeyemi",
+          "predicate": "board member of",
+          "target": "Halcyon",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Prof. Samir Haddad, not Prof. Leung, will examine my viva.",
+      "entities": [
+        {
+          "name": "Samir Haddad",
+          "type": "person"
+        },
+        {
+          "name": "Leung",
+          "type": "person"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Samir Haddad",
+          "predicate": "examines",
+          "target": "the user",
+          "negated": false
+        },
+        {
+          "source": "Leung",
+          "predicate": "examines",
+          "target": "the user",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Dr. Wen and Lucia are meeting about the Atlas budget, moved to 3pm.",
+      "entities": [
+        {
+          "name": "Wen",
+          "type": "person"
+        },
+        {
+          "name": "Lucia",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Hiroshi asked about Helix. He thinks it should move to Fly.io.",
+      "entities": [
+        {
+          "name": "Hiroshi",
+          "type": "person"
+        },
+        {
+          "name": "Helix",
+          "type": "project"
+        },
+        {
+          "name": "Fly.io",
+          "type": "product"
+        }
+      ],
+      "relations": [],
+      "valid_from": null
+    },
+    {
+      "content": "Camille called from Porto. She started a new job at Lusa Media.",
+      "entities": [
+        {
+          "name": "Camille",
+          "type": "person"
+        },
+        {
+          "name": "Porto",
+          "type": "place"
+        },
+        {
+          "name": "Lusa Media",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Camille",
+          "predicate": "works at",
+          "target": "Lusa Media",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Mira Chen leads the platform team. She reports to Lucia Ferrer.",
+      "entities": [
+        {
+          "name": "Mira Chen",
+          "type": "person"
+        },
+        {
+          "name": "Lucia Ferrer",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Chen",
+          "predicate": "reports to",
+          "target": "Lucia Ferrer",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Our cat Pixel hates the vacuum. He sleeps on my keyboard.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Pixel",
+          "type": "pet"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "owns",
+          "target": "Pixel",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Ravi left Berlin. He now lives in Munich with his partner Tove.",
+      "entities": [
+        {
+          "name": "Ravi",
+          "type": "person"
+        },
+        {
+          "name": "Berlin",
+          "type": "place"
+        },
+        {
+          "name": "Munich",
+          "type": "place"
+        },
+        {
+          "name": "Tove",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ravi",
+          "predicate": "lives in",
+          "target": "Munich",
+          "negated": false
+        },
+        {
+          "source": "Ravi",
+          "predicate": "lives in",
+          "target": "Berlin",
+          "negated": true
+        },
+        {
+          "source": "Ravi",
+          "predicate": "partner of",
+          "target": "Tove",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Sofia Lind joined Quanta Systems last month. She sits next to Hiroshi.",
+      "entities": [
+        {
+          "name": "Sofia Lind",
+          "type": "person"
+        },
+        {
+          "name": "Quanta Systems",
+          "type": "org"
+        },
+        {
+          "name": "Hiroshi",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sofia Lind",
+          "predicate": "works at",
+          "target": "Quanta Systems",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Prof. Yuki Tanaka's group is at Kyoto University. He supervises Dmitri's PhD.",
+      "entities": [
+        {
+          "name": "Yuki Tanaka",
+          "type": "person"
+        },
+        {
+          "name": "Kyoto University",
+          "type": "org"
+        },
+        {
+          "name": "Dmitri",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Yuki Tanaka",
+          "predicate": "works at",
+          "target": "Kyoto University",
+          "negated": false
+        },
+        {
+          "source": "Yuki Tanaka",
+          "predicate": "supervises",
+          "target": "Dmitri",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I no longer use Windows at home.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Windows",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "uses",
+          "target": "Windows",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Fiona has never been to Lisbon.",
+      "entities": [
+        {
+          "name": "Fiona",
+          "type": "person"
+        },
+        {
+          "name": "Lisbon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Fiona",
+          "predicate": "visited",
+          "target": "Lisbon",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "It's false that Dmitri works at Quanta Systems; he's at Vanta.",
+      "entities": [
+        {
+          "name": "Dmitri",
+          "type": "person"
+        },
+        {
+          "name": "Quanta Systems",
+          "type": "org"
+        },
+        {
+          "name": "Vanta",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dmitri",
+          "predicate": "works at",
+          "target": "Quanta Systems",
+          "negated": true
+        },
+        {
+          "source": "Dmitri",
+          "predicate": "works at",
+          "target": "Vanta",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Halcyon denied the Quanta Systems acquisition rumor.",
+      "entities": [
+        {
+          "name": "Halcyon",
+          "type": "org"
+        },
+        {
+          "name": "Quanta Systems",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Halcyon",
+          "predicate": "owned by",
+          "target": "Quanta Systems",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Don't record Ana as my wife in the profile; we're just partners.",
+      "entities": [
+        {
+          "name": "Ana",
+          "type": "person"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "married to",
+          "target": "Ana",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Biscuit is not owned by Lea; Biscuit is mine.",
+      "entities": [
+        {
+          "name": "Biscuit",
+          "type": "pet"
+        },
+        {
+          "name": "Lea",
+          "type": "person"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lea",
+          "predicate": "owns",
+          "target": "Biscuit",
+          "negated": true
+        },
+        {
+          "source": "the user",
+          "predicate": "owns",
+          "target": "Biscuit",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Kenji isn't on the Atlas team any more.",
+      "entities": [
+        {
+          "name": "Kenji",
+          "type": "person"
+        },
+        {
+          "name": "Atlas",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kenji",
+          "predicate": "member of",
+          "target": "Atlas",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Lucia did not approve the Helix hiring plan.",
+      "entities": [
+        {
+          "name": "Lucia",
+          "type": "person"
+        },
+        {
+          "name": "Helix",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lucia",
+          "predicate": "approves",
+          "target": "Helix",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Daniel Reyes is an engineer at Brightline Health, and he lives in Lisbon.",
+      "entities": [
+        {
+          "name": "Daniel Reyes",
+          "type": "person"
+        },
+        {
+          "name": "Brightline Health",
+          "type": "org"
+        },
+        {
+          "name": "Lisbon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Daniel Reyes",
+          "predicate": "works at",
+          "target": "Brightline Health",
+          "negated": false
+        },
+        {
+          "source": "Daniel Reyes",
+          "predicate": "lives in",
+          "target": "Lisbon",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "I live in Lisbon, and my manager Lucia Ferrer lives in Madrid.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Lisbon",
+          "type": "place"
+        },
+        {
+          "name": "Lucia Ferrer",
+          "type": "person"
+        },
+        {
+          "name": "Madrid",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "lives in",
+          "target": "Lisbon",
+          "negated": false
+        },
+        {
+          "source": "Lucia Ferrer",
+          "predicate": "manages",
+          "target": "the user",
+          "negated": false
+        },
+        {
+          "source": "Lucia Ferrer",
+          "predicate": "lives in",
+          "target": "Madrid",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Mira Chen joined Halcyon in 2019, and Halcyon is headquartered in Boston.",
+      "entities": [
+        {
+          "name": "Mira Chen",
+          "type": "person"
+        },
+        {
+          "name": "Halcyon",
+          "type": "org"
+        },
+        {
+          "name": "Boston",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Chen",
+          "predicate": "works at",
+          "target": "Halcyon",
+          "negated": false
+        },
+        {
+          "source": "Halcyon",
+          "predicate": "located in",
+          "target": "Boston",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Priya moved to Vanta, and she now manages the data team.",
+      "entities": [
+        {
+          "name": "Priya",
+          "type": "person"
+        },
+        {
+          "name": "Vanta",
+          "type": "org"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Priya",
+          "predicate": "works at",
+          "target": "Vanta",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Fiona uses Obsidian for notes and Notion for work tasks.",
+      "entities": [
+        {
+          "name": "Fiona",
+          "type": "person"
+        },
+        {
+          "name": "Obsidian",
+          "type": "tool"
+        },
+        {
+          "name": "Notion",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Fiona",
+          "predicate": "uses",
+          "target": "Obsidian",
+          "negated": false
+        },
+        {
+          "source": "Fiona",
+          "predicate": "uses",
+          "target": "Notion",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Lea loves Biscuit and sleeps with the window open.",
+      "entities": [
+        {
+          "name": "Lea",
+          "type": "person"
+        },
+        {
+          "name": "Biscuit",
+          "type": "pet"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lea",
+          "predicate": "likes",
+          "target": "Biscuit",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Helix's staging is on Neon, and production runs on Fly.io.",
+      "entities": [
+        {
+          "name": "Helix",
+          "type": "project"
+        },
+        {
+          "name": "Neon",
+          "type": "product"
+        },
+        {
+          "name": "Fly.io",
+          "type": "product"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Helix",
+          "predicate": "uses",
+          "target": "Neon",
+          "negated": false
+        },
+        {
+          "source": "Helix",
+          "predicate": "uses",
+          "target": "Fly.io",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Atlas needs Keycloak for login, and Orion reuses it.",
+      "entities": [
+        {
+          "name": "Atlas",
+          "type": "project"
+        },
+        {
+          "name": "Keycloak",
+          "type": "tool"
+        },
+        {
+          "name": "Orion",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Atlas",
+          "predicate": "uses",
+          "target": "Keycloak",
+          "negated": false
+        },
+        {
+          "source": "Orion",
+          "predicate": "uses",
+          "target": "Keycloak",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Sam lives in Toronto, not New York.",
+      "entities": [
+        {
+          "name": "Sam",
+          "type": "person"
+        },
+        {
+          "name": "Toronto",
+          "type": "place"
+        },
+        {
+          "name": "New York",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sam",
+          "predicate": "lives in",
+          "target": "Toronto",
+          "negated": false
+        },
+        {
+          "source": "Sam",
+          "predicate": "lives in",
+          "target": "New York",
+          "negated": true
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Ana and I live in Lisbon with Biscuit.",
+      "entities": [
+        {
+          "name": "Ana",
+          "type": "person"
+        },
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Lisbon",
+          "type": "place"
+        },
+        {
+          "name": "Biscuit",
+          "type": "pet"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "lives in",
+          "target": "Lisbon",
+          "negated": false
+        },
+        {
+          "source": "Ana",
+          "predicate": "lives in",
+          "target": "Lisbon",
+          "negated": false
+        },
+        {
+          "source": "the user",
+          "predicate": "lives with",
+          "target": "Ana",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Ich habe Biscuit seit 2019.",
+      "entities": [
+        {
+          "name": "the user",
+          "type": "person"
+        },
+        {
+          "name": "Biscuit",
+          "type": "pet"
+        }
+      ],
+      "relations": [
+        {
+          "source": "the user",
+          "predicate": "owns",
+          "target": "Biscuit",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    },
+    {
+      "content": "Lea's school is Hillview Primary in Cork.",
+      "entities": [
+        {
+          "name": "Lea",
+          "type": "person"
+        },
+        {
+          "name": "Hillview Primary",
+          "type": "org"
+        },
+        {
+          "name": "Cork",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lea",
+          "predicate": "attends",
+          "target": "Hillview Primary",
+          "negated": false
+        }
+      ],
+      "valid_from": null
+    }
+  ]
+}

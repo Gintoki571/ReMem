@@ -126,6 +126,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - `tests/temporal_fixes.rs` - regression tests for the temporal/invalidation hunt (until/invalidate/forget ends, interval overlap, `--when` spans, text-date inference, budget and duplicate flags).
 - `tests/ops.rs` - export/import round trip, concurrent writer processes. `tests/world.rs` - batch == sequential on a mixed workload (ids, whole outputs, tables) including a negation, a seeded single-valued change and a non-exclusive conflict, batch error isolation, and the committed world fixture's key/answer integrity.
 - `eval/fixtures.json` (tuning, 95 memories / 84 queries) + `eval/holdout.json` (independent check, 105 / 88) + `eval/world-300.json` (generated, 300 people / 3264 memories / 600 queries) + `eval/README.md` (format, scoring incl. acc@10, tuning protocol: defaults change only if both sets agree, world protocol).
+- `eval/extract/holdout.json` - independent held-out extraction set (150 memories, `content` + `entities` + `relations` + `valid_from`), scored by `examples/extract_eval.rs`; never tuned against, never read by extraction code.
 - `examples/gen_world.rs` - deterministic (`--seed`) synthetic year of agent memory + ground-truth queries; the only writer of `eval/world-*.json`. Generated worlds over 2 MB stay out of git.
 - `skills/neocortex/SKILL.md` - agent-facing usage protocol; `README.md` - user docs.
 
