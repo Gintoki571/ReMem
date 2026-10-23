@@ -405,6 +405,158 @@ pub(crate) fn search(db: &Db, query: &str, seeds: &[i64], vis: Visibility) -> Re
     Ok(hits)
 }
 
+/// Facts recognised as relevant to the question: one KNN over relation fact
+/// vectors bounds the semantic beam below.
+const SEM_FACTS: usize = 100;
+/// Edges taken from one entity in the semantic beam.
+const SEM_EDGES: usize = 6;
+
+/// Semantic twin of [`search`] for questions that paraphrase the stored
+/// predicates ("who guides Noor's career" vs `mentors`): hops may only use
+/// relations among the question's nearest facts. Each hop is scored against
+/// the residual question (the question vector minus what earlier hops already
+/// explained) and a path scores the sum, so a chain beats a single fact that
+/// matches only part of the question. Only paths of >= 2 hops are emitted.
+pub(crate) fn search_semantic(
+    db: &Db,
+    query_vec: &[f32],
+    seeds: &[i64],
+    vis: Visibility,
+) -> Result<Vec<PathHit>> {
+    if seeds.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut relevant: HashMap<i64, Vec<f32>> = HashMap::new();
+    let mut st = db.sql().prepare_cached(
+        "SELECT rowid, embedding FROM relations_vec WHERE embedding MATCH ?1 AND k=?2",
+    )?;
+    for row in st.query_map(
+        params![crate::db::vec_blob(query_vec), SEM_FACTS as i64],
+        |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Vec<u8>>(1)?)),
+    )? {
+        let (id, blob) = row?;
+        if let Some(vector) = crate::db::blob_to_vec(&blob) {
+            relevant.insert(id, vector);
+        }
+    }
+    let mut edges_st = db.sql().prepare_cached(
+        "SELECT r.id,r.src,r.dst,p.canonical,r.fact,r.valid_from,r.valid_to,r.expired_at
+         FROM relations r JOIN predicates p ON p.id=r.predicate_id
+         WHERE (r.src=?1 OR r.dst=?1) AND r.polarity=1",
+    )?;
+    let mut cache: HashMap<i64, Vec<(Step, i64, Vec<f32>)>> = HashMap::new();
+    let mut edges = |entity: i64| -> Result<Vec<(Step, i64, Vec<f32>)>> {
+        if let Some(hit) = cache.get(&entity) {
+            return Ok(hit.clone());
+        }
+        let mut out = Vec::new();
+        for row in edges_st.query_map([entity], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, i64>(1)?,
+                r.get::<_, i64>(2)?,
+                r.get::<_, String>(3)?,
+                r.get::<_, String>(4)?,
+                r.get::<_, i64>(5)?,
+                r.get::<_, Option<i64>>(6)?,
+                r.get::<_, Option<i64>>(7)?,
+            ))
+        })? {
+            let (relation_id, src, dst, predicate, fact, from, to, expired) = row?;
+            let Some(vector) = relevant.get(&relation_id) else {
+                continue;
+            };
+            if src == dst || !vis.shows(from, to, expired) {
+                continue;
+            }
+            let reverse = dst == entity;
+            let other = if reverse { src } else { dst };
+            out.push((
+                Step {
+                    relation_id,
+                    src,
+                    dst,
+                    predicate,
+                    fact,
+                    reverse,
+                    matched: 0,
+                },
+                other,
+                vector.clone(),
+            ));
+        }
+        out.truncate(64);
+        cache.insert(entity, out.clone());
+        Ok(out)
+    };
+    // (entity, visited entities, cosine sum, steps, residual question vector)
+    type SemState = (i64, Vec<i64>, f64, Vec<Step>, Vec<f32>);
+    let mut frontier: Vec<SemState> = seeds
+        .iter()
+        .map(|id| (*id, vec![*id], 0.0, Vec::new(), query_vec.to_vec()))
+        .collect();
+    let mut hits: Vec<PathHit> = Vec::new();
+    for _ in 0..MAX_DEPTH {
+        let mut next = Vec::new();
+        for (entity, visited, sum, steps, residual) in &frontier {
+            let mut scored: Vec<(Step, i64, Vec<f32>, f64)> = edges(*entity)?
+                .into_iter()
+                .filter(|(_, other, _)| !visited.contains(other))
+                .map(|(step, other, vector)| {
+                    let cosine = f64::from(crate::rank::cosine(residual, &vector));
+                    (step, other, vector, cosine)
+                })
+                .collect();
+            scored.sort_by(|a, b| {
+                b.3.total_cmp(&a.3)
+                    .then(a.0.relation_id.cmp(&b.0.relation_id))
+            });
+            scored.truncate(SEM_EDGES);
+            for (step, other, vector, cosine) in scored {
+                let mut steps = steps.clone();
+                steps.push(step);
+                let mut visited = visited.clone();
+                visited.push(other);
+                let sum = sum + cosine;
+                // The next hop must explain what this fact did not.
+                let residual = residual_after(residual, &vector);
+                // One-hop facts are already the vector channel's job.
+                if steps.len() >= 2 {
+                    hits.push(PathHit {
+                        score: sum,
+                        steps: steps.clone(),
+                        coverage: 1,
+                    });
+                }
+                next.push((other, visited, sum, steps, residual));
+            }
+        }
+        next.sort_by(|a, b| b.2.total_cmp(&a.2));
+        next.truncate(BEAM);
+        if next.is_empty() {
+            break;
+        }
+        frontier = next;
+    }
+    hits.sort_by(|a, b| {
+        b.score
+            .total_cmp(&a.score)
+            .then(a.steps.len().cmp(&b.steps.len()))
+    });
+    hits.truncate(PATH_HITS);
+    Ok(hits)
+}
+
+/// `query` with the component along unit vector `fact` removed, renormalised:
+/// what a later hop still has to explain.
+fn residual_after(query: &[f32], fact: &[f32]) -> Vec<f32> {
+    let dot: f32 = query.iter().zip(fact).map(|(a, b)| a * b).sum();
+    let mut r: Vec<f32> = query.iter().zip(fact).map(|(a, b)| a - dot * b).collect();
+    let norm = r.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-6);
+    r.iter_mut().for_each(|x| *x /= norm);
+    r
+}
+
 /// Evidence memories for ranked paths: the destination first, then the links.
 /// Deeper coverage wins: a three-hop chain that explains the whole question
 /// outranks a two-hop fragment with a slightly better edge score.
@@ -436,7 +588,7 @@ pub(crate) fn evidence(db: &Db, hits: &[PathHit]) -> Result<Vec<i64>> {
 /// next to the retrieved memories.
 pub(crate) fn facts(db: &Db, hits: &[PathHit], cutoff: i64, limit: usize) -> Result<Vec<FactHit>> {
     let mut st = db.sql().prepare_cached(
-        "SELECT p.canonical,r.fact,r.valid_from,r.valid_to,r.expired_at,s.name,d.name
+        "SELECT p.canonical,r.fact,r.valid_from,r.valid_to,r.expired_at,s.name,d.name,r.polarity
          FROM relations r
          JOIN predicates p ON p.id=r.predicate_id
          JOIN entities s ON s.id=r.src
@@ -454,7 +606,7 @@ pub(crate) fn facts(db: &Db, hits: &[PathHit], cutoff: i64, limit: usize) -> Res
                 continue;
             };
             let Some(row) = rows.next()? else { continue };
-            let (predicate, fact, valid_from, valid_to, expired, source, target) = (
+            let (predicate, fact, valid_from, valid_to, expired, source, target, polarity) = (
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, i64>(2)?,
@@ -462,6 +614,7 @@ pub(crate) fn facts(db: &Db, hits: &[PathHit], cutoff: i64, limit: usize) -> Res
                 row.get::<_, Option<i64>>(4)?,
                 row.get::<_, String>(5)?,
                 row.get::<_, String>(6)?,
+                row.get::<_, i64>(7)?,
             );
             if valid_from > cutoff {
                 continue;
@@ -475,6 +628,10 @@ pub(crate) fn facts(db: &Db, hits: &[PathHit], cutoff: i64, limit: usize) -> Res
                 valid_from,
                 valid_to,
                 ended: expired.is_some() || valid_to.is_some_and(|v| v <= cutoff),
+                retracted: expired.is_some() && valid_to.is_none(),
+                polarity,
+                current_values: None,
+                replaced_by: None,
             });
             if out.len() >= limit {
                 return Ok(out);
@@ -846,4 +1003,16 @@ pub fn aggregate(engine: &Engine, input: &AggregateInput) -> Result<AggregateOut
         memories,
         truncated: total > limit,
     })
+}
+
+#[cfg(test)]
+mod residual_tests {
+    use super::residual_after;
+
+    #[test]
+    fn residual_is_orthogonal_to_the_explained_fact_and_unit_length() {
+        let r = residual_after(&[0.6, 0.8, 0.0], &[1.0, 0.0, 0.0]);
+        assert!(r[0].abs() < 1e-6, "{r:?}");
+        assert!((r[1] - 1.0).abs() < 1e-6, "{r:?}");
+    }
 }

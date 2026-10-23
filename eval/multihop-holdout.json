@@ -1,0 +1,5769 @@
+{
+  "now": "2026-10-21T15:00:00Z",
+  "memories": [
+    {
+      "key": "m001",
+      "content": "Noor Haddad is employed by Delta Bridge Consulting as a structural engineer.",
+      "kind": "fact",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-10-25",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Delta Bridge Consulting",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "is employed by",
+          "target": "Delta Bridge Consulting",
+          "fact": "Noor Haddad is employed by Delta Bridge Consulting",
+          "exclusive": true,
+          "valid_from": "2025-10-25"
+        }
+      ]
+    },
+    {
+      "key": "m002",
+      "content": "Noor resides in Rotterdam, in a rented flat on the Rivierkade in Kralingen.",
+      "kind": "fact",
+      "tags": [
+        "residence"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-10-27",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Rotterdam",
+          "type": "place"
+        },
+        {
+          "name": "Rivierkade Housing Cooperative",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "resides in",
+          "target": "Rotterdam",
+          "fact": "Noor Haddad resides in Rotterdam",
+          "exclusive": true,
+          "valid_from": "2025-10-27"
+        },
+        {
+          "source": "Noor Haddad",
+          "predicate": "rents from",
+          "target": "Rivierkade Housing Cooperative",
+          "fact": "Noor Haddad rents from Rivierkade Housing Cooperative",
+          "exclusive": true,
+          "valid_from": "2025-10-27"
+        }
+      ]
+    },
+    {
+      "key": "m003",
+      "content": "Noor studied at Veldhoven Institute of Technology and finished a structures master's there.",
+      "kind": "fact",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-10-29",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Veldhoven Institute of Technology",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "studied at",
+          "target": "Veldhoven Institute of Technology",
+          "fact": "Noor Haddad studied at Veldhoven Institute of Technology",
+          "exclusive": false,
+          "valid_from": "2025-10-29"
+        }
+      ]
+    },
+    {
+      "key": "m004",
+      "content": "Mira Lindqvist has been Noor's mentor since Noor's first year at Delta Bridge.",
+      "kind": "fact",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-10-31",
+      "entities": [
+        {
+          "name": "Mira Lindqvist",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Lindqvist",
+          "predicate": "mentors",
+          "target": "Noor Haddad",
+          "fact": "Mira Lindqvist mentors Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2025-10-31"
+        }
+      ]
+    },
+    {
+      "key": "m005",
+      "content": "Mira Lindqvist studied at Kestrel Polytechnic before moving into academia.",
+      "kind": "fact",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-11-03",
+      "entities": [
+        {
+          "name": "Mira Lindqvist",
+          "type": "person"
+        },
+        {
+          "name": "Kestrel Polytechnic",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Lindqvist",
+          "predicate": "studied at",
+          "target": "Kestrel Polytechnic",
+          "fact": "Mira Lindqvist studied at Kestrel Polytechnic",
+          "exclusive": false,
+          "valid_from": "2025-11-03"
+        }
+      ]
+    },
+    {
+      "key": "m006",
+      "content": "Kestrel Polytechnic is located in Delft.",
+      "kind": "fact",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-11-05",
+      "entities": [
+        {
+          "name": "Kestrel Polytechnic",
+          "type": "organization"
+        },
+        {
+          "name": "Delft",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kestrel Polytechnic",
+          "predicate": "is located in",
+          "target": "Delft",
+          "fact": "Kestrel Polytechnic is located in Delft",
+          "exclusive": false,
+          "valid_from": "2025-11-05"
+        }
+      ]
+    },
+    {
+      "key": "m007",
+      "content": "Mira Lindqvist is a member of the Royal Structures Society.",
+      "kind": "fact",
+      "tags": [
+        "memberships"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-11-07",
+      "entities": [
+        {
+          "name": "Mira Lindqvist",
+          "type": "person"
+        },
+        {
+          "name": "Royal Structures Society",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Lindqvist",
+          "predicate": "is a member of",
+          "target": "Royal Structures Society",
+          "fact": "Mira Lindqvist is a member of Royal Structures Society",
+          "exclusive": false,
+          "valid_from": "2025-11-07"
+        }
+      ]
+    },
+    {
+      "key": "m008",
+      "content": "Mira lectures a steel design course at Veldhoven Institute of Technology on Tuesdays.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-11-10",
+      "entities": [
+        {
+          "name": "Mira Lindqvist",
+          "type": "person"
+        },
+        {
+          "name": "Veldhoven Institute of Technology",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Lindqvist",
+          "predicate": "lectures at",
+          "target": "Veldhoven Institute of Technology",
+          "fact": "Mira Lindqvist lectures at Veldhoven Institute of Technology",
+          "exclusive": false,
+          "valid_from": "2025-11-10"
+        }
+      ]
+    },
+    {
+      "key": "m009",
+      "content": "Mira reviewed Noor's thesis draft line by line.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-11-12",
+      "entities": [
+        {
+          "name": "Mira Lindqvist",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Lindqvist",
+          "predicate": "reviews the work of",
+          "target": "Noor Haddad",
+          "fact": "Mira Lindqvist reviews the work of Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2025-11-12"
+        }
+      ]
+    },
+    {
+      "key": "m010",
+      "content": "Noor mentors Felix Moreau, a graduate engineer who joined the Delta Bridge team in January.",
+      "kind": "fact",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-11-14",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "mentors",
+          "target": "Felix Moreau",
+          "fact": "Noor Haddad mentors Felix Moreau",
+          "exclusive": false,
+          "valid_from": "2025-11-14"
+        }
+      ]
+    },
+    {
+      "key": "m011",
+      "content": "Felix Moreau works for Delta Bridge Consulting as a graduate engineer.",
+      "kind": "fact",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-11-17",
+      "entities": [
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        },
+        {
+          "name": "Delta Bridge Consulting",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Felix Moreau",
+          "predicate": "works for",
+          "target": "Delta Bridge Consulting",
+          "fact": "Felix Moreau works for Delta Bridge Consulting",
+          "exclusive": false,
+          "valid_from": "2025-11-17"
+        }
+      ]
+    },
+    {
+      "key": "m012",
+      "content": "Felix Moreau is allergic to peanuts, so the office snack drawer stays peanut-free.",
+      "kind": "fact",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-11-19",
+      "entities": [
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        },
+        {
+          "name": "peanuts",
+          "type": "object"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Felix Moreau",
+          "predicate": "is allergic to",
+          "target": "peanuts",
+          "fact": "Felix Moreau is allergic to peanuts",
+          "exclusive": false,
+          "valid_from": "2025-11-19"
+        }
+      ]
+    },
+    {
+      "key": "m013",
+      "content": "Felix Moreau is a member of Vertex Climbing Gym and goes on Thursdays.",
+      "kind": "fact",
+      "tags": [
+        "fitness"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-11-21",
+      "entities": [
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        },
+        {
+          "name": "Vertex Climbing Gym",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Felix Moreau",
+          "predicate": "is a member of",
+          "target": "Vertex Climbing Gym",
+          "fact": "Felix Moreau is a member of Vertex Climbing Gym",
+          "exclusive": false,
+          "valid_from": "2025-11-21"
+        }
+      ]
+    },
+    {
+      "key": "m014",
+      "content": "Sami Haddad is Noor's younger sibling and works as a sound engineer.",
+      "kind": "fact",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-11-24",
+      "entities": [
+        {
+          "name": "Sami Haddad",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sami Haddad",
+          "predicate": "is the younger sibling of",
+          "target": "Noor Haddad",
+          "fact": "Sami Haddad is the younger sibling of Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2025-11-24"
+        }
+      ]
+    },
+    {
+      "key": "m015",
+      "content": "Sami Haddad is based in Lisbon and works remotely.",
+      "kind": "fact",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-11-26",
+      "entities": [
+        {
+          "name": "Sami Haddad",
+          "type": "person"
+        },
+        {
+          "name": "Lisbon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sami Haddad",
+          "predicate": "is based in",
+          "target": "Lisbon",
+          "fact": "Sami Haddad is based in Lisbon",
+          "exclusive": false,
+          "valid_from": "2025-11-26"
+        }
+      ]
+    },
+    {
+      "key": "m016",
+      "content": "Sami owns a grey parrot named Tofu.",
+      "kind": "fact",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-11-28",
+      "entities": [
+        {
+          "name": "Sami Haddad",
+          "type": "person"
+        },
+        {
+          "name": "Tofu",
+          "type": "animal"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sami Haddad",
+          "predicate": "owns a pet",
+          "target": "Tofu",
+          "fact": "Sami Haddad owns a pet Tofu",
+          "exclusive": false,
+          "valid_from": "2025-11-28"
+        }
+      ]
+    },
+    {
+      "key": "m017",
+      "content": "Tofu is a grey parrot.",
+      "kind": "fact",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-01",
+      "entities": [
+        {
+          "name": "Tofu",
+          "type": "animal"
+        },
+        {
+          "name": "grey parrot",
+          "type": "object"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Tofu",
+          "predicate": "is a species of",
+          "target": "grey parrot",
+          "fact": "Tofu is a species of grey parrot",
+          "exclusive": false,
+          "valid_from": "2025-12-01"
+        }
+      ]
+    },
+    {
+      "key": "m018",
+      "content": "Noor owns a Border collie named Mabel.",
+      "kind": "fact",
+      "tags": [
+        "pets"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-03",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Mabel",
+          "type": "animal"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "owns a pet",
+          "target": "Mabel",
+          "fact": "Noor Haddad owns a pet Mabel",
+          "exclusive": false,
+          "valid_from": "2025-12-03"
+        }
+      ]
+    },
+    {
+      "key": "m019",
+      "content": "Mabel belongs to the Border collie breed.",
+      "kind": "fact",
+      "tags": [
+        "pets"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-05",
+      "entities": [
+        {
+          "name": "Mabel",
+          "type": "animal"
+        },
+        {
+          "name": "Border collie",
+          "type": "object"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mabel",
+          "predicate": "belongs to the breed",
+          "target": "Border collie",
+          "fact": "Mabel belongs to the breed Border collie",
+          "exclusive": false,
+          "valid_from": "2025-12-05"
+        }
+      ]
+    },
+    {
+      "key": "m020",
+      "content": "Noor drives a grey Volvo V60 wagon.",
+      "kind": "fact",
+      "tags": [
+        "vehicles"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-08",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Volvo V60",
+          "type": "object"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "drives",
+          "target": "Volvo V60",
+          "fact": "Noor Haddad drives Volvo V60",
+          "exclusive": false,
+          "valid_from": "2025-12-08"
+        }
+      ]
+    },
+    {
+      "key": "m021",
+      "content": "Hollis Garage services the Volvo V60 every six months.",
+      "kind": "fact",
+      "tags": [
+        "vehicles"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-10",
+      "entities": [
+        {
+          "name": "Hollis Garage",
+          "type": "organization"
+        },
+        {
+          "name": "Volvo V60",
+          "type": "object"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hollis Garage",
+          "predicate": "services",
+          "target": "Volvo V60",
+          "fact": "Hollis Garage services Volvo V60",
+          "exclusive": false,
+          "valid_from": "2025-12-10"
+        }
+      ]
+    },
+    {
+      "key": "m022",
+      "content": "Hollis Garage is located in Schiedam.",
+      "kind": "fact",
+      "tags": [
+        "vehicles"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-12",
+      "entities": [
+        {
+          "name": "Hollis Garage",
+          "type": "organization"
+        },
+        {
+          "name": "Schiedam",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hollis Garage",
+          "predicate": "is located in",
+          "target": "Schiedam",
+          "fact": "Hollis Garage is located in Schiedam",
+          "exclusive": false,
+          "valid_from": "2025-12-12"
+        }
+      ]
+    },
+    {
+      "key": "m023",
+      "content": "Kofi Mensah is neighbours with Noor on the Rivierkade.",
+      "kind": "fact",
+      "tags": [
+        "home"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-15",
+      "entities": [
+        {
+          "name": "Kofi Mensah",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kofi Mensah",
+          "predicate": "is neighbours with",
+          "target": "Noor Haddad",
+          "fact": "Kofi Mensah is neighbours with Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2025-12-15"
+        }
+      ]
+    },
+    {
+      "key": "m024",
+      "content": "Kofi Mensah plays the drums in a jazz trio.",
+      "kind": "fact",
+      "tags": [
+        "music"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-17",
+      "entities": [
+        {
+          "name": "Kofi Mensah",
+          "type": "person"
+        },
+        {
+          "name": "drums",
+          "type": "object"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kofi Mensah",
+          "predicate": "plays",
+          "target": "drums",
+          "fact": "Kofi Mensah plays drums",
+          "exclusive": false,
+          "valid_from": "2025-12-17"
+        }
+      ]
+    },
+    {
+      "key": "m025",
+      "content": "Kofi Mensah is employed by Brightwell Labs as a software developer.",
+      "kind": "fact",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-12-19",
+      "entities": [
+        {
+          "name": "Kofi Mensah",
+          "type": "person"
+        },
+        {
+          "name": "Brightwell Labs",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kofi Mensah",
+          "predicate": "is employed by",
+          "target": "Brightwell Labs",
+          "fact": "Kofi Mensah is employed by Brightwell Labs",
+          "exclusive": true,
+          "valid_from": "2025-12-19"
+        }
+      ]
+    },
+    {
+      "key": "m026",
+      "content": "Pieter de Jong chairs the Rivierkade Housing Cooperative, which owns Noor's flat.",
+      "kind": "fact",
+      "tags": [
+        "home"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-22",
+      "entities": [
+        {
+          "name": "Pieter de Jong",
+          "type": "person"
+        },
+        {
+          "name": "Rivierkade Housing Cooperative",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Pieter de Jong",
+          "predicate": "chairs",
+          "target": "Rivierkade Housing Cooperative",
+          "fact": "Pieter de Jong chairs Rivierkade Housing Cooperative",
+          "exclusive": false,
+          "valid_from": "2025-12-22"
+        }
+      ]
+    },
+    {
+      "key": "m027",
+      "content": "Pieter de Jong was born in Delft.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2025-12-24",
+      "entities": [
+        {
+          "name": "Pieter de Jong",
+          "type": "person"
+        },
+        {
+          "name": "Delft",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Pieter de Jong",
+          "predicate": "was born in",
+          "target": "Delft",
+          "fact": "Pieter de Jong was born in Delft",
+          "exclusive": false,
+          "valid_from": "2025-12-24"
+        }
+      ]
+    },
+    {
+      "key": "m028",
+      "content": "Ingrid Vos is Noor's registered GP.",
+      "kind": "fact",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-12-26",
+      "entities": [
+        {
+          "name": "Ingrid Vos",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Vos",
+          "predicate": "is the registered GP of",
+          "target": "Noor Haddad",
+          "fact": "Ingrid Vos is the registered GP of Noor Haddad",
+          "exclusive": true,
+          "valid_from": "2025-12-26"
+        }
+      ]
+    },
+    {
+      "key": "m029",
+      "content": "Ingrid Vos practises at Kralingen Medical Centre.",
+      "kind": "fact",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-12-29",
+      "entities": [
+        {
+          "name": "Ingrid Vos",
+          "type": "person"
+        },
+        {
+          "name": "Kralingen Medical Centre",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Vos",
+          "predicate": "practises at",
+          "target": "Kralingen Medical Centre",
+          "fact": "Ingrid Vos practises at Kralingen Medical Centre",
+          "exclusive": false,
+          "valid_from": "2025-12-29"
+        }
+      ]
+    },
+    {
+      "key": "m030",
+      "content": "Ingrid Vos prescribed Noor a salbutamol inhaler for exercise-induced asthma.",
+      "kind": "fact",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2025-12-31",
+      "entities": [
+        {
+          "name": "Ingrid Vos",
+          "type": "person"
+        },
+        {
+          "name": "salbutamol",
+          "type": "object"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Vos",
+          "predicate": "prescribed",
+          "target": "salbutamol",
+          "fact": "Ingrid Vos prescribed salbutamol",
+          "exclusive": false,
+          "valid_from": "2025-12-31"
+        }
+      ]
+    },
+    {
+      "key": "m031",
+      "content": "Noor is allergic to penicillin.",
+      "kind": "fact",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-01-02",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "penicillin",
+          "type": "object"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "is allergic to",
+          "target": "penicillin",
+          "fact": "Noor Haddad is allergic to penicillin",
+          "exclusive": false,
+          "valid_from": "2026-01-02"
+        }
+      ]
+    },
+    {
+      "key": "m032",
+      "content": "Nadia Sokolova treats Noor's rotator cuff twice a week.",
+      "kind": "fact",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-01-05",
+      "entities": [
+        {
+          "name": "Nadia Sokolova",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Nadia Sokolova",
+          "predicate": "treats",
+          "target": "Noor Haddad",
+          "fact": "Nadia Sokolova treats Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2026-01-05"
+        }
+      ]
+    },
+    {
+      "key": "m033",
+      "content": "Nadia Sokolova is affiliated with Northgate Physio Clinic.",
+      "kind": "fact",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-01-07",
+      "entities": [
+        {
+          "name": "Nadia Sokolova",
+          "type": "person"
+        },
+        {
+          "name": "Northgate Physio Clinic",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Nadia Sokolova",
+          "predicate": "is affiliated with",
+          "target": "Northgate Physio Clinic",
+          "fact": "Nadia Sokolova is affiliated with Northgate Physio Clinic",
+          "exclusive": false,
+          "valid_from": "2026-01-07"
+        }
+      ]
+    },
+    {
+      "key": "m034",
+      "content": "Delta Bridge Consulting is headquartered in Antwerp, with an engineering office in Rotterdam.",
+      "kind": "fact",
+      "tags": [
+        "company"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-01-09",
+      "entities": [
+        {
+          "name": "Delta Bridge Consulting",
+          "type": "organization"
+        },
+        {
+          "name": "Antwerp",
+          "type": "place"
+        },
+        {
+          "name": "Rotterdam",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Delta Bridge Consulting",
+          "predicate": "is headquartered in",
+          "target": "Antwerp",
+          "fact": "Delta Bridge Consulting is headquartered in Antwerp",
+          "exclusive": false,
+          "valid_from": "2026-01-09"
+        },
+        {
+          "source": "Delta Bridge Consulting",
+          "predicate": "has an office in",
+          "target": "Rotterdam",
+          "fact": "Delta Bridge Consulting has an office in Rotterdam",
+          "exclusive": false,
+          "valid_from": "2026-01-09"
+        }
+      ]
+    },
+    {
+      "key": "m035",
+      "content": "Aisha Bello founded Delta Bridge Consulting in 2009.",
+      "kind": "fact",
+      "tags": [
+        "company"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-01-11",
+      "entities": [
+        {
+          "name": "Aisha Bello",
+          "type": "person"
+        },
+        {
+          "name": "Delta Bridge Consulting",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Aisha Bello",
+          "predicate": "founded",
+          "target": "Delta Bridge Consulting",
+          "fact": "Aisha Bello founded Delta Bridge Consulting",
+          "exclusive": false,
+          "valid_from": "2026-01-11"
+        }
+      ]
+    },
+    {
+      "key": "m036",
+      "content": "Ravi Menon is a principal at Delta Bridge Consulting.",
+      "kind": "fact",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-01-14",
+      "entities": [
+        {
+          "name": "Ravi Menon",
+          "type": "person"
+        },
+        {
+          "name": "Delta Bridge Consulting",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ravi Menon",
+          "predicate": "works for",
+          "target": "Delta Bridge Consulting",
+          "fact": "Ravi Menon works for Delta Bridge Consulting",
+          "exclusive": false,
+          "valid_from": "2026-01-14"
+        }
+      ]
+    },
+    {
+      "key": "m037",
+      "content": "Ravi Menon is married to Sofia Ricci.",
+      "kind": "fact",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-01-16",
+      "entities": [
+        {
+          "name": "Ravi Menon",
+          "type": "person"
+        },
+        {
+          "name": "Sofia Ricci",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ravi Menon",
+          "predicate": "is married to",
+          "target": "Sofia Ricci",
+          "fact": "Ravi Menon is married to Sofia Ricci",
+          "exclusive": true,
+          "valid_from": "2026-01-16"
+        }
+      ]
+    },
+    {
+      "key": "m038",
+      "content": "Sofia Ricci is the geotechnical lead at Delta Bridge Consulting.",
+      "kind": "fact",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-01-18",
+      "entities": [
+        {
+          "name": "Sofia Ricci",
+          "type": "person"
+        },
+        {
+          "name": "Delta Bridge Consulting",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sofia Ricci",
+          "predicate": "is employed by",
+          "target": "Delta Bridge Consulting",
+          "fact": "Sofia Ricci is employed by Delta Bridge Consulting",
+          "exclusive": true,
+          "valid_from": "2026-01-18"
+        }
+      ]
+    },
+    {
+      "key": "m039",
+      "content": "Sofia Ricci was born in Naples.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-01-21",
+      "entities": [
+        {
+          "name": "Sofia Ricci",
+          "type": "person"
+        },
+        {
+          "name": "Naples",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sofia Ricci",
+          "predicate": "was born in",
+          "target": "Naples",
+          "fact": "Sofia Ricci was born in Naples",
+          "exclusive": false,
+          "valid_from": "2026-01-21"
+        }
+      ]
+    },
+    {
+      "key": "m040",
+      "content": "Harbor Steel Partners is a long-standing client of Delta Bridge Consulting.",
+      "kind": "fact",
+      "tags": [
+        "clients"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-01-23",
+      "entities": [
+        {
+          "name": "Harbor Steel Partners",
+          "type": "organization"
+        },
+        {
+          "name": "Delta Bridge Consulting",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Harbor Steel Partners",
+          "predicate": "is a client of",
+          "target": "Delta Bridge Consulting",
+          "fact": "Harbor Steel Partners is a client of Delta Bridge Consulting",
+          "exclusive": false,
+          "valid_from": "2026-01-23"
+        }
+      ]
+    },
+    {
+      "key": "m041",
+      "content": "Greta Hoffmann runs Harbor Steel Partners as chief executive.",
+      "kind": "fact",
+      "tags": [
+        "clients"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-01-25",
+      "entities": [
+        {
+          "name": "Greta Hoffmann",
+          "type": "person"
+        },
+        {
+          "name": "Harbor Steel Partners",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Greta Hoffmann",
+          "predicate": "runs",
+          "target": "Harbor Steel Partners",
+          "fact": "Greta Hoffmann runs Harbor Steel Partners",
+          "exclusive": false,
+          "valid_from": "2026-01-25"
+        }
+      ]
+    },
+    {
+      "key": "m042",
+      "content": "Harbor Steel Partners is headquartered in Hamburg.",
+      "kind": "fact",
+      "tags": [
+        "clients"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-01-28",
+      "entities": [
+        {
+          "name": "Harbor Steel Partners",
+          "type": "organization"
+        },
+        {
+          "name": "Hamburg",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Harbor Steel Partners",
+          "predicate": "is headquartered in",
+          "target": "Hamburg",
+          "fact": "Harbor Steel Partners is headquartered in Hamburg",
+          "exclusive": false,
+          "valid_from": "2026-01-28"
+        }
+      ]
+    },
+    {
+      "key": "m043",
+      "content": "Greta Hoffmann was born in Bremen.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-01-30",
+      "entities": [
+        {
+          "name": "Greta Hoffmann",
+          "type": "person"
+        },
+        {
+          "name": "Bremen",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Greta Hoffmann",
+          "predicate": "was born in",
+          "target": "Bremen",
+          "fact": "Greta Hoffmann was born in Bremen",
+          "exclusive": false,
+          "valid_from": "2026-01-30"
+        }
+      ]
+    },
+    {
+      "key": "m044",
+      "content": "Noor is the lead engineer on the Kralingen Footbridge, a pedestrian crossing over the Rotte.",
+      "kind": "fact",
+      "tags": [
+        "projects"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-01",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Kralingen Footbridge",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "is the lead engineer on",
+          "target": "Kralingen Footbridge",
+          "fact": "Noor Haddad is the lead engineer on Kralingen Footbridge",
+          "exclusive": false,
+          "valid_from": "2026-02-01"
+        }
+      ]
+    },
+    {
+      "key": "m045",
+      "content": "Delta Bridge Consulting is engineering the Kralingen Footbridge.",
+      "kind": "fact",
+      "tags": [
+        "projects"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-04",
+      "entities": [
+        {
+          "name": "Delta Bridge Consulting",
+          "type": "organization"
+        },
+        {
+          "name": "Kralingen Footbridge",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Delta Bridge Consulting",
+          "predicate": "is engineering",
+          "target": "Kralingen Footbridge",
+          "fact": "Delta Bridge Consulting is engineering Kralingen Footbridge",
+          "exclusive": false,
+          "valid_from": "2026-02-04"
+        }
+      ]
+    },
+    {
+      "key": "m046",
+      "content": "Lichtenberg Architects designed the architecture of the Kralingen Footbridge.",
+      "kind": "fact",
+      "tags": [
+        "projects"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-06",
+      "entities": [
+        {
+          "name": "Lichtenberg Architects",
+          "type": "organization"
+        },
+        {
+          "name": "Kralingen Footbridge",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lichtenberg Architects",
+          "predicate": "designed",
+          "target": "Kralingen Footbridge",
+          "fact": "Lichtenberg Architects designed Kralingen Footbridge",
+          "exclusive": false,
+          "valid_from": "2026-02-06"
+        }
+      ]
+    },
+    {
+      "key": "m047",
+      "content": "The Kralingen Footbridge depends on high-performance concrete from Solvane Materials.",
+      "kind": "fact",
+      "tags": [
+        "materials"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-08",
+      "entities": [
+        {
+          "name": "Kralingen Footbridge",
+          "type": "project"
+        },
+        {
+          "name": "Solvane Materials",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kralingen Footbridge",
+          "predicate": "depends on",
+          "target": "Solvane Materials",
+          "fact": "Kralingen Footbridge depends on Solvane Materials",
+          "exclusive": false,
+          "valid_from": "2026-02-08"
+        }
+      ]
+    },
+    {
+      "key": "m048",
+      "content": "Solvane Materials is located in Dordrecht.",
+      "kind": "fact",
+      "tags": [
+        "materials"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-11",
+      "entities": [
+        {
+          "name": "Solvane Materials",
+          "type": "organization"
+        },
+        {
+          "name": "Dordrecht",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Solvane Materials",
+          "predicate": "is located in",
+          "target": "Dordrecht",
+          "fact": "Solvane Materials is located in Dordrecht",
+          "exclusive": false,
+          "valid_from": "2026-02-11"
+        }
+      ]
+    },
+    {
+      "key": "m049",
+      "content": "The Kralingen Planning Committee approved the Kralingen Footbridge in March.",
+      "kind": "event",
+      "tags": [
+        "approvals"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-13",
+      "entities": [
+        {
+          "name": "Kralingen Planning Committee",
+          "type": "organization"
+        },
+        {
+          "name": "Kralingen Footbridge",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kralingen Planning Committee",
+          "predicate": "approved",
+          "target": "Kralingen Footbridge",
+          "fact": "Kralingen Planning Committee approved Kralingen Footbridge",
+          "exclusive": false,
+          "valid_from": "2026-02-13"
+        }
+      ]
+    },
+    {
+      "key": "m050",
+      "content": "Victor Lang chairs the Kralingen Planning Committee.",
+      "kind": "fact",
+      "tags": [
+        "approvals"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-15",
+      "entities": [
+        {
+          "name": "Victor Lang",
+          "type": "person"
+        },
+        {
+          "name": "Kralingen Planning Committee",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Victor Lang",
+          "predicate": "chairs",
+          "target": "Kralingen Planning Committee",
+          "fact": "Victor Lang chairs Kralingen Planning Committee",
+          "exclusive": false,
+          "valid_from": "2026-02-15"
+        }
+      ]
+    },
+    {
+      "key": "m051",
+      "content": "Lichtenberg Architects is located in Delft.",
+      "kind": "fact",
+      "tags": [
+        "company"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-18",
+      "entities": [
+        {
+          "name": "Lichtenberg Architects",
+          "type": "organization"
+        },
+        {
+          "name": "Delft",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Lichtenberg Architects",
+          "predicate": "is located in",
+          "target": "Delft",
+          "fact": "Lichtenberg Architects is located in Delft",
+          "exclusive": false,
+          "valid_from": "2026-02-18"
+        }
+      ]
+    },
+    {
+      "key": "m052",
+      "content": "Teo Brandt is a partner at Lichtenberg Architects and leads the bridge design team.",
+      "kind": "fact",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-02-20",
+      "entities": [
+        {
+          "name": "Teo Brandt",
+          "type": "person"
+        },
+        {
+          "name": "Lichtenberg Architects",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Teo Brandt",
+          "predicate": "is a partner at",
+          "target": "Lichtenberg Architects",
+          "fact": "Teo Brandt is a partner at Lichtenberg Architects",
+          "exclusive": false,
+          "valid_from": "2026-02-20"
+        }
+      ]
+    },
+    {
+      "key": "m053",
+      "content": "Yusuf Demir collaborates with Teo Brandt on facade studies.",
+      "kind": "fact",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-02-22",
+      "entities": [
+        {
+          "name": "Yusuf Demir",
+          "type": "person"
+        },
+        {
+          "name": "Teo Brandt",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Yusuf Demir",
+          "predicate": "collaborates with",
+          "target": "Teo Brandt",
+          "fact": "Yusuf Demir collaborates with Teo Brandt",
+          "exclusive": false,
+          "valid_from": "2026-02-22"
+        }
+      ]
+    },
+    {
+      "key": "m054",
+      "content": "Teo Brandt and Noor presented the footbridge concept at the Structures Summit.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-02-25",
+      "entities": [
+        {
+          "name": "Teo Brandt",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Teo Brandt",
+          "predicate": "collaborates with",
+          "target": "Noor Haddad",
+          "fact": "Teo Brandt collaborates with Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2026-02-25"
+        }
+      ]
+    },
+    {
+      "key": "m055",
+      "content": "Adeyemi & Sons Contracting is the contractor for the Harbor Quay Retrofit.",
+      "kind": "fact",
+      "tags": [
+        "projects"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-02-27",
+      "entities": [
+        {
+          "name": "Adeyemi & Sons Contracting",
+          "type": "organization"
+        },
+        {
+          "name": "Harbor Quay Retrofit",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Adeyemi & Sons Contracting",
+          "predicate": "is the contractor for",
+          "target": "Harbor Quay Retrofit",
+          "fact": "Adeyemi & Sons Contracting is the contractor for Harbor Quay Retrofit",
+          "exclusive": false,
+          "valid_from": "2026-02-27"
+        }
+      ]
+    },
+    {
+      "key": "m056",
+      "content": "Seun Adeyemi founded Adeyemi & Sons Contracting.",
+      "kind": "fact",
+      "tags": [
+        "company"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-01",
+      "entities": [
+        {
+          "name": "Seun Adeyemi",
+          "type": "person"
+        },
+        {
+          "name": "Adeyemi & Sons Contracting",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Seun Adeyemi",
+          "predicate": "founded",
+          "target": "Adeyemi & Sons Contracting",
+          "fact": "Seun Adeyemi founded Adeyemi & Sons Contracting",
+          "exclusive": false,
+          "valid_from": "2026-03-01"
+        }
+      ]
+    },
+    {
+      "key": "m057",
+      "content": "Harbor Steel Partners commissioned the Harbor Quay Retrofit.",
+      "kind": "fact",
+      "tags": [
+        "projects"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-04",
+      "entities": [
+        {
+          "name": "Harbor Steel Partners",
+          "type": "organization"
+        },
+        {
+          "name": "Harbor Quay Retrofit",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Harbor Steel Partners",
+          "predicate": "commissioned",
+          "target": "Harbor Quay Retrofit",
+          "fact": "Harbor Steel Partners commissioned Harbor Quay Retrofit",
+          "exclusive": false,
+          "valid_from": "2026-03-04"
+        }
+      ]
+    },
+    {
+      "key": "m058",
+      "content": "Noor is a member of Keel & Oar Rowing Club in Rotterdam.",
+      "kind": "fact",
+      "tags": [
+        "sports"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-06",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Keel & Oar Rowing Club",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "is a member of",
+          "target": "Keel & Oar Rowing Club",
+          "fact": "Noor Haddad is a member of Keel & Oar Rowing Club",
+          "exclusive": false,
+          "valid_from": "2026-03-06"
+        }
+      ]
+    },
+    {
+      "key": "m059",
+      "content": "Marco Ferri coaches the senior eight at Keel & Oar Rowing Club.",
+      "kind": "fact",
+      "tags": [
+        "sports"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-08",
+      "entities": [
+        {
+          "name": "Marco Ferri",
+          "type": "person"
+        },
+        {
+          "name": "Keel & Oar Rowing Club",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Marco Ferri",
+          "predicate": "coaches",
+          "target": "Keel & Oar Rowing Club",
+          "fact": "Marco Ferri coaches Keel & Oar Rowing Club",
+          "exclusive": false,
+          "valid_from": "2026-03-08"
+        }
+      ]
+    },
+    {
+      "key": "m060",
+      "content": "Marco Ferri was born in Hamburg.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-11",
+      "entities": [
+        {
+          "name": "Marco Ferri",
+          "type": "person"
+        },
+        {
+          "name": "Hamburg",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Marco Ferri",
+          "predicate": "was born in",
+          "target": "Hamburg",
+          "fact": "Marco Ferri was born in Hamburg",
+          "exclusive": false,
+          "valid_from": "2026-03-11"
+        }
+      ]
+    },
+    {
+      "key": "m061",
+      "content": "Groenlo Credit Union sponsors the Keel & Oar Rowing Club.",
+      "kind": "fact",
+      "tags": [
+        "sports"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-13",
+      "entities": [
+        {
+          "name": "Groenlo Credit Union",
+          "type": "organization"
+        },
+        {
+          "name": "Keel & Oar Rowing Club",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Groenlo Credit Union",
+          "predicate": "sponsors",
+          "target": "Keel & Oar Rowing Club",
+          "fact": "Groenlo Credit Union sponsors Keel & Oar Rowing Club",
+          "exclusive": false,
+          "valid_from": "2026-03-13"
+        }
+      ]
+    },
+    {
+      "key": "m062",
+      "content": "Noor banks with Groenlo Credit Union.",
+      "kind": "fact",
+      "tags": [
+        "finance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-15",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Groenlo Credit Union",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "banks with",
+          "target": "Groenlo Credit Union",
+          "fact": "Noor Haddad banks with Groenlo Credit Union",
+          "exclusive": false,
+          "valid_from": "2026-03-15"
+        }
+      ]
+    },
+    {
+      "key": "m063",
+      "content": "Noor is a member of Vertex Climbing Gym and climbs there on Tuesdays.",
+      "kind": "fact",
+      "tags": [
+        "fitness"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-18",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Vertex Climbing Gym",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "is a member of",
+          "target": "Vertex Climbing Gym",
+          "fact": "Noor Haddad is a member of Vertex Climbing Gym",
+          "exclusive": false,
+          "valid_from": "2026-03-18"
+        }
+      ]
+    },
+    {
+      "key": "m064",
+      "content": "Ben Halvorsen teaches the lead-climbing course at Vertex Climbing Gym.",
+      "kind": "fact",
+      "tags": [
+        "fitness"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-20",
+      "entities": [
+        {
+          "name": "Ben Halvorsen",
+          "type": "person"
+        },
+        {
+          "name": "Vertex Climbing Gym",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ben Halvorsen",
+          "predicate": "teaches at",
+          "target": "Vertex Climbing Gym",
+          "fact": "Ben Halvorsen teaches at Vertex Climbing Gym",
+          "exclusive": false,
+          "valid_from": "2026-03-20"
+        }
+      ]
+    },
+    {
+      "key": "m065",
+      "content": "Ben Halvorsen was born in Dordrecht.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-22",
+      "entities": [
+        {
+          "name": "Ben Halvorsen",
+          "type": "person"
+        },
+        {
+          "name": "Dordrecht",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ben Halvorsen",
+          "predicate": "was born in",
+          "target": "Dordrecht",
+          "fact": "Ben Halvorsen was born in Dordrecht",
+          "exclusive": false,
+          "valid_from": "2026-03-22"
+        }
+      ]
+    },
+    {
+      "key": "m066",
+      "content": "Tidewater Ventures invested in Brightwell Labs during its seed round.",
+      "kind": "event",
+      "tags": [
+        "finance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-24",
+      "entities": [
+        {
+          "name": "Tidewater Ventures",
+          "type": "organization"
+        },
+        {
+          "name": "Brightwell Labs",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Tidewater Ventures",
+          "predicate": "invested in",
+          "target": "Brightwell Labs",
+          "fact": "Tidewater Ventures invested in Brightwell Labs",
+          "exclusive": false,
+          "valid_from": "2026-03-24"
+        }
+      ]
+    },
+    {
+      "key": "m067",
+      "content": "Leon Park is a partner at Tidewater Ventures.",
+      "kind": "fact",
+      "tags": [
+        "finance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-27",
+      "entities": [
+        {
+          "name": "Leon Park",
+          "type": "person"
+        },
+        {
+          "name": "Tidewater Ventures",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Leon Park",
+          "predicate": "is a partner at",
+          "target": "Tidewater Ventures",
+          "fact": "Leon Park is a partner at Tidewater Ventures",
+          "exclusive": false,
+          "valid_from": "2026-03-27"
+        }
+      ]
+    },
+    {
+      "key": "m068",
+      "content": "Leon Park sits on the board of Brightwell Labs.",
+      "kind": "fact",
+      "tags": [
+        "finance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-03-29",
+      "entities": [
+        {
+          "name": "Leon Park",
+          "type": "person"
+        },
+        {
+          "name": "Brightwell Labs",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Leon Park",
+          "predicate": "sits on the board of",
+          "target": "Brightwell Labs",
+          "fact": "Leon Park sits on the board of Brightwell Labs",
+          "exclusive": false,
+          "valid_from": "2026-03-29"
+        }
+      ]
+    },
+    {
+      "key": "m069",
+      "content": "Chloe Dubois is the chief scientist at Brightwell Labs.",
+      "kind": "fact",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-03-31",
+      "entities": [
+        {
+          "name": "Chloe Dubois",
+          "type": "person"
+        },
+        {
+          "name": "Brightwell Labs",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Chloe Dubois",
+          "predicate": "is the chief scientist of",
+          "target": "Brightwell Labs",
+          "fact": "Chloe Dubois is the chief scientist of Brightwell Labs",
+          "exclusive": false,
+          "valid_from": "2026-03-31"
+        }
+      ]
+    },
+    {
+      "key": "m070",
+      "content": "Chloe Dubois was born in Lyon.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-03",
+      "entities": [
+        {
+          "name": "Chloe Dubois",
+          "type": "person"
+        },
+        {
+          "name": "Lyon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Chloe Dubois",
+          "predicate": "was born in",
+          "target": "Lyon",
+          "fact": "Chloe Dubois was born in Lyon",
+          "exclusive": false,
+          "valid_from": "2026-04-03"
+        }
+      ]
+    },
+    {
+      "key": "m071",
+      "content": "Brightwell Labs is headquartered in Utrecht.",
+      "kind": "fact",
+      "tags": [
+        "company"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-05",
+      "entities": [
+        {
+          "name": "Brightwell Labs",
+          "type": "organization"
+        },
+        {
+          "name": "Utrecht",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Brightwell Labs",
+          "predicate": "is headquartered in",
+          "target": "Utrecht",
+          "fact": "Brightwell Labs is headquartered in Utrecht",
+          "exclusive": false,
+          "valid_from": "2026-04-05"
+        }
+      ]
+    },
+    {
+      "key": "m072",
+      "content": "Hana Kobayashi is a classmate of Noor from the Veldhoven master's programme.",
+      "kind": "fact",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-07",
+      "entities": [
+        {
+          "name": "Hana Kobayashi",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hana Kobayashi",
+          "predicate": "is a classmate of",
+          "target": "Noor Haddad",
+          "fact": "Hana Kobayashi is a classmate of Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2026-04-07"
+        }
+      ]
+    },
+    {
+      "key": "m073",
+      "content": "Hana Kobayashi was born in Osaka.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-10",
+      "entities": [
+        {
+          "name": "Hana Kobayashi",
+          "type": "person"
+        },
+        {
+          "name": "Osaka",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hana Kobayashi",
+          "predicate": "was born in",
+          "target": "Osaka",
+          "fact": "Hana Kobayashi was born in Osaka",
+          "exclusive": false,
+          "valid_from": "2026-04-10"
+        }
+      ]
+    },
+    {
+      "key": "m074",
+      "content": "Dana Okonkwo is Noor's cousin.",
+      "kind": "fact",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-12",
+      "entities": [
+        {
+          "name": "Dana Okonkwo",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dana Okonkwo",
+          "predicate": "is the cousin of",
+          "target": "Noor Haddad",
+          "fact": "Dana Okonkwo is the cousin of Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2026-04-12"
+        }
+      ]
+    },
+    {
+      "key": "m075",
+      "content": "Dana Okonkwo studied at Ashgrove School of Design.",
+      "kind": "fact",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-14",
+      "entities": [
+        {
+          "name": "Dana Okonkwo",
+          "type": "person"
+        },
+        {
+          "name": "Ashgrove School of Design",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dana Okonkwo",
+          "predicate": "studied at",
+          "target": "Ashgrove School of Design",
+          "fact": "Dana Okonkwo studied at Ashgrove School of Design",
+          "exclusive": false,
+          "valid_from": "2026-04-14"
+        }
+      ]
+    },
+    {
+      "key": "m076",
+      "content": "Ashgrove School of Design is located in Ostend.",
+      "kind": "fact",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-17",
+      "entities": [
+        {
+          "name": "Ashgrove School of Design",
+          "type": "organization"
+        },
+        {
+          "name": "Ostend",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ashgrove School of Design",
+          "predicate": "is located in",
+          "target": "Ostend",
+          "fact": "Ashgrove School of Design is located in Ostend",
+          "exclusive": false,
+          "valid_from": "2026-04-17"
+        }
+      ]
+    },
+    {
+      "key": "m077",
+      "content": "Dana plays the violin in a chamber group.",
+      "kind": "fact",
+      "tags": [
+        "music"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-19",
+      "entities": [
+        {
+          "name": "Dana Okonkwo",
+          "type": "person"
+        },
+        {
+          "name": "violin",
+          "type": "object"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dana Okonkwo",
+          "predicate": "plays",
+          "target": "violin",
+          "fact": "Dana Okonkwo plays violin",
+          "exclusive": false,
+          "valid_from": "2026-04-19"
+        }
+      ]
+    },
+    {
+      "key": "m078",
+      "content": "Elif Yildiz supervised Noor's master's thesis.",
+      "kind": "event",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-21",
+      "entities": [
+        {
+          "name": "Elif Yildiz",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Elif Yildiz",
+          "predicate": "supervised",
+          "target": "Noor Haddad",
+          "fact": "Elif Yildiz supervised Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2026-04-21"
+        }
+      ]
+    },
+    {
+      "key": "m079",
+      "content": "Elif Yildiz lectures at Ostend Maritime Academy.",
+      "kind": "fact",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-24",
+      "entities": [
+        {
+          "name": "Elif Yildiz",
+          "type": "person"
+        },
+        {
+          "name": "Ostend Maritime Academy",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Elif Yildiz",
+          "predicate": "lectures at",
+          "target": "Ostend Maritime Academy",
+          "fact": "Elif Yildiz lectures at Ostend Maritime Academy",
+          "exclusive": false,
+          "valid_from": "2026-04-24"
+        }
+      ]
+    },
+    {
+      "key": "m080",
+      "content": "Ostend Maritime Academy is located in Ostend.",
+      "kind": "fact",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-26",
+      "entities": [
+        {
+          "name": "Ostend Maritime Academy",
+          "type": "organization"
+        },
+        {
+          "name": "Ostend",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ostend Maritime Academy",
+          "predicate": "is located in",
+          "target": "Ostend",
+          "fact": "Ostend Maritime Academy is located in Ostend",
+          "exclusive": false,
+          "valid_from": "2026-04-26"
+        }
+      ]
+    },
+    {
+      "key": "m081",
+      "content": "Noor relies on the Lumen Solver for finite element checks.",
+      "kind": "fact",
+      "tags": [
+        "tools"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-04-28",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Lumen Solver",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "relies on",
+          "target": "Lumen Solver",
+          "fact": "Noor Haddad relies on Lumen Solver",
+          "exclusive": false,
+          "valid_from": "2026-04-28"
+        }
+      ]
+    },
+    {
+      "key": "m082",
+      "content": "Noor decided to keep all footbridge cable checks in the Lumen Solver rather than the old spreadsheets.",
+      "kind": "decision",
+      "tags": [
+        "tools"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-05-01",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Lumen Solver",
+          "type": "tool"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "relies on",
+          "target": "Lumen Solver",
+          "fact": "Noor Haddad relies on Lumen Solver",
+          "exclusive": false,
+          "valid_from": "2026-05-01"
+        }
+      ]
+    },
+    {
+      "key": "m083",
+      "content": "Noor prefers to review calculations with Felix on Fridays.",
+      "kind": "preference",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-05-03",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "reviews the work of",
+          "target": "Felix Moreau",
+          "fact": "Noor Haddad reviews the work of Felix Moreau",
+          "exclusive": false,
+          "valid_from": "2026-05-03"
+        }
+      ]
+    },
+    {
+      "key": "m084",
+      "content": "Noor miscalculated the Harbor Quay pontoon load in the first draft, and Delta Bridge caught it in review.",
+      "kind": "mistake",
+      "tags": [
+        "projects"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-05-05",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Harbor Quay Retrofit",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "miscalculated",
+          "target": "Harbor Quay Retrofit",
+          "fact": "Noor Haddad miscalculated Harbor Quay Retrofit",
+          "exclusive": false,
+          "valid_from": "2026-05-05"
+        }
+      ]
+    },
+    {
+      "key": "m085",
+      "content": "Before a Harbor Quay site visit, confirm the crane schedule with Adeyemi & Sons Contracting's foreman.",
+      "kind": "procedure",
+      "tags": [
+        "projects"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-08",
+      "entities": [
+        {
+          "name": "Seun Adeyemi",
+          "type": "person"
+        },
+        {
+          "name": "Harbor Quay Retrofit",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Seun Adeyemi",
+          "predicate": "coordinates site visits for",
+          "target": "Harbor Quay Retrofit",
+          "fact": "Seun Adeyemi coordinates site visits for Harbor Quay Retrofit",
+          "exclusive": false,
+          "valid_from": "2026-05-08"
+        }
+      ]
+    },
+    {
+      "key": "m086",
+      "content": "Victor Lang asked Noor to present the footbridge plan at the committee's April session.",
+      "kind": "event",
+      "tags": [
+        "approvals"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-10",
+      "entities": [
+        {
+          "name": "Victor Lang",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Victor Lang",
+          "predicate": "invited",
+          "target": "Noor Haddad",
+          "fact": "Victor Lang invited Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2026-05-10"
+        }
+      ]
+    },
+    {
+      "key": "m087",
+      "content": "Teo Brandt flew to Lisbon for a conference and met Sami Haddad for dinner.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-05-12",
+      "entities": [
+        {
+          "name": "Teo Brandt",
+          "type": "person"
+        },
+        {
+          "name": "Sami Haddad",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Teo Brandt",
+          "predicate": "met",
+          "target": "Sami Haddad",
+          "fact": "Teo Brandt met Sami Haddad",
+          "exclusive": false,
+          "valid_from": "2026-05-12"
+        }
+      ]
+    },
+    {
+      "key": "m088",
+      "content": "Noor looked after Tofu during Sami's Lisbon trip.",
+      "kind": "note",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-15",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Tofu",
+          "type": "animal"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "looks after",
+          "target": "Tofu",
+          "fact": "Noor Haddad looks after Tofu",
+          "exclusive": false,
+          "valid_from": "2026-05-15"
+        }
+      ]
+    },
+    {
+      "key": "m089",
+      "content": "Noor walked Mabel along the Rotte after the Rivierkade flood drill.",
+      "kind": "event",
+      "tags": [
+        "pets"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-17",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Mabel",
+          "type": "animal"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "walks",
+          "target": "Mabel",
+          "fact": "Noor Haddad walks Mabel",
+          "exclusive": false,
+          "valid_from": "2026-05-17"
+        }
+      ]
+    },
+    {
+      "key": "m090",
+      "content": "Ben Halvorsen introduced Felix Moreau to lead climbing.",
+      "kind": "event",
+      "tags": [
+        "fitness"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-19",
+      "entities": [
+        {
+          "name": "Ben Halvorsen",
+          "type": "person"
+        },
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ben Halvorsen",
+          "predicate": "coaches",
+          "target": "Felix Moreau",
+          "fact": "Ben Halvorsen coaches Felix Moreau",
+          "exclusive": false,
+          "valid_from": "2026-05-19"
+        }
+      ]
+    },
+    {
+      "key": "m091",
+      "content": "Marco Ferri recruited Hana Kobayashi for the masters rowing crew.",
+      "kind": "event",
+      "tags": [
+        "sports"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-22",
+      "entities": [
+        {
+          "name": "Marco Ferri",
+          "type": "person"
+        },
+        {
+          "name": "Hana Kobayashi",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Marco Ferri",
+          "predicate": "coaches",
+          "target": "Hana Kobayashi",
+          "fact": "Marco Ferri coaches Hana Kobayashi",
+          "exclusive": false,
+          "valid_from": "2026-05-22"
+        }
+      ]
+    },
+    {
+      "key": "m092",
+      "content": "Dana Okonkwo exhibited her textile work in Lisbon.",
+      "kind": "event",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-24",
+      "entities": [
+        {
+          "name": "Dana Okonkwo",
+          "type": "person"
+        },
+        {
+          "name": "Lisbon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dana Okonkwo",
+          "predicate": "exhibited in",
+          "target": "Lisbon",
+          "fact": "Dana Okonkwo exhibited in Lisbon",
+          "exclusive": false,
+          "valid_from": "2026-05-24"
+        }
+      ]
+    },
+    {
+      "key": "m093",
+      "content": "Hana Kobayashi visited Noor in Rotterdam in August.",
+      "kind": "event",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-26",
+      "entities": [
+        {
+          "name": "Hana Kobayashi",
+          "type": "person"
+        },
+        {
+          "name": "Rotterdam",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hana Kobayashi",
+          "predicate": "visited",
+          "target": "Rotterdam",
+          "fact": "Hana Kobayashi visited Rotterdam",
+          "exclusive": false,
+          "valid_from": "2026-05-26"
+        }
+      ]
+    },
+    {
+      "key": "m094",
+      "content": "Chloe Dubois interviewed with Harbor Steel Partners for a materials role.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-05-29",
+      "entities": [
+        {
+          "name": "Chloe Dubois",
+          "type": "person"
+        },
+        {
+          "name": "Harbor Steel Partners",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Chloe Dubois",
+          "predicate": "applied to",
+          "target": "Harbor Steel Partners",
+          "fact": "Chloe Dubois applied to Harbor Steel Partners",
+          "exclusive": false,
+          "valid_from": "2026-05-29"
+        }
+      ]
+    },
+    {
+      "key": "m095",
+      "content": "Leon Park advises Solvane Materials on its growth plan.",
+      "kind": "event",
+      "tags": [
+        "finance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-05-31",
+      "entities": [
+        {
+          "name": "Leon Park",
+          "type": "person"
+        },
+        {
+          "name": "Solvane Materials",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Leon Park",
+          "predicate": "advises",
+          "target": "Solvane Materials",
+          "fact": "Leon Park advises Solvane Materials",
+          "exclusive": false,
+          "valid_from": "2026-05-31"
+        }
+      ]
+    },
+    {
+      "key": "m096",
+      "content": "Brightwell Labs is testing a polymer that Solvane Materials might supply.",
+      "kind": "note",
+      "tags": [
+        "materials"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-02",
+      "entities": [
+        {
+          "name": "Brightwell Labs",
+          "type": "organization"
+        },
+        {
+          "name": "Solvane Materials",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Brightwell Labs",
+          "predicate": "is evaluating materials from",
+          "target": "Solvane Materials",
+          "fact": "Brightwell Labs is evaluating materials from Solvane Materials",
+          "exclusive": false,
+          "valid_from": "2026-06-02"
+        }
+      ]
+    },
+    {
+      "key": "m097",
+      "content": "Aisha Bello sits on the advisory panel that briefs the Kralingen Planning Committee.",
+      "kind": "event",
+      "tags": [
+        "approvals"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-04",
+      "entities": [
+        {
+          "name": "Aisha Bello",
+          "type": "person"
+        },
+        {
+          "name": "Kralingen Planning Committee",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Aisha Bello",
+          "predicate": "advises",
+          "target": "Kralingen Planning Committee",
+          "fact": "Aisha Bello advises Kralingen Planning Committee",
+          "exclusive": false,
+          "valid_from": "2026-06-04"
+        }
+      ]
+    },
+    {
+      "key": "m098",
+      "content": "Seun Adeyemi quoted Harbor Steel Partners a fixed price for the quay.",
+      "kind": "event",
+      "tags": [
+        "company"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-07",
+      "entities": [
+        {
+          "name": "Seun Adeyemi",
+          "type": "person"
+        },
+        {
+          "name": "Harbor Steel Partners",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Seun Adeyemi",
+          "predicate": "quoted",
+          "target": "Harbor Steel Partners",
+          "fact": "Seun Adeyemi quoted Harbor Steel Partners",
+          "exclusive": false,
+          "valid_from": "2026-06-07"
+        }
+      ]
+    },
+    {
+      "key": "m099",
+      "content": "Adeyemi & Sons Contracting ordered the wrong concrete grade for the first quay section.",
+      "kind": "mistake",
+      "tags": [
+        "projects"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-06-09",
+      "entities": [
+        {
+          "name": "Adeyemi & Sons Contracting",
+          "type": "organization"
+        },
+        {
+          "name": "Solvane Materials",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Adeyemi & Sons Contracting",
+          "predicate": "ordered concrete from",
+          "target": "Solvane Materials",
+          "fact": "Adeyemi & Sons Contracting ordered concrete from Solvane Materials",
+          "exclusive": false,
+          "valid_from": "2026-06-09"
+        }
+      ]
+    },
+    {
+      "key": "m100",
+      "content": "Greta Hoffmann prefers written updates over phone calls.",
+      "kind": "preference",
+      "tags": [
+        "clients"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-11",
+      "entities": [
+        {
+          "name": "Greta Hoffmann",
+          "type": "person"
+        },
+        {
+          "name": "Delta Bridge Consulting",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Greta Hoffmann",
+          "predicate": "corresponds with",
+          "target": "Delta Bridge Consulting",
+          "fact": "Greta Hoffmann corresponds with Delta Bridge Consulting",
+          "exclusive": false,
+          "valid_from": "2026-06-11"
+        }
+      ]
+    },
+    {
+      "key": "m101",
+      "content": "Greta Hoffmann visited the Kralingen Footbridge site.",
+      "kind": "event",
+      "tags": [
+        "projects"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-14",
+      "entities": [
+        {
+          "name": "Greta Hoffmann",
+          "type": "person"
+        },
+        {
+          "name": "Kralingen Footbridge",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Greta Hoffmann",
+          "predicate": "visited",
+          "target": "Kralingen Footbridge",
+          "fact": "Greta Hoffmann visited Kralingen Footbridge",
+          "exclusive": false,
+          "valid_from": "2026-06-14"
+        }
+      ]
+    },
+    {
+      "key": "m102",
+      "content": "Victor Lang toured the Harbor Quay Retrofit with Greta Hoffmann.",
+      "kind": "event",
+      "tags": [
+        "approvals"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-16",
+      "entities": [
+        {
+          "name": "Victor Lang",
+          "type": "person"
+        },
+        {
+          "name": "Harbor Quay Retrofit",
+          "type": "project"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Victor Lang",
+          "predicate": "toured",
+          "target": "Harbor Quay Retrofit",
+          "fact": "Victor Lang toured Harbor Quay Retrofit",
+          "exclusive": false,
+          "valid_from": "2026-06-16"
+        }
+      ]
+    },
+    {
+      "key": "m103",
+      "content": "Pieter de Jong lives on the same street as Kofi Mensah.",
+      "kind": "observation",
+      "tags": [
+        "home"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-18",
+      "entities": [
+        {
+          "name": "Pieter de Jong",
+          "type": "person"
+        },
+        {
+          "name": "Kofi Mensah",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Pieter de Jong",
+          "predicate": "is neighbours with",
+          "target": "Kofi Mensah",
+          "fact": "Pieter de Jong is neighbours with Kofi Mensah",
+          "exclusive": false,
+          "valid_from": "2026-06-18"
+        }
+      ]
+    },
+    {
+      "key": "m104",
+      "content": "Sofia Ricci presented a soil report to the Kralingen Planning Committee.",
+      "kind": "event",
+      "tags": [
+        "approvals"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-21",
+      "entities": [
+        {
+          "name": "Sofia Ricci",
+          "type": "person"
+        },
+        {
+          "name": "Kralingen Planning Committee",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sofia Ricci",
+          "predicate": "presented to",
+          "target": "Kralingen Planning Committee",
+          "fact": "Sofia Ricci presented to Kralingen Planning Committee",
+          "exclusive": false,
+          "valid_from": "2026-06-21"
+        }
+      ]
+    },
+    {
+      "key": "m105",
+      "content": "Ravi Menon was seen at a Keel & Oar regatta.",
+      "kind": "observation",
+      "tags": [
+        "sports"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-06-23",
+      "entities": [
+        {
+          "name": "Ravi Menon",
+          "type": "person"
+        },
+        {
+          "name": "Keel & Oar Rowing Club",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ravi Menon",
+          "predicate": "is a member of",
+          "target": "Keel & Oar Rowing Club",
+          "fact": "Ravi Menon is a member of Keel & Oar Rowing Club",
+          "exclusive": false,
+          "valid_from": "2026-06-23"
+        }
+      ]
+    },
+    {
+      "key": "m106",
+      "content": "Royal Structures Society gave Teo Brandt its young engineer prize.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-06-25",
+      "entities": [
+        {
+          "name": "Royal Structures Society",
+          "type": "organization"
+        },
+        {
+          "name": "Teo Brandt",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Royal Structures Society",
+          "predicate": "honoured",
+          "target": "Teo Brandt",
+          "fact": "Royal Structures Society honoured Teo Brandt",
+          "exclusive": false,
+          "valid_from": "2026-06-25"
+        }
+      ]
+    },
+    {
+      "key": "m107",
+      "content": "Elif Yildiz co-authored a paper with Mira Lindqvist on connection fatigue.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-06-28",
+      "entities": [
+        {
+          "name": "Elif Yildiz",
+          "type": "person"
+        },
+        {
+          "name": "Mira Lindqvist",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Elif Yildiz",
+          "predicate": "co-authored with",
+          "target": "Mira Lindqvist",
+          "fact": "Elif Yildiz co-authored with Mira Lindqvist",
+          "exclusive": false,
+          "valid_from": "2026-06-28"
+        }
+      ]
+    },
+    {
+      "key": "m108",
+      "content": "Mira Lindqvist reviewed Felix's thesis draft.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-06-30",
+      "entities": [
+        {
+          "name": "Mira Lindqvist",
+          "type": "person"
+        },
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Lindqvist",
+          "predicate": "reviews the work of",
+          "target": "Felix Moreau",
+          "fact": "Mira Lindqvist reviews the work of Felix Moreau",
+          "exclusive": false,
+          "valid_from": "2026-06-30"
+        }
+      ]
+    },
+    {
+      "key": "m109",
+      "content": "The Kestrel Polytechnic alumni dinner is held in Delft each spring.",
+      "kind": "procedure",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-02",
+      "entities": [
+        {
+          "name": "Kestrel Polytechnic",
+          "type": "organization"
+        },
+        {
+          "name": "Delft",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kestrel Polytechnic",
+          "predicate": "hosts events in",
+          "target": "Delft",
+          "fact": "Kestrel Polytechnic hosts events in Delft",
+          "exclusive": false,
+          "valid_from": "2026-07-02"
+        }
+      ]
+    },
+    {
+      "key": "m110",
+      "content": "Nadia Sokolova recommended shoulder mobility work to Felix Moreau.",
+      "kind": "event",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-07-05",
+      "entities": [
+        {
+          "name": "Nadia Sokolova",
+          "type": "person"
+        },
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Nadia Sokolova",
+          "predicate": "treats",
+          "target": "Felix Moreau",
+          "fact": "Nadia Sokolova treats Felix Moreau",
+          "exclusive": false,
+          "valid_from": "2026-07-05"
+        }
+      ]
+    },
+    {
+      "key": "m111",
+      "content": "Sami Haddad spent a week in Hamburg for a sound installation.",
+      "kind": "note",
+      "tags": [
+        "family"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-07",
+      "entities": [
+        {
+          "name": "Sami Haddad",
+          "type": "person"
+        },
+        {
+          "name": "Hamburg",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Sami Haddad",
+          "predicate": "visited",
+          "target": "Hamburg",
+          "fact": "Sami Haddad visited Hamburg",
+          "exclusive": false,
+          "valid_from": "2026-07-07"
+        }
+      ]
+    },
+    {
+      "key": "m112",
+      "content": "Noor visited Bremen for the Harbor Steel site audit.",
+      "kind": "event",
+      "tags": [
+        "clients"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-09",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Bremen",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "visited",
+          "target": "Bremen",
+          "fact": "Noor Haddad visited Bremen",
+          "exclusive": false,
+          "valid_from": "2026-07-09"
+        }
+      ]
+    },
+    {
+      "key": "m113",
+      "content": "Chloe Dubois attended a materials conference in Dordrecht.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-07-12",
+      "entities": [
+        {
+          "name": "Chloe Dubois",
+          "type": "person"
+        },
+        {
+          "name": "Dordrecht",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Chloe Dubois",
+          "predicate": "attended",
+          "target": "Dordrecht",
+          "fact": "Chloe Dubois attended Dordrecht",
+          "exclusive": false,
+          "valid_from": "2026-07-12"
+        }
+      ]
+    },
+    {
+      "key": "m114",
+      "content": "Dana Okonkwo's school asked Noor to judge the student prize.",
+      "kind": "note",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-14",
+      "entities": [
+        {
+          "name": "Dana Okonkwo",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dana Okonkwo",
+          "predicate": "invited",
+          "target": "Noor Haddad",
+          "fact": "Dana Okonkwo invited Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2026-07-14"
+        }
+      ]
+    },
+    {
+      "key": "m115",
+      "content": "Noor took the wrong train on the way to Lichtenberg Architects and arrived late.",
+      "kind": "mistake",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-07-16",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Lichtenberg Architects",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "travelled to",
+          "target": "Lichtenberg Architects",
+          "fact": "Noor Haddad travelled to Lichtenberg Architects",
+          "exclusive": false,
+          "valid_from": "2026-07-16"
+        }
+      ]
+    },
+    {
+      "key": "m116",
+      "content": "Ingrid Vos referred Noor to a physiotherapist.",
+      "kind": "event",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-07-19",
+      "entities": [
+        {
+          "name": "Ingrid Vos",
+          "type": "person"
+        },
+        {
+          "name": "Northgate Physio Clinic",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ingrid Vos",
+          "predicate": "referred patients to",
+          "target": "Northgate Physio Clinic",
+          "fact": "Ingrid Vos referred patients to Northgate Physio Clinic",
+          "exclusive": false,
+          "valid_from": "2026-07-19"
+        }
+      ]
+    },
+    {
+      "key": "m117",
+      "content": "Mira Lindqvist recommended Kestrel Polytechnic to Felix Moreau.",
+      "kind": "event",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-21",
+      "entities": [
+        {
+          "name": "Mira Lindqvist",
+          "type": "person"
+        },
+        {
+          "name": "Kestrel Polytechnic",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Lindqvist",
+          "predicate": "recommended",
+          "target": "Kestrel Polytechnic",
+          "fact": "Mira Lindqvist recommended Kestrel Polytechnic",
+          "exclusive": false,
+          "valid_from": "2026-07-21"
+        }
+      ]
+    },
+    {
+      "key": "m118",
+      "content": "Leon Park and Aisha Bello met at the Structures Summit.",
+      "kind": "observation",
+      "tags": [
+        "finance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-23",
+      "entities": [
+        {
+          "name": "Leon Park",
+          "type": "person"
+        },
+        {
+          "name": "Aisha Bello",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Leon Park",
+          "predicate": "met",
+          "target": "Aisha Bello",
+          "fact": "Leon Park met Aisha Bello",
+          "exclusive": false,
+          "valid_from": "2026-07-23"
+        }
+      ]
+    },
+    {
+      "key": "m119",
+      "content": "Solvane Materials sponsors the Royal Structures Society's summer lecture.",
+      "kind": "note",
+      "tags": [
+        "materials"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-26",
+      "entities": [
+        {
+          "name": "Solvane Materials",
+          "type": "organization"
+        },
+        {
+          "name": "Royal Structures Society",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Solvane Materials",
+          "predicate": "sponsors",
+          "target": "Royal Structures Society",
+          "fact": "Solvane Materials sponsors Royal Structures Society",
+          "exclusive": false,
+          "valid_from": "2026-07-26"
+        }
+      ]
+    },
+    {
+      "key": "m120",
+      "content": "Noor spoke at the Ostend Maritime Academy open day about bridges.",
+      "kind": "event",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-28",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Ostend Maritime Academy",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "spoke at",
+          "target": "Ostend Maritime Academy",
+          "fact": "Noor Haddad spoke at Ostend Maritime Academy",
+          "exclusive": false,
+          "valid_from": "2026-07-28"
+        }
+      ]
+    },
+    {
+      "key": "m121",
+      "content": "Felix Moreau plans a trip to Osaka next year.",
+      "kind": "event",
+      "tags": [
+        "travel"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-07-30",
+      "entities": [
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        },
+        {
+          "name": "Osaka",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Felix Moreau",
+          "predicate": "plans to visit",
+          "target": "Osaka",
+          "fact": "Felix Moreau plans to visit Osaka",
+          "exclusive": false,
+          "valid_from": "2026-07-30"
+        }
+      ]
+    },
+    {
+      "key": "m122",
+      "content": "Elif Yildiz attended a structures symposium in Lyon.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-08-02",
+      "entities": [
+        {
+          "name": "Elif Yildiz",
+          "type": "person"
+        },
+        {
+          "name": "Lyon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Elif Yildiz",
+          "predicate": "attended",
+          "target": "Lyon",
+          "fact": "Elif Yildiz attended Lyon",
+          "exclusive": false,
+          "valid_from": "2026-08-02"
+        }
+      ]
+    },
+    {
+      "key": "m123",
+      "content": "The Rivierkade cooperative hired Adeyemi & Sons Contracting for roof repairs.",
+      "kind": "event",
+      "tags": [
+        "home"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-04",
+      "entities": [
+        {
+          "name": "Rivierkade Housing Cooperative",
+          "type": "organization"
+        },
+        {
+          "name": "Adeyemi & Sons Contracting",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Rivierkade Housing Cooperative",
+          "predicate": "hired",
+          "target": "Adeyemi & Sons Contracting",
+          "fact": "Rivierkade Housing Cooperative hired Adeyemi & Sons Contracting",
+          "exclusive": false,
+          "valid_from": "2026-08-04"
+        }
+      ]
+    },
+    {
+      "key": "m124",
+      "content": "Tidewater Ventures keeps an office in Utrecht.",
+      "kind": "note",
+      "tags": [
+        "finance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-06",
+      "entities": [
+        {
+          "name": "Tidewater Ventures",
+          "type": "organization"
+        },
+        {
+          "name": "Utrecht",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Tidewater Ventures",
+          "predicate": "is located in",
+          "target": "Utrecht",
+          "fact": "Tidewater Ventures is located in Utrecht",
+          "exclusive": false,
+          "valid_from": "2026-08-06"
+        }
+      ]
+    },
+    {
+      "key": "m125",
+      "content": "Noor attended the Structures Summit in Lyon.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-08-09",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Lyon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "attended",
+          "target": "Lyon",
+          "fact": "Noor Haddad attended Lyon",
+          "exclusive": false,
+          "valid_from": "2026-08-09"
+        }
+      ]
+    },
+    {
+      "key": "m126",
+      "content": "Noor formerly lived in a student flat in Utrecht before the Rivierkade.",
+      "kind": "fact",
+      "tags": [
+        "residence"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-11",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Utrecht",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "formerly resided in",
+          "target": "Utrecht",
+          "fact": "Noor Haddad formerly resided in Utrecht",
+          "exclusive": false,
+          "valid_from": "2026-08-11"
+        }
+      ]
+    },
+    {
+      "key": "m127",
+      "content": "Noor sits on the Harbor Quay steering group with Greta Hoffmann.",
+      "kind": "event",
+      "tags": [
+        "projects"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-13",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Greta Hoffmann",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "collaborates with",
+          "target": "Greta Hoffmann",
+          "fact": "Noor Haddad collaborates with Greta Hoffmann",
+          "exclusive": false,
+          "valid_from": "2026-08-13"
+        }
+      ]
+    },
+    {
+      "key": "m128",
+      "content": "Victor Lang grew up in Lisbon.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-15",
+      "entities": [
+        {
+          "name": "Victor Lang",
+          "type": "person"
+        },
+        {
+          "name": "Lisbon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Victor Lang",
+          "predicate": "grew up in",
+          "target": "Lisbon",
+          "fact": "Victor Lang grew up in Lisbon",
+          "exclusive": false,
+          "valid_from": "2026-08-15"
+        }
+      ]
+    },
+    {
+      "key": "m129",
+      "content": "Teo Brandt lectures at Kestrel Polytechnic in the spring term.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-08-18",
+      "entities": [
+        {
+          "name": "Teo Brandt",
+          "type": "person"
+        },
+        {
+          "name": "Kestrel Polytechnic",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Teo Brandt",
+          "predicate": "lectures at",
+          "target": "Kestrel Polytechnic",
+          "fact": "Teo Brandt lectures at Kestrel Polytechnic",
+          "exclusive": false,
+          "valid_from": "2026-08-18"
+        }
+      ]
+    },
+    {
+      "key": "m130",
+      "content": "Yusuf Demir ran a textile workshop with Dana Okonkwo.",
+      "kind": "event",
+      "tags": [
+        "career"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-08-20",
+      "entities": [
+        {
+          "name": "Yusuf Demir",
+          "type": "person"
+        },
+        {
+          "name": "Dana Okonkwo",
+          "type": "person"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Yusuf Demir",
+          "predicate": "collaborates with",
+          "target": "Dana Okonkwo",
+          "fact": "Yusuf Demir collaborates with Dana Okonkwo",
+          "exclusive": false,
+          "valid_from": "2026-08-20"
+        }
+      ]
+    },
+    {
+      "key": "m131",
+      "content": "Seun Adeyemi was born in Antwerp.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-22",
+      "entities": [
+        {
+          "name": "Seun Adeyemi",
+          "type": "person"
+        },
+        {
+          "name": "Antwerp",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Seun Adeyemi",
+          "predicate": "was born in",
+          "target": "Antwerp",
+          "fact": "Seun Adeyemi was born in Antwerp",
+          "exclusive": false,
+          "valid_from": "2026-08-22"
+        }
+      ]
+    },
+    {
+      "key": "m132",
+      "content": "Chloe Dubois gave a talk at Veldhoven Institute of Technology.",
+      "kind": "event",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-25",
+      "entities": [
+        {
+          "name": "Chloe Dubois",
+          "type": "person"
+        },
+        {
+          "name": "Veldhoven Institute of Technology",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Chloe Dubois",
+          "predicate": "lectures at",
+          "target": "Veldhoven Institute of Technology",
+          "fact": "Chloe Dubois lectures at Veldhoven Institute of Technology",
+          "exclusive": false,
+          "valid_from": "2026-08-25"
+        }
+      ]
+    },
+    {
+      "key": "m133",
+      "content": "Groenlo Credit Union opened a new branch in Schiedam.",
+      "kind": "note",
+      "tags": [
+        "finance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-08-27",
+      "entities": [
+        {
+          "name": "Groenlo Credit Union",
+          "type": "organization"
+        },
+        {
+          "name": "Schiedam",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Groenlo Credit Union",
+          "predicate": "opened a branch in",
+          "target": "Schiedam",
+          "fact": "Groenlo Credit Union opened a branch in Schiedam",
+          "exclusive": false,
+          "valid_from": "2026-08-27"
+        }
+      ]
+    },
+    {
+      "key": "m134",
+      "content": "Noor booked the wrong train to Ostend for the academy visit.",
+      "kind": "mistake",
+      "tags": [
+        "travel"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-08-29",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Ostend",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "travelled to",
+          "target": "Ostend",
+          "fact": "Noor Haddad travelled to Ostend",
+          "exclusive": false,
+          "valid_from": "2026-08-29"
+        }
+      ]
+    },
+    {
+      "key": "m135",
+      "content": "Marco Ferri submits the boat fund reports to Groenlo Credit Union each quarter.",
+      "kind": "procedure",
+      "tags": [
+        "finance"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-01",
+      "entities": [
+        {
+          "name": "Marco Ferri",
+          "type": "person"
+        },
+        {
+          "name": "Groenlo Credit Union",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Marco Ferri",
+          "predicate": "submits reports to",
+          "target": "Groenlo Credit Union",
+          "fact": "Marco Ferri submits reports to Groenlo Credit Union",
+          "exclusive": false,
+          "valid_from": "2026-09-01"
+        }
+      ]
+    },
+    {
+      "key": "m136",
+      "content": "Felix Moreau attended the Veldhoven Institute open day.",
+      "kind": "event",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-03",
+      "entities": [
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        },
+        {
+          "name": "Veldhoven Institute of Technology",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Felix Moreau",
+          "predicate": "attended",
+          "target": "Veldhoven Institute of Technology",
+          "fact": "Felix Moreau attended Veldhoven Institute of Technology",
+          "exclusive": false,
+          "valid_from": "2026-09-03"
+        }
+      ]
+    },
+    {
+      "key": "m137",
+      "content": "Ben Halvorsen studied at Kestrel Polytechnic.",
+      "kind": "fact",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-05",
+      "entities": [
+        {
+          "name": "Ben Halvorsen",
+          "type": "person"
+        },
+        {
+          "name": "Kestrel Polytechnic",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ben Halvorsen",
+          "predicate": "studied at",
+          "target": "Kestrel Polytechnic",
+          "fact": "Ben Halvorsen studied at Kestrel Polytechnic",
+          "exclusive": false,
+          "valid_from": "2026-09-05"
+        }
+      ]
+    },
+    {
+      "key": "m138",
+      "content": "Aisha Bello chairs the quarterly partners' meeting at Delta Bridge Consulting.",
+      "kind": "fact",
+      "tags": [
+        "company"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-08",
+      "entities": [
+        {
+          "name": "Aisha Bello",
+          "type": "person"
+        },
+        {
+          "name": "Delta Bridge Consulting",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Aisha Bello",
+          "predicate": "chairs",
+          "target": "Delta Bridge Consulting",
+          "fact": "Aisha Bello chairs Delta Bridge Consulting",
+          "exclusive": false,
+          "valid_from": "2026-09-08"
+        }
+      ]
+    },
+    {
+      "key": "m139",
+      "content": "Pieter de Jong collects the Rivierkade rent reminders himself.",
+      "kind": "procedure",
+      "tags": [
+        "home"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-10",
+      "entities": [
+        {
+          "name": "Pieter de Jong",
+          "type": "person"
+        },
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Pieter de Jong",
+          "predicate": "rents to",
+          "target": "Noor Haddad",
+          "fact": "Pieter de Jong rents to Noor Haddad",
+          "exclusive": false,
+          "valid_from": "2026-09-10"
+        }
+      ]
+    },
+    {
+      "key": "m140",
+      "content": "Noor's Keel & Oar crew won the spring regatta in Rotterdam.",
+      "kind": "event",
+      "tags": [
+        "sports"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-12",
+      "entities": [
+        {
+          "name": "Noor Haddad",
+          "type": "person",
+          "description": "the user"
+        },
+        {
+          "name": "Keel & Oar Rowing Club",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Noor Haddad",
+          "predicate": "is a member of",
+          "target": "Keel & Oar Rowing Club",
+          "fact": "Noor Haddad is a member of Keel & Oar Rowing Club",
+          "exclusive": false,
+          "valid_from": "2026-09-12"
+        }
+      ]
+    },
+    {
+      "key": "m141",
+      "content": "Hollis Garage recalled the Volvo V60 for a brake check.",
+      "kind": "event",
+      "tags": [
+        "vehicles"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-15",
+      "entities": [
+        {
+          "name": "Hollis Garage",
+          "type": "organization"
+        },
+        {
+          "name": "Volvo V60",
+          "type": "object"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Hollis Garage",
+          "predicate": "recalled",
+          "target": "Volvo V60",
+          "fact": "Hollis Garage recalled Volvo V60",
+          "exclusive": false,
+          "valid_from": "2026-09-15"
+        }
+      ]
+    },
+    {
+      "key": "m142",
+      "content": "Mabel was boarded in Schiedam during the Rotterdam marathon weekend.",
+      "kind": "event",
+      "tags": [
+        "pets"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-17",
+      "entities": [
+        {
+          "name": "Mabel",
+          "type": "animal"
+        },
+        {
+          "name": "Schiedam",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mabel",
+          "predicate": "was boarded in",
+          "target": "Schiedam",
+          "fact": "Mabel was boarded in Schiedam",
+          "exclusive": false,
+          "valid_from": "2026-09-17"
+        }
+      ]
+    },
+    {
+      "key": "m143",
+      "content": "Kofi's jazz trio played the Rivierkade summer party.",
+      "kind": "event",
+      "tags": [
+        "music"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-19",
+      "entities": [
+        {
+          "name": "Kofi Mensah",
+          "type": "person"
+        },
+        {
+          "name": "Rivierkade Housing Cooperative",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kofi Mensah",
+          "predicate": "performed at",
+          "target": "Rivierkade Housing Cooperative",
+          "fact": "Kofi Mensah performed at Rivierkade Housing Cooperative",
+          "exclusive": false,
+          "valid_from": "2026-09-19"
+        }
+      ]
+    },
+    {
+      "key": "m144",
+      "content": "Felix Moreau studied at Kestrel Polytechnic.",
+      "kind": "fact",
+      "tags": [
+        "education"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-22",
+      "entities": [
+        {
+          "name": "Felix Moreau",
+          "type": "person"
+        },
+        {
+          "name": "Kestrel Polytechnic",
+          "type": "organization"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Felix Moreau",
+          "predicate": "studied at",
+          "target": "Kestrel Polytechnic",
+          "fact": "Felix Moreau studied at Kestrel Polytechnic",
+          "exclusive": false,
+          "valid_from": "2026-09-22"
+        }
+      ]
+    },
+    {
+      "key": "m145",
+      "content": "Elif Yildiz was born in Hamburg.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-24",
+      "entities": [
+        {
+          "name": "Elif Yildiz",
+          "type": "person"
+        },
+        {
+          "name": "Hamburg",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Elif Yildiz",
+          "predicate": "was born in",
+          "target": "Hamburg",
+          "fact": "Elif Yildiz was born in Hamburg",
+          "exclusive": false,
+          "valid_from": "2026-09-24"
+        }
+      ]
+    },
+    {
+      "key": "m146",
+      "content": "Leon Park was born in Lyon.",
+      "kind": "fact",
+      "tags": [
+        "people"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-26",
+      "entities": [
+        {
+          "name": "Leon Park",
+          "type": "person"
+        },
+        {
+          "name": "Lyon",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Leon Park",
+          "predicate": "was born in",
+          "target": "Lyon",
+          "fact": "Leon Park was born in Lyon",
+          "exclusive": false,
+          "valid_from": "2026-09-26"
+        }
+      ]
+    },
+    {
+      "key": "m147",
+      "content": "Mira Lindqvist resides in Delft.",
+      "kind": "fact",
+      "tags": [
+        "residence"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-09-29",
+      "entities": [
+        {
+          "name": "Mira Lindqvist",
+          "type": "person"
+        },
+        {
+          "name": "Delft",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Mira Lindqvist",
+          "predicate": "resides in",
+          "target": "Delft",
+          "fact": "Mira Lindqvist resides in Delft",
+          "exclusive": true,
+          "valid_from": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "key": "m148",
+      "content": "Dana Okonkwo resides in Ostend.",
+      "kind": "fact",
+      "tags": [
+        "residence"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-01",
+      "entities": [
+        {
+          "name": "Dana Okonkwo",
+          "type": "person"
+        },
+        {
+          "name": "Ostend",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Dana Okonkwo",
+          "predicate": "resides in",
+          "target": "Ostend",
+          "fact": "Dana Okonkwo resides in Ostend",
+          "exclusive": true,
+          "valid_from": "2026-10-01"
+        }
+      ]
+    },
+    {
+      "key": "m149",
+      "content": "Victor Lang resides in Rotterdam.",
+      "kind": "fact",
+      "tags": [
+        "residence"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-03",
+      "entities": [
+        {
+          "name": "Victor Lang",
+          "type": "person"
+        },
+        {
+          "name": "Rotterdam",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Victor Lang",
+          "predicate": "resides in",
+          "target": "Rotterdam",
+          "fact": "Victor Lang resides in Rotterdam",
+          "exclusive": true,
+          "valid_from": "2026-10-03"
+        }
+      ]
+    },
+    {
+      "key": "m150",
+      "content": "Teo Brandt resides in Delft.",
+      "kind": "fact",
+      "tags": [
+        "residence"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-06",
+      "entities": [
+        {
+          "name": "Teo Brandt",
+          "type": "person"
+        },
+        {
+          "name": "Delft",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Teo Brandt",
+          "predicate": "resides in",
+          "target": "Delft",
+          "fact": "Teo Brandt resides in Delft",
+          "exclusive": true,
+          "valid_from": "2026-10-06"
+        }
+      ]
+    },
+    {
+      "key": "m151",
+      "content": "Ravi Menon resides in Antwerp.",
+      "kind": "fact",
+      "tags": [
+        "residence"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-08",
+      "entities": [
+        {
+          "name": "Ravi Menon",
+          "type": "person"
+        },
+        {
+          "name": "Antwerp",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Ravi Menon",
+          "predicate": "resides in",
+          "target": "Antwerp",
+          "fact": "Ravi Menon resides in Antwerp",
+          "exclusive": true,
+          "valid_from": "2026-10-08"
+        }
+      ]
+    },
+    {
+      "key": "m152",
+      "content": "Kralingen Medical Centre is located in Rotterdam.",
+      "kind": "fact",
+      "tags": [
+        "health"
+      ],
+      "importance": 0.8,
+      "valid_from": "2026-10-10",
+      "entities": [
+        {
+          "name": "Kralingen Medical Centre",
+          "type": "organization"
+        },
+        {
+          "name": "Rotterdam",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Kralingen Medical Centre",
+          "predicate": "is located in",
+          "target": "Rotterdam",
+          "fact": "Kralingen Medical Centre is located in Rotterdam",
+          "exclusive": false,
+          "valid_from": "2026-10-10"
+        }
+      ]
+    },
+    {
+      "key": "m153",
+      "content": "Keel & Oar Rowing Club is located in Rotterdam.",
+      "kind": "fact",
+      "tags": [
+        "sports"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-13",
+      "entities": [
+        {
+          "name": "Keel & Oar Rowing Club",
+          "type": "organization"
+        },
+        {
+          "name": "Rotterdam",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Keel & Oar Rowing Club",
+          "predicate": "is located in",
+          "target": "Rotterdam",
+          "fact": "Keel & Oar Rowing Club is located in Rotterdam",
+          "exclusive": false,
+          "valid_from": "2026-10-13"
+        }
+      ]
+    },
+    {
+      "key": "m154",
+      "content": "Vertex Climbing Gym is located in Rotterdam.",
+      "kind": "fact",
+      "tags": [
+        "fitness"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-15",
+      "entities": [
+        {
+          "name": "Vertex Climbing Gym",
+          "type": "organization"
+        },
+        {
+          "name": "Rotterdam",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Vertex Climbing Gym",
+          "predicate": "is located in",
+          "target": "Rotterdam",
+          "fact": "Vertex Climbing Gym is located in Rotterdam",
+          "exclusive": false,
+          "valid_from": "2026-10-15"
+        }
+      ]
+    },
+    {
+      "key": "m155",
+      "content": "Rivierkade Housing Cooperative is located in Rotterdam.",
+      "kind": "fact",
+      "tags": [
+        "home"
+      ],
+      "importance": 0.6,
+      "valid_from": "2026-10-17",
+      "entities": [
+        {
+          "name": "Rivierkade Housing Cooperative",
+          "type": "organization"
+        },
+        {
+          "name": "Rotterdam",
+          "type": "place"
+        }
+      ],
+      "relations": [
+        {
+          "source": "Rivierkade Housing Cooperative",
+          "predicate": "is located in",
+          "target": "Rotterdam",
+          "fact": "Rivierkade Housing Cooperative is located in Rotterdam",
+          "exclusive": false,
+          "valid_from": "2026-10-17"
+        }
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "q": "Where did the engineer who guides Noor's early career get schooled?",
+      "category": "two-hop",
+      "expect": [
+        "m004",
+        "m005"
+      ],
+      "answers": [
+        "Kestrel Polytechnic"
+      ],
+      "k": 5,
+      "note": "two-hop chain: mentor -> mira_school"
+    },
+    {
+      "q": "Which learned society does the person who guides Noor's career belong to?",
+      "category": "two-hop",
+      "expect": [
+        "m004",
+        "m007"
+      ],
+      "answers": [
+        "Royal Structures Society"
+      ],
+      "k": 5,
+      "note": "two-hop chain: mentor -> mira_society"
+    },
+    {
+      "q": "Where does the academic who oversaw Noor's master's thesis give lectures?",
+      "category": "two-hop",
+      "expect": [
+        "m078",
+        "m079"
+      ],
+      "answers": [
+        "Ostend Maritime Academy"
+      ],
+      "k": 5,
+      "note": "two-hop chain: elif -> elif_lectures"
+    },
+    {
+      "q": "Which clinic is the therapist treating Noor's shoulder affiliated with?",
+      "category": "two-hop",
+      "expect": [
+        "m032",
+        "m033"
+      ],
+      "answers": [
+        "Northgate Physio Clinic"
+      ],
+      "k": 5,
+      "note": "two-hop chain: physio_treats -> physio_affil"
+    },
+    {
+      "q": "What medication did Noor's family doctor write a script for?",
+      "category": "two-hop",
+      "expect": [
+        "m028",
+        "m030"
+      ],
+      "answers": [
+        "salbutamol"
+      ],
+      "k": 5,
+      "note": "two-hop chain: gp -> prescription"
+    },
+    {
+      "q": "Which practice is Noor's registered family doctor based at?",
+      "category": "two-hop",
+      "expect": [
+        "m028",
+        "m029"
+      ],
+      "answers": [
+        "Kralingen Medical Centre"
+      ],
+      "k": 5,
+      "note": "two-hop chain: gp -> gp_practice"
+    },
+    {
+      "q": "Which city is the consultancy Noor works for headquartered in?",
+      "category": "two-hop",
+      "expect": [
+        "m001",
+        "m034"
+      ],
+      "answers": [
+        "Antwerp"
+      ],
+      "k": 5,
+      "note": "two-hop chain: noor_job -> delta_hq"
+    },
+    {
+      "q": "Who started the firm where Noor is on the staff?",
+      "category": "two-hop",
+      "expect": [
+        "m001",
+        "m035"
+      ],
+      "answers": [
+        "Aisha Bello"
+      ],
+      "k": 5,
+      "note": "two-hop chain: noor_job -> delta_founder"
+    },
+    {
+      "q": "Who is the spouse of principal Ravi Menon?",
+      "category": "two-hop",
+      "expect": [
+        "m036",
+        "m037"
+      ],
+      "answers": [
+        "Sofia Ricci"
+      ],
+      "k": 5,
+      "note": "two-hop chain: ravi_job -> ravi_spouse"
+    },
+    {
+      "q": "Which instrument does the man living next door to Noor play?",
+      "category": "two-hop",
+      "expect": [
+        "m023",
+        "m024"
+      ],
+      "answers": [
+        "drums"
+      ],
+      "k": 5,
+      "note": "two-hop chain: neighbour -> kofi_plays"
+    },
+    {
+      "q": "Which company employs the person who lives next door to Noor?",
+      "category": "two-hop",
+      "expect": [
+        "m023",
+        "m025"
+      ],
+      "answers": [
+        "Brightwell Labs"
+      ],
+      "k": 5,
+      "note": "two-hop chain: neighbour -> kofi_job"
+    },
+    {
+      "q": "Who chairs the housing cooperative behind Noor's rented flat?",
+      "category": "two-hop",
+      "expect": [
+        "m002",
+        "m026"
+      ],
+      "answers": [
+        "Pieter de Jong"
+      ],
+      "k": 5,
+      "note": "two-hop chain: noor_home -> landlord"
+    },
+    {
+      "q": "Which bank backs the rowing club Noor belongs to?",
+      "category": "two-hop",
+      "expect": [
+        "m058",
+        "m061"
+      ],
+      "answers": [
+        "Groenlo Credit Union"
+      ],
+      "k": 5,
+      "note": "two-hop chain: club_member -> groenlo_sponsor"
+    },
+    {
+      "q": "Who coaches the rowing club Noor belongs to?",
+      "category": "two-hop",
+      "expect": [
+        "m058",
+        "m059"
+      ],
+      "answers": [
+        "Marco Ferri"
+      ],
+      "k": 5,
+      "note": "two-hop chain: club_member -> marco"
+    },
+    {
+      "q": "Who teaches the climbing course at the gym Noor belongs to?",
+      "category": "two-hop",
+      "expect": [
+        "m063",
+        "m064"
+      ],
+      "answers": [
+        "Ben Halvorsen"
+      ],
+      "k": 5,
+      "note": "two-hop chain: vertex_member -> ben"
+    },
+    {
+      "q": "Who runs the steel company that buys services from Noor's employer?",
+      "category": "two-hop",
+      "expect": [
+        "m040",
+        "m041"
+      ],
+      "answers": [
+        "Greta Hoffmann"
+      ],
+      "k": 5,
+      "note": "two-hop chain: delta_client -> greta"
+    },
+    {
+      "q": "Which architecture studio shaped the look of the bridge Noor is leading?",
+      "category": "two-hop",
+      "expect": [
+        "m044",
+        "m046"
+      ],
+      "answers": [
+        "Lichtenberg Architects"
+      ],
+      "k": 5,
+      "note": "two-hop chain: footbridge_lead -> footbridge_arch"
+    },
+    {
+      "q": "In which city is the studio that drew the footbridge's look based?",
+      "category": "two-hop",
+      "expect": [
+        "m046",
+        "m051"
+      ],
+      "answers": [
+        "Delft"
+      ],
+      "k": 5,
+      "note": "two-hop chain: footbridge_arch -> lichtenberg_loc"
+    },
+    {
+      "q": "Who is the partner at the studio that drew the footbridge's look?",
+      "category": "two-hop",
+      "expect": [
+        "m046",
+        "m052"
+      ],
+      "answers": [
+        "Teo Brandt"
+      ],
+      "k": 5,
+      "note": "two-hop chain: footbridge_arch -> teo_partner"
+    },
+    {
+      "q": "Where is the concrete supplier of the footbridge located?",
+      "category": "two-hop",
+      "expect": [
+        "m047",
+        "m048"
+      ],
+      "answers": [
+        "Dordrecht"
+      ],
+      "k": 5,
+      "note": "two-hop chain: footbridge_solvane -> solvane_loc"
+    },
+    {
+      "q": "Which venture firm backed the lab where Chloe Dubois is the top scientist?",
+      "category": "two-hop",
+      "expect": [
+        "m069",
+        "m066"
+      ],
+      "answers": [
+        "Tidewater Ventures"
+      ],
+      "k": 5,
+      "note": "two-hop chain: chloe -> tidewater"
+    },
+    {
+      "q": "Where was the top scientist of Brightwell Labs born?",
+      "category": "two-hop",
+      "expect": [
+        "m069",
+        "m070"
+      ],
+      "answers": [
+        "Lyon"
+      ],
+      "k": 5,
+      "note": "two-hop chain: chloe -> chloe_birth"
+    },
+    {
+      "q": "In which city is the start-up that Tidewater Ventures funded based?",
+      "category": "two-hop",
+      "expect": [
+        "m066",
+        "m071"
+      ],
+      "answers": [
+        "Utrecht"
+      ],
+      "k": 5,
+      "note": "two-hop chain: tidewater -> brightwell_hq"
+    },
+    {
+      "q": "Who sits on the board of the lab Tidewater Ventures funded?",
+      "category": "two-hop",
+      "expect": [
+        "m066",
+        "m068"
+      ],
+      "answers": [
+        "Leon Park"
+      ],
+      "k": 5,
+      "note": "two-hop chain: tidewater -> leon_board"
+    },
+    {
+      "q": "Where was Noor's classmate from the master's programme born?",
+      "category": "two-hop",
+      "expect": [
+        "m072",
+        "m073"
+      ],
+      "answers": [
+        "Osaka"
+      ],
+      "k": 5,
+      "note": "two-hop chain: hana_classmate -> hana_birth"
+    },
+    {
+      "q": "Which design school did Noor's cousin attend?",
+      "category": "two-hop",
+      "expect": [
+        "m074",
+        "m075"
+      ],
+      "answers": [
+        "Ashgrove School of Design"
+      ],
+      "k": 5,
+      "note": "two-hop chain: dana_cousin -> dana_school"
+    },
+    {
+      "q": "Which instrument does Noor's cousin play?",
+      "category": "two-hop",
+      "expect": [
+        "m074",
+        "m077"
+      ],
+      "answers": [
+        "violin"
+      ],
+      "k": 5,
+      "note": "two-hop chain: dana_cousin -> dana_violin"
+    },
+    {
+      "q": "What breed is the dog that Noor looks after?",
+      "category": "two-hop",
+      "expect": [
+        "m018",
+        "m019"
+      ],
+      "answers": [
+        "Border collie"
+      ],
+      "k": 5,
+      "note": "two-hop chain: mabel_owner -> mabel_breed"
+    },
+    {
+      "q": "Where does Noor's younger sibling make a home?",
+      "category": "two-hop",
+      "expect": [
+        "m014",
+        "m015"
+      ],
+      "answers": [
+        "Lisbon"
+      ],
+      "k": 5,
+      "note": "two-hop chain: sami_sib -> sami_city"
+    },
+    {
+      "q": "What kind of pet does Noor's sibling keep?",
+      "category": "two-hop",
+      "expect": [
+        "m014",
+        "m016"
+      ],
+      "answers": [
+        "Tofu"
+      ],
+      "k": 5,
+      "note": "two-hop chain: sami_sib -> sami_pet"
+    },
+    {
+      "q": "Which allergen should stay out of the office for the graduate Noor guides?",
+      "category": "two-hop",
+      "expect": [
+        "m010",
+        "m012"
+      ],
+      "answers": [
+        "peanuts"
+      ],
+      "k": 5,
+      "note": "two-hop chain: noor_mentee -> felix_allergy"
+    },
+    {
+      "q": "Who founded the contractor building the Harbor Quay Retrofit?",
+      "category": "two-hop",
+      "expect": [
+        "m055",
+        "m056"
+      ],
+      "answers": [
+        "Seun Adeyemi"
+      ],
+      "k": 5,
+      "note": "two-hop chain: harbor_contractor -> seun"
+    },
+    {
+      "q": "Who chairs the body that approved the Kralingen Footbridge?",
+      "category": "two-hop",
+      "expect": [
+        "m049",
+        "m050"
+      ],
+      "answers": [
+        "Victor Lang"
+      ],
+      "k": 5,
+      "note": "two-hop chain: approval -> victor"
+    },
+    {
+      "q": "Which school did the engineer leading the footbridge graduate from?",
+      "category": "two-hop",
+      "expect": [
+        "m044",
+        "m003"
+      ],
+      "answers": [
+        "Veldhoven Institute of Technology"
+      ],
+      "k": 5,
+      "note": "two-hop chain: footbridge_lead -> noor_school"
+    },
+    {
+      "q": "Which firm employs the graduate engineer Noor guides?",
+      "category": "two-hop",
+      "expect": [
+        "m010",
+        "m011"
+      ],
+      "answers": [
+        "Delta Bridge Consulting"
+      ],
+      "k": 5,
+      "note": "two-hop chain: noor_mentee -> felix_job"
+    },
+    {
+      "q": "Where was the partner of Ravi Menon born?",
+      "category": "two-hop",
+      "expect": [
+        "m037",
+        "m039"
+      ],
+      "answers": [
+        "Naples"
+      ],
+      "k": 5,
+      "note": "two-hop chain: ravi_spouse -> sofia_birth"
+    },
+    {
+      "q": "In which city is the steel company run by Greta Hoffmann based?",
+      "category": "two-hop",
+      "expect": [
+        "m041",
+        "m042"
+      ],
+      "answers": [
+        "Hamburg"
+      ],
+      "k": 5,
+      "note": "two-hop chain: greta -> harbor_hq"
+    },
+    {
+      "q": "In which town is the workshop that services the Volvo V60 based?",
+      "category": "two-hop",
+      "expect": [
+        "m021",
+        "m022"
+      ],
+      "answers": [
+        "Schiedam"
+      ],
+      "k": 5,
+      "note": "two-hop chain: hollis_maint -> hollis_loc"
+    },
+    {
+      "q": "Which employer does Ravi Menon's wife work for?",
+      "category": "two-hop",
+      "expect": [
+        "m037",
+        "m038"
+      ],
+      "answers": [
+        "Delta Bridge Consulting"
+      ],
+      "k": 5,
+      "note": "two-hop chain: ravi_spouse -> sofia_job"
+    },
+    {
+      "q": "Which project did the chair of the planning committee approve?",
+      "category": "two-hop",
+      "expect": [
+        "m050",
+        "m049"
+      ],
+      "answers": [
+        "Kralingen Footbridge"
+      ],
+      "k": 5,
+      "note": "two-hop chain: victor -> approval"
+    },
+    {
+      "q": "In which city is the firm employing the graduate that Noor guides headquartered?",
+      "category": "three-hop",
+      "expect": [
+        "m010",
+        "m011",
+        "m034"
+      ],
+      "answers": [
+        "Antwerp"
+      ],
+      "k": 5,
+      "note": "three-hop chain: noor_mentee -> felix_job -> delta_hq"
+    },
+    {
+      "q": "Who chairs the committee that approved the bridge Noor is leading?",
+      "category": "three-hop",
+      "expect": [
+        "m044",
+        "m049",
+        "m050"
+      ],
+      "answers": [
+        "Victor Lang"
+      ],
+      "k": 5,
+      "note": "three-hop chain: footbridge_lead -> approval -> victor"
+    },
+    {
+      "q": "What species is the pet that Noor's younger sibling keeps?",
+      "category": "three-hop",
+      "expect": [
+        "m014",
+        "m016",
+        "m017"
+      ],
+      "answers": [
+        "grey parrot"
+      ],
+      "k": 5,
+      "note": "three-hop chain: sami_sib -> sami_pet -> tofu_species"
+    },
+    {
+      "q": "Which town is the garage servicing Noor's car located in?",
+      "category": "three-hop",
+      "expect": [
+        "m020",
+        "m021",
+        "m022"
+      ],
+      "answers": [
+        "Schiedam"
+      ],
+      "k": 5,
+      "note": "three-hop chain: car -> hollis_maint -> hollis_loc"
+    },
+    {
+      "q": "Where is the start-up that partner Leon Park's firm put money into headquartered?",
+      "category": "three-hop",
+      "expect": [
+        "m067",
+        "m066",
+        "m071"
+      ],
+      "answers": [
+        "Utrecht"
+      ],
+      "k": 5,
+      "note": "three-hop chain: leon_partner -> tidewater -> brightwell_hq"
+    },
+    {
+      "q": "Where was the spouse of the principal at Noor's firm born?",
+      "category": "three-hop",
+      "expect": [
+        "m036",
+        "m037",
+        "m039"
+      ],
+      "answers": [
+        "Naples"
+      ],
+      "k": 5,
+      "note": "three-hop chain: ravi_job -> ravi_spouse -> sofia_birth"
+    },
+    {
+      "q": "Where was the chief executive of Noor's firm's steel client born?",
+      "category": "three-hop",
+      "expect": [
+        "m040",
+        "m041",
+        "m043"
+      ],
+      "answers": [
+        "Bremen"
+      ],
+      "k": 5,
+      "note": "three-hop chain: delta_client -> greta -> greta_birth"
+    },
+    {
+      "q": "Who works with the partner who shaped the footbridge's architecture?",
+      "category": "three-hop",
+      "expect": [
+        "m046",
+        "m052",
+        "m053"
+      ],
+      "answers": [
+        "Yusuf Demir"
+      ],
+      "k": 5,
+      "note": "three-hop chain: footbridge_arch -> teo_partner -> yusuf"
+    },
+    {
+      "q": "Who founded the company employing the graduate that Noor guides?",
+      "category": "three-hop",
+      "expect": [
+        "m010",
+        "m011",
+        "m035"
+      ],
+      "answers": [
+        "Aisha Bello"
+      ],
+      "k": 5,
+      "note": "three-hop chain: noor_mentee -> felix_job -> delta_founder"
+    },
+    {
+      "q": "Which city is home to the school that Noor's cousin attended?",
+      "category": "three-hop",
+      "expect": [
+        "m074",
+        "m075",
+        "m076"
+      ],
+      "answers": [
+        "Ostend"
+      ],
+      "k": 5,
+      "note": "three-hop chain: dana_cousin -> dana_school -> ashgrove_loc"
+    },
+    {
+      "q": "Who was a schoolmate of the engineer leading the footbridge at the same institute?",
+      "category": "three-hop",
+      "expect": [
+        "m044",
+        "m003",
+        "m072"
+      ],
+      "answers": [
+        "Hana Kobayashi"
+      ],
+      "k": 5,
+      "note": "three-hop chain: footbridge_lead -> noor_school -> hana_classmate"
+    },
+    {
+      "q": "Where was the chief scientist of the lab that Tidewater Ventures backed born?",
+      "category": "three-hop",
+      "expect": [
+        "m066",
+        "m069",
+        "m070"
+      ],
+      "answers": [
+        "Lyon"
+      ],
+      "k": 5,
+      "note": "three-hop chain: tidewater -> chloe -> chloe_birth"
+    },
+    {
+      "q": "Who is the partner at the investor that backed Chloe Dubois's lab?",
+      "category": "three-hop",
+      "expect": [
+        "m069",
+        "m066",
+        "m067"
+      ],
+      "answers": [
+        "Leon Park"
+      ],
+      "k": 5,
+      "note": "three-hop chain: chloe -> tidewater -> leon_partner"
+    },
+    {
+      "q": "Who founded the consultancy that serves the company led by Greta Hoffmann?",
+      "category": "three-hop",
+      "expect": [
+        "m041",
+        "m040",
+        "m035"
+      ],
+      "answers": [
+        "Aisha Bello"
+      ],
+      "k": 5,
+      "note": "three-hop chain: greta -> delta_client -> delta_founder"
+    },
+    {
+      "q": "In which city is the lab where Noor's next-door neighbour works headquartered?",
+      "category": "three-hop",
+      "expect": [
+        "m023",
+        "m025",
+        "m071"
+      ],
+      "answers": [
+        "Utrecht"
+      ],
+      "k": 5,
+      "note": "three-hop chain: neighbour -> kofi_job -> brightwell_hq"
+    },
+    {
+      "q": "Where was the coach who teaches at the gym Noor belongs to born?",
+      "category": "three-hop",
+      "expect": [
+        "m063",
+        "m064",
+        "m065"
+      ],
+      "answers": [
+        "Dordrecht"
+      ],
+      "k": 5,
+      "note": "three-hop chain: vertex_member -> ben -> ben_birth"
+    },
+    {
+      "q": "Where was the coach of Noor's rowing club born?",
+      "category": "three-hop",
+      "expect": [
+        "m058",
+        "m059",
+        "m060"
+      ],
+      "answers": [
+        "Hamburg"
+      ],
+      "k": 5,
+      "note": "three-hop chain: club_member -> marco -> marco_birth"
+    },
+    {
+      "q": "In which city is the school where Noor's mentor trained located?",
+      "category": "three-hop",
+      "expect": [
+        "m004",
+        "m005",
+        "m006"
+      ],
+      "answers": [
+        "Delft"
+      ],
+      "k": 5,
+      "note": "three-hop chain: mentor -> mira_school -> kestrel_loc"
+    },
+    {
+      "q": "In which city is the studio that shaped the bridge Noor leads based?",
+      "category": "three-hop",
+      "expect": [
+        "m044",
+        "m046",
+        "m051"
+      ],
+      "answers": [
+        "Delft"
+      ],
+      "k": 5,
+      "note": "three-hop chain: footbridge_lead -> footbridge_arch -> lichtenberg_loc"
+    },
+    {
+      "q": "Who teaches at the climbing gym frequented by the graduate Noor guides?",
+      "category": "three-hop",
+      "expect": [
+        "m010",
+        "m013",
+        "m064"
+      ],
+      "answers": [
+        "Ben Halvorsen"
+      ],
+      "k": 5,
+      "note": "three-hop chain: noor_mentee -> felix_vertex -> ben"
+    },
+    {
+      "q": "Which firm employs the spouse of the principal at Noor's firm?",
+      "category": "three-hop",
+      "expect": [
+        "m036",
+        "m037",
+        "m038"
+      ],
+      "answers": [
+        "Delta Bridge Consulting"
+      ],
+      "k": 5,
+      "note": "three-hop chain: ravi_job -> ravi_spouse -> sofia_job"
+    },
+    {
+      "q": "Where is the concrete supplier of the bridge Noor is leading located?",
+      "category": "three-hop",
+      "expect": [
+        "m044",
+        "m047",
+        "m048"
+      ],
+      "answers": [
+        "Dordrecht"
+      ],
+      "k": 5,
+      "note": "three-hop chain: footbridge_lead -> footbridge_solvane -> solvane_loc"
+    },
+    {
+      "q": "Where was the chairman of the housing cooperative behind Noor's flat born?",
+      "category": "three-hop",
+      "expect": [
+        "m002",
+        "m026",
+        "m027"
+      ],
+      "answers": [
+        "Delft"
+      ],
+      "k": 5,
+      "note": "three-hop chain: noor_home -> landlord -> pieter_birth"
+    },
+    {
+      "q": "Which city is the academy of Noor's thesis supervisor located in?",
+      "category": "three-hop",
+      "expect": [
+        "m078",
+        "m079",
+        "m080"
+      ],
+      "answers": [
+        "Ostend"
+      ],
+      "k": 5,
+      "note": "three-hop chain: elif -> elif_lectures -> ostend_loc"
+    },
+    {
+      "q": "Which client commissioned the job run by Seun Adeyemi's firm?",
+      "category": "three-hop",
+      "expect": [
+        "m056",
+        "m055",
+        "m057"
+      ],
+      "answers": [
+        "Harbor Steel Partners"
+      ],
+      "k": 5,
+      "note": "three-hop chain: seun -> harbor_contractor -> harbor_commission"
+    },
+    {
+      "q": "Which medicine must Noor avoid because of an allergy?",
+      "category": "single-hop",
+      "expect": [
+        "m031"
+      ],
+      "answers": [
+        "penicillin"
+      ],
+      "k": 5,
+      "note": "single-hop chain: penicillin"
+    },
+    {
+      "q": "Which bank does Noor keep savings with?",
+      "category": "single-hop",
+      "expect": [
+        "m062"
+      ],
+      "answers": [
+        "Groenlo Credit Union"
+      ],
+      "k": 5,
+      "note": "single-hop chain: groenlo_bank"
+    },
+    {
+      "q": "What finite element software does Noor rely on?",
+      "category": "single-hop",
+      "expect": [
+        "m081"
+      ],
+      "answers": [
+        "Lumen Solver"
+      ],
+      "k": 5,
+      "note": "single-hop chain: lumen"
+    },
+    {
+      "q": "What is the name of Noor's dog?",
+      "category": "single-hop",
+      "expect": [
+        "m018"
+      ],
+      "answers": [
+        "Mabel"
+      ],
+      "k": 5,
+      "note": "single-hop chain: mabel_owner"
+    },
+    {
+      "q": "Which firm did Aisha Bello set up?",
+      "category": "single-hop",
+      "expect": [
+        "m035"
+      ],
+      "answers": [
+        "Delta Bridge Consulting"
+      ],
+      "k": 5,
+      "note": "single-hop chain: delta_founder"
+    },
+    {
+      "q": "Who is the chief executive of Harbor Steel Partners?",
+      "category": "single-hop",
+      "expect": [
+        "m041"
+      ],
+      "answers": [
+        "Greta Hoffmann"
+      ],
+      "k": 5,
+      "note": "single-hop chain: greta"
+    },
+    {
+      "q": "Which clinic is Nadia Sokolova connected to?",
+      "category": "single-hop",
+      "expect": [
+        "m033"
+      ],
+      "answers": [
+        "Northgate Physio Clinic"
+      ],
+      "k": 5,
+      "note": "single-hop chain: physio_affil"
+    },
+    {
+      "q": "Who set up Adeyemi & Sons Contracting?",
+      "category": "single-hop",
+      "expect": [
+        "m056"
+      ],
+      "answers": [
+        "Seun Adeyemi"
+      ],
+      "k": 5,
+      "note": "single-hop chain: seun"
+    },
+    {
+      "q": "Which venture firm put money into Brightwell Labs?",
+      "category": "single-hop",
+      "expect": [
+        "m066"
+      ],
+      "answers": [
+        "Tidewater Ventures"
+      ],
+      "k": 5,
+      "note": "single-hop chain: tidewater"
+    },
+    {
+      "q": "Which rowing club does Noor train with?",
+      "category": "single-hop",
+      "expect": [
+        "m058"
+      ],
+      "answers": [
+        "Keel & Oar Rowing Club"
+      ],
+      "k": 5,
+      "note": "single-hop chain: club_member"
+    },
+    {
+      "q": "Who is Noor's younger sibling?",
+      "category": "single-hop",
+      "expect": [
+        "m014"
+      ],
+      "answers": [
+        "Sami Haddad"
+      ],
+      "k": 5,
+      "note": "single-hop chain: sami_sib"
+    },
+    {
+      "q": "Which committee does Victor Lang chair?",
+      "category": "single-hop",
+      "expect": [
+        "m050"
+      ],
+      "answers": [
+        "Kralingen Planning Committee"
+      ],
+      "k": 5,
+      "note": "single-hop chain: victor"
+    },
+    {
+      "q": "What did the GP prescribe for Noor's asthma?",
+      "category": "single-hop",
+      "expect": [
+        "m030"
+      ],
+      "answers": [
+        "salbutamol"
+      ],
+      "k": 5,
+      "note": "single-hop chain: prescription"
+    },
+    {
+      "q": "Which firm is engineering the Kralingen Footbridge?",
+      "category": "single-hop",
+      "expect": [
+        "m045"
+      ],
+      "answers": [
+        "Delta Bridge Consulting"
+      ],
+      "k": 5,
+      "note": "single-hop chain: footbridge_delta"
+    },
+    {
+      "q": "Which vehicle does Hollis Garage service?",
+      "category": "single-hop",
+      "expect": [
+        "m021"
+      ],
+      "answers": [
+        "Volvo V60"
+      ],
+      "k": 5,
+      "note": "single-hop chain: hollis_maint"
+    }
+  ]
+}

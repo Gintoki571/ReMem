@@ -290,3 +290,17 @@ eval and recall numbers above are unaffected.
   margin (top-1 vs top-k gap, or a tiny verifier) instead of a raw cosine;
   (3) absence-aware negation ("who does not work here") backed by an explicit
   "not" fact in storage, which this branch's schema does not yet record.
+
+## 6. Independent check and the semantic beam (2026-10-23, orchestrator)
+
+The lexical beam's world numbers lean on a synonym table written for the world generator's vocabulary. `eval/multihop-holdout.json` was written by an agent that never saw `src/paths.rs`, `gen_world.rs` or this document: 155 memories, 87 distinct predicates, 80 queries (40 two-hop, 25 three-hop, 15 single-hop) phrased with paraphrase and descriptions ("the engineer who guides Noor's early career" for `mentors`).
+
+| build | two-hop acc@10 | three-hop acc@10 | fixtures recall/MRR | holdout recall/MRR |
+|---|---|---|---|---|
+| main (no path search) | 0.775 | 0.560 | 0.953 / 0.894 | 0.924 / 0.794 |
+| lexical beam only | 0.775 | 0.600 | 0.953 / 0.900 | 0.924 / 0.794 |
+| + semantic beam, w_sempath 0.25 (default) | **0.850** | **0.720** | 0.951 / 0.902 | 0.924 / 0.795 |
+
+The lexical beam barely fires there: questions paraphrase predicates and name people by first name ("Noor's") while path starts were exact aliases only. `paths::search_semantic` fixes both: one KNN (k=100) over `relations_vec` picks the facts the question recognises, the beam starts from the exact anchors plus the top fuzzy entity seeds, walks only recognised facts (6 per entity, depth 3), scores each hop against the *residual* question (question vector minus the components earlier hop facts explained), sums hop scores, and emits only >= 2-hop chains into their own RRF channel `sem` (weight `w_sempath`). Measured path scores on the independent set: mean cosine 0.775/0.640, sum 0.850/0.640, residual sum 0.875/0.720 (two/three-hop). A weight of 1.0 cost 0.014-0.04 fixtures recall and collapsed world aggregation/as-of MRR (0.99 -> 0.39); 0.25 keeps every other family. World-300 at the default: two-hop 0.958, three-hop 1.000, all other families 1.000, p50 93 ms.
+
+Caveat: `w_sempath` was chosen on this set (4 values, all sets agreeing), so it is no longer fully independent; a second independent multi-hop set is the next honest check.

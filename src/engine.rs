@@ -44,6 +44,8 @@ pub struct Config {
     pub w_vector: f64,
     pub w_graph: f64,
     pub w_temporal: f64,
+    /// RRF weight of semantic multi-hop paths (`paths::search_semantic`).
+    pub w_sempath: f64,
     pub rrf_k: f64,
     /// PPR teleport probability.
     pub alpha: f64,
@@ -84,6 +86,7 @@ impl Default for Config {
             w_vector: 2.0,
             w_graph: 1.5,
             w_temporal: 1.0,
+            w_sempath: 0.25,
             rrf_k: 5.0,
             alpha: 0.5,
             eps: 1e-5,

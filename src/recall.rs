@@ -647,35 +647,56 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     path_starts.truncate(4);
     // "What did X drink *before* Y" asks for the older state; a path from the
     // query anchors lands on the current one and buries the answer.
-    let path_hits = if path_starts.is_empty() || negated || history_query {
-        Vec::new()
-    } else {
-        paths::search(
-            &engine.db,
-            &query_text,
-            &path_starts,
-            paths::Visibility {
-                now,
-                as_of,
-                history,
-            },
-        )?
+    // The semantic beam only walks facts the question recognises, so it can
+    // also start from fuzzy seeds ("Noor's" -> Noor Haddad).
+    let mut sem_starts = path_starts.clone();
+    let mut fuzzy: Vec<(i64, f64)> = ent_seeds.iter().map(|(id, w)| (*id, *w)).collect();
+    fuzzy.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+    for (id, _) in fuzzy {
+        if sem_starts.len() >= 4 {
+            break;
+        }
+        if !sem_starts.contains(&id) {
+            sem_starts.push(id);
+        }
+    }
+    let vis = paths::Visibility {
+        now,
+        as_of,
+        history,
     };
-    let mut path_ids: Vec<i64> = if path_hits.is_empty() {
-        Vec::new()
+    let (lexical_hits, sem_hits) = if negated || history_query {
+        (Vec::new(), Vec::new())
     } else {
-        paths::evidence(&engine.db, &path_hits)?
+        let lexical = if path_starts.is_empty() {
+            Vec::new()
+        } else {
+            paths::search(&engine.db, &query_text, &path_starts, vis)?
+        };
+        let semantic = if engine.cfg.w_sempath > 0.0 {
+            paths::search_semantic(&engine.db, &query_vec, &sem_starts, vis)?
+        } else {
+            Vec::new()
+        };
+        (lexical, semantic)
     };
+    let mut path_ids = paths::evidence(&engine.db, &lexical_hits)?;
+    let mut sem_ids = paths::evidence(&engine.db, &sem_hits)?;
     let missing: Vec<i64> = path_ids
         .iter()
+        .chain(&sem_ids)
         .copied()
         .filter(|id| !rows.contains_key(id))
         .collect();
     rows.extend(fetch_rows(&engine.db, &missing)?);
-    path_ids.retain(|id| {
-        rows.get(id)
-            .is_some_and(|row| eligible(row, as_of, history, input, since, until))
-    });
+    for ids in [&mut path_ids, &mut sem_ids] {
+        ids.retain(|id| {
+            rows.get(id)
+                .is_some_and(|row| eligible(row, as_of, history, input, since, until))
+        });
+    }
+    sem_ids.truncate(depth);
+    let path_hits: Vec<paths::PathHit> = lexical_hits.into_iter().chain(sem_hits).collect();
     path_ids.truncate(depth);
 
     let channels = [
@@ -703,6 +724,11 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
             name: "path",
             weight: PATH_WEIGHT,
             ids: &path_ids,
+        },
+        rank::Channel {
+            name: "sem",
+            weight: engine.cfg.w_sempath,
+            ids: &sem_ids,
         },
     ];
     let fused = rank::rrf(&channels, engine.cfg.rrf_k);
@@ -761,6 +787,8 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
             tokens_used: 0,
             tokens_budget: budget,
             omitted: 0,
+            window_empty: false,
+            over_budget: false,
         });
     }
     let mmr_ids: Vec<i64> = candidates.iter().map(|x| x.0).take(3 * k).collect();
