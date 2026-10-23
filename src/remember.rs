@@ -386,7 +386,7 @@ pub fn remember(
                         .ok_or_else(|| crate::err!("invalid relation valid_to '{x}'"))
                 })
                 .transpose()?;
-            let fact = facts[ri].clone();
+            let mut fact = facts[ri].clone();
             let polarity = if relation.negated.unwrap_or_else(|| {
                 infer_negated(
                     relation.fact.as_deref().unwrap_or(&content),
@@ -398,6 +398,9 @@ pub fn remember(
             } else {
                 1
             };
+            if polarity == 0 && relation.fact.is_none() {
+                fact = format!("{} NOT {} {}", relation.source, relation.predicate, relation.target);
+            }
             // Relations this one ends; each gets ended_by = this relation.
             let mut ended_here: Vec<i64> = Vec::new();
             // The later relation this backfilled one is history up to.

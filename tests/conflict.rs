@@ -212,6 +212,15 @@ fn inferred_negation_ends_positive_and_flip_back_ends_negative() {
         "negation must not merge"
     );
     assert_eq!(live(&e), vec![(neg.relations[0].id, 0)]);
+    let fact: String =
+        e.db.sql()
+            .query_row(
+                "SELECT fact FROM relations WHERE id=?1",
+                [neg.relations[0].id],
+                |r| r.get(0),
+            )
+            .unwrap();
+    assert_eq!(fact, "Alice NOT likes jazz");
     let again = e
         .remember(likes("Alice likes jazz again.", T0 + 200, None))
         .unwrap();
