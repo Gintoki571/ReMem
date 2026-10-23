@@ -736,15 +736,16 @@ fn cmd_eval(globals: &Globals, args: &[String]) -> CmdResult {
     if opts.save_db.is_some() && opts.load_db.is_some() {
         return Err(usage("--save-db and --load-db are mutually exclusive"));
     }
-    let engine = open_engine(globals)?;
-    let mut cfg = engine.cfg.clone();
+    // eval builds its own databases; it must never open (or migrate) the
+    // user's memory, so --db/$NEOCORTEX_DB are ignored here.
+    let mut cfg = neocortex::engine::Config::default();
     for item in &sets {
         let (key, val) = item
             .split_once('=')
             .ok_or_else(|| usage(format!("--set needs key=value, got '{item}'")))?;
         neocortex::eval::set_config(&mut cfg, key, val).map_err(runtime)?;
     }
-    let emb = Arc::clone(&engine.emb);
+    let emb = make_embedder();
     let path = Path::new(path);
     if let Some(spec) = sweep {
         let (key, values) = spec

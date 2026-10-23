@@ -250,3 +250,18 @@ fn json_after_the_command_and_unquoted_multi_word_entities_work() {
     let v: serde_json::Value = serde_json::from_str(&stdout(&o)).expect("json output");
     assert_eq!(v["card"]["name"], "Mom Smith", "{v}");
 }
+
+#[test]
+fn eval_never_opens_the_configured_database() {
+    let db = temp_db();
+    std::fs::write(&db, b"not a sqlite database").unwrap();
+    let fixtures = db.with_extension("fixtures.json");
+    std::fs::write(
+        &fixtures,
+        r#"{"now":"2026-01-01","memories":[],"queries":[]}"#,
+    )
+    .unwrap();
+    let o = memory_cmd(&db, &["eval", fixtures.to_str().unwrap()]);
+    assert!(o.status.success(), "{}", stderr(&o));
+    assert_eq!(std::fs::read(&db).unwrap(), b"not a sqlite database");
+}
