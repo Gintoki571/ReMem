@@ -454,6 +454,44 @@ fn negation_question_keeps_negative_relations_without_a_cue_word() {
 }
 
 #[test]
+fn a_chain_link_stated_only_in_prose_is_followed() {
+    let e = engine(Arc::new(HashEmbedder));
+    remember(&e, "Rui Carvalho is mentored by Marta Lobo.", |i| {
+        i.relations = vec![relation(
+            "Marta Lobo",
+            "mentors",
+            "Rui Carvalho",
+            "Marta Lobo mentors Rui Carvalho",
+        )];
+    });
+    for filler in [
+        "Rui Carvalho runs the Saturday football drills.",
+        "Rui Carvalho prefers espresso over filter coffee.",
+        "Rui Carvalho presented the assay results.",
+        "Rui Carvalho bought a new bicycle.",
+        "Marta Lobo reviewed the grant budget.",
+        "Marta Lobo chairs the hiring panel.",
+    ] {
+        remember(&e, filler, |_| {});
+    }
+    // No relations passed: the hometown link exists only as prose.
+    let answer = remember(&e, "Marta Lobo spent her childhood in Braga.", |_| {});
+    let out = e
+        .recall(&RecallInput {
+            query: "Which town did Rui Carvalho's mentor grow up in?".into(),
+            ..Default::default()
+        })
+        .unwrap();
+    // Only the semantic beam's prose hop reaches it as the best chain.
+    let hit = out.memories.iter().find(|m| m.id == answer);
+    assert!(
+        hit.is_some_and(|m| m.reasons.iter().any(|r| r == "sem#1")),
+        "{:?}",
+        out.memories
+    );
+}
+
+#[test]
 fn unrelated_question_abstains_instead_of_ranking_noise() {
     let e = engine(Arc::new(HashEmbedder));
     remember(&e, "The office coffee machine is in the kitchen.", |_| {});

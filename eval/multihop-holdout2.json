@@ -1,0 +1,8517 @@
+{
+ "now": "2026-09-30",
+ "memories": [
+  {
+   "key": "m001",
+   "content": "Mirante Bio was founded by Luis Amaral in Lisbon in March 2024.",
+   "kind": "fact",
+   "tags": [
+    "company",
+    "founding"
+   ],
+   "importance": 0.8,
+   "valid_from": "2024-03-01",
+   "entities": [
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante",
+      "the company"
+     ],
+     "description": "Lisbon biotech startup"
+    },
+    {
+     "name": "Luis Amaral",
+     "type": "person",
+     "aliases": [
+      "Luis",
+      "the CEO"
+     ],
+     "description": "CEO and co-founder"
+    },
+    {
+     "name": "Lisbon",
+     "type": "place",
+     "aliases": [],
+     "description": "capital of Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Mirante Bio",
+     "predicate": "was founded by",
+     "target": "Luis Amaral",
+     "fact": "Mirante Bio was founded by Luis Amaral.",
+     "exclusive": true,
+     "valid_from": "2024-03-01"
+    },
+    {
+     "source": "Mirante Bio",
+     "predicate": "is based in",
+     "target": "Lisbon",
+     "fact": "Mirante Bio is based in Lisbon.",
+     "exclusive": true,
+     "valid_from": "2024-03-01"
+    }
+   ]
+  },
+  {
+   "key": "m002",
+   "content": "The cold room bookings for October go through Clara Esteves, so ping her before booking.",
+   "kind": "note",
+   "tags": [
+    "lab",
+    "ops"
+   ],
+   "importance": 0.3,
+   "valid_from": "2026-09-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m003",
+   "content": "Rui Carvalho is mentored by Marta Lobo, who has advised him since his PhD.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "mentor"
+   ],
+   "importance": 0.7,
+   "valid_from": "2016-09-01",
+   "entities": [
+    {
+     "name": "Rui Carvalho",
+     "type": "person",
+     "aliases": [
+      "Rui"
+     ],
+     "description": "senior scientist at Mirante Bio"
+    },
+    {
+     "name": "Marta Lobo",
+     "type": "person",
+     "aliases": [
+      "Marta",
+      "Marta Lobo"
+     ],
+     "description": "professor and mentor"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rui Carvalho",
+     "predicate": "is mentored by",
+     "target": "Marta Lobo",
+     "fact": "Rui Carvalho is mentored by Marta Lobo.",
+     "exclusive": false,
+     "valid_from": "2016-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m004",
+   "content": "Marta Lobo grew up in Braga and studied at the University of Coimbra.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Marta Lobo",
+     "type": "person",
+     "aliases": [
+      "Marta"
+     ],
+     "description": "professor and mentor"
+    },
+    {
+     "name": "Braga",
+     "type": "place",
+     "aliases": [],
+     "description": "city in northern Portugal"
+    },
+    {
+     "name": "University of Coimbra",
+     "type": "organization",
+     "aliases": [
+      "Coimbra"
+     ],
+     "description": "public university"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marta Lobo",
+     "predicate": "grew up in",
+     "target": "Braga",
+     "fact": "Marta Lobo grew up in Braga.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    },
+    {
+     "source": "Marta Lobo",
+     "predicate": "studied at",
+     "target": "University of Coimbra",
+     "fact": "Marta Lobo studied at University of Coimbra.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m005",
+   "content": "Tomas Carvalho, Rui's son, is coached by Hugo Sá at Clube Graça FC.",
+   "kind": "fact",
+   "tags": [
+    "family",
+    "football"
+   ],
+   "importance": 0.6,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Tomas Carvalho",
+     "type": "person",
+     "aliases": [
+      "Tomas",
+      "Rui's son"
+     ],
+     "description": "nine-year-old footballer"
+    },
+    {
+     "name": "Hugo Sá",
+     "type": "person",
+     "aliases": [
+      "Hugo",
+      "the coach"
+     ],
+     "description": "under-10 coach"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC",
+      "the club"
+     ],
+     "description": "amateur football club in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Hugo Sá",
+     "predicate": "coaches",
+     "target": "Tomas Carvalho",
+     "fact": "Hugo Sá coaches Tomas Carvalho.",
+     "exclusive": false,
+     "valid_from": "2025-09-01"
+    },
+    {
+     "source": "Tomas Carvalho",
+     "predicate": "plays for",
+     "target": "Clube Graça FC",
+     "fact": "Tomas Carvalho plays for Clube Graça FC.",
+     "exclusive": false,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m006",
+   "content": "Hugo Sá, who coaches the under-10s, studied sports science at the University of Porto.",
+   "kind": "fact",
+   "tags": [
+    "football",
+    "background"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m007",
+   "content": "Rui Carvalho works at Mirante Bio as a senior scientist.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.7,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Rui Carvalho",
+     "type": "person",
+     "aliases": [
+      "Rui"
+     ],
+     "description": "senior scientist"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante",
+      "the company"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rui Carvalho",
+     "predicate": "works at",
+     "target": "Mirante Bio",
+     "fact": "Rui Carvalho works at Mirante Bio.",
+     "exclusive": false,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m008",
+   "content": "Luis Amaral grew up in Évora before studying chemistry in Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Luis Amaral",
+     "type": "person",
+     "aliases": [
+      "Luis"
+     ],
+     "description": "CEO"
+    },
+    {
+     "name": "Évora",
+     "type": "place",
+     "aliases": [],
+     "description": "city in the Alentejo"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Luis Amaral",
+     "predicate": "grew up in",
+     "target": "Évora",
+     "fact": "Luis Amaral grew up in Évora.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m009",
+   "content": "Clara Esteves leads the assay team at Mirante Bio.",
+   "kind": "fact",
+   "tags": [
+    "lab",
+    "team"
+   ],
+   "importance": 0.7,
+   "valid_from": "2024-06-01",
+   "entities": [
+    {
+     "name": "Clara Esteves",
+     "type": "person",
+     "aliases": [
+      "Clara"
+     ],
+     "description": "assay team lead"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Clara Esteves",
+     "predicate": "leads the assay team at",
+     "target": "Mirante Bio",
+     "fact": "Clara Esteves leads the assay team at Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2024-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m010",
+   "content": "Clara Esteves is allergic to penicillin.",
+   "kind": "fact",
+   "tags": [
+    "health"
+   ],
+   "importance": 0.5,
+   "valid_from": "2024-06-01",
+   "entities": [
+    {
+     "name": "Clara Esteves",
+     "type": "person",
+     "aliases": [
+      "Clara"
+     ],
+     "description": "assay team lead"
+    },
+    {
+     "name": "penicillin",
+     "type": "thing",
+     "aliases": [
+      "the antibiotic"
+     ],
+     "description": "antibiotic"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Clara Esteves",
+     "predicate": "is allergic to",
+     "target": "penicillin",
+     "fact": "Clara Esteves is allergic to penicillin.",
+     "exclusive": false,
+     "valid_from": "2024-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m011",
+   "content": "Sofia Quintela hired Diogo Matos as the architect for the Rua da Esperança house.",
+   "kind": "fact",
+   "tags": [
+    "renovation"
+   ],
+   "importance": 0.7,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Diogo Matos",
+     "type": "person",
+     "aliases": [
+      "Diogo",
+      "the architect"
+     ],
+     "description": "architect"
+    },
+    {
+     "name": "Rua da Esperança house",
+     "type": "place",
+     "aliases": [
+      "the house",
+      "Rua da Esperança 14"
+     ],
+     "description": "house under renovation"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Diogo Matos",
+     "predicate": "is the architect for",
+     "target": "Rua da Esperança house",
+     "fact": "Diogo Matos is the architect for Rua da Esperança house.",
+     "exclusive": true,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m012",
+   "content": "Diogo Matos studied architecture at the Faculdade de Arquitetura da Universidade de Lisboa.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m013",
+   "content": "Beatriz Quintela is Sofia's sister and lives in Faro.",
+   "kind": "fact",
+   "tags": [
+    "family"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Beatriz Quintela",
+     "type": "person",
+     "aliases": [
+      "Beatriz",
+      "Sofia's sister"
+     ],
+     "description": "nurse"
+    },
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Faro",
+     "type": "place",
+     "aliases": [],
+     "description": "city in the Algarve"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Beatriz Quintela",
+     "predicate": "is the sister of",
+     "target": "Sofia Quintela",
+     "fact": "Beatriz Quintela is the sister of Sofia Quintela.",
+     "exclusive": false,
+     "valid_from": "2025-08-01"
+    },
+    {
+     "source": "Beatriz Quintela",
+     "predicate": "lives in",
+     "target": "Faro",
+     "fact": "Beatriz Quintela lives in Faro.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m014",
+   "content": "Beatriz Quintela works as a nurse at Hospital de Faro.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "family"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Beatriz Quintela",
+     "type": "person",
+     "aliases": [
+      "Beatriz"
+     ],
+     "description": "nurse"
+    },
+    {
+     "name": "Hospital de Faro",
+     "type": "organization",
+     "aliases": [
+      "the hospital"
+     ],
+     "description": "public hospital in Faro"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Beatriz Quintela",
+     "predicate": "works at",
+     "target": "Hospital de Faro",
+     "fact": "Beatriz Quintela works at Hospital de Faro.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m015",
+   "content": "Carlos Quintela, Sofia's father, retired from the post office last year.",
+   "kind": "fact",
+   "tags": [
+    "family"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Carlos Quintela",
+     "type": "person",
+     "aliases": [
+      "Carlos",
+      "Sofia's father"
+     ],
+     "description": "retired postal worker"
+    },
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Correios",
+     "type": "organization",
+     "aliases": [
+      "the post office"
+     ],
+     "description": "Portuguese postal service"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Carlos Quintela",
+     "predicate": "is the father of",
+     "target": "Sofia Quintela",
+     "fact": "Carlos Quintela is the father of Sofia Quintela.",
+     "exclusive": false,
+     "valid_from": "2025-08-01"
+    },
+    {
+     "source": "Carlos Quintela",
+     "predicate": "retired from",
+     "target": "Correios",
+     "fact": "Carlos Quintela retired from Correios.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m016",
+   "content": "Carlos Quintela grew up in Covilhã.",
+   "kind": "fact",
+   "tags": [
+    "family",
+    "background"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Carlos Quintela",
+     "type": "person",
+     "aliases": [
+      "Carlos"
+     ],
+     "description": "retired postal worker"
+    },
+    {
+     "name": "Covilhã",
+     "type": "place",
+     "aliases": [],
+     "description": "town in the Serra da Estrela"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Carlos Quintela",
+     "predicate": "grew up in",
+     "target": "Covilhã",
+     "fact": "Carlos Quintela grew up in Covilhã.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m017",
+   "content": "Inês Leal founded Tidewater, a tide-forecast app, in 2025.",
+   "kind": "fact",
+   "tags": [
+    "side-project"
+   ],
+   "importance": 0.6,
+   "valid_from": "2025-01-15",
+   "entities": [
+    {
+     "name": "Inês Leal",
+     "type": "person",
+     "aliases": [
+      "Inês"
+     ],
+     "description": "founder of Tidewater"
+    },
+    {
+     "name": "Tidewater",
+     "type": "project",
+     "aliases": [
+      "the app"
+     ],
+     "description": "tide-forecast app"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Tidewater",
+     "predicate": "was founded by",
+     "target": "Inês Leal",
+     "fact": "Tidewater was founded by Inês Leal.",
+     "exclusive": true,
+     "valid_from": "2025-01-15"
+    }
+   ]
+  },
+  {
+   "key": "m018",
+   "content": "Inês Leal studied engineering at Instituto Superior Técnico.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Inês Leal",
+     "type": "person",
+     "aliases": [
+      "Inês"
+     ],
+     "description": "founder of Tidewater"
+    },
+    {
+     "name": "Instituto Superior Técnico",
+     "type": "organization",
+     "aliases": [
+      "IST"
+     ],
+     "description": "engineering school in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Inês Leal",
+     "predicate": "studied at",
+     "target": "Instituto Superior Técnico",
+     "fact": "Inês Leal studied at Instituto Superior Técnico.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m019",
+   "content": "Samuel Teixeira maintains Foli, an open-source notebook tool.",
+   "kind": "fact",
+   "tags": [
+    "side-project",
+    "open-source"
+   ],
+   "importance": 0.6,
+   "valid_from": "2025-10-01",
+   "entities": [
+    {
+     "name": "Samuel Teixeira",
+     "type": "person",
+     "aliases": [
+      "Samuel"
+     ],
+     "description": "Foli maintainer"
+    },
+    {
+     "name": "Foli",
+     "type": "project",
+     "aliases": [
+      "the notebook tool"
+     ],
+     "description": "open-source notebook tool"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Samuel Teixeira",
+     "predicate": "maintains",
+     "target": "Foli",
+     "fact": "Samuel Teixeira maintains Foli.",
+     "exclusive": false,
+     "valid_from": "2025-10-01"
+    }
+   ]
+  },
+  {
+   "key": "m020",
+   "content": "Foli is written in Rust and is used by a few hundred research groups.",
+   "kind": "fact",
+   "tags": [
+    "side-project"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-10-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m021",
+   "content": "Luis Amaral studied chemistry at the University of Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Luis Amaral",
+     "type": "person",
+     "aliases": [
+      "Luis"
+     ],
+     "description": "CEO"
+    },
+    {
+     "name": "University of Lisbon",
+     "type": "organization",
+     "aliases": [
+      "Universidade de Lisboa"
+     ],
+     "description": "public university"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Luis Amaral",
+     "predicate": "studied at",
+     "target": "University of Lisbon",
+     "fact": "Luis Amaral studied at University of Lisbon.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m022",
+   "content": "Clube Graça FC plays its home matches at Campo da Graça.",
+   "kind": "fact",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    },
+    {
+     "name": "Campo da Graça",
+     "type": "place",
+     "aliases": [
+      "the pitch"
+     ],
+     "description": "football ground"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Clube Graça FC",
+     "predicate": "plays home matches at",
+     "target": "Campo da Graça",
+     "fact": "Clube Graça FC plays home matches at Campo da Graça.",
+     "exclusive": true,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m023",
+   "content": "The University of Coimbra was founded in 1290, making it one of the oldest in Europe.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m024",
+   "content": "Clube Graça FC was founded in 1961 by a group of neighbours.",
+   "kind": "fact",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m025",
+   "content": "The University of Porto is based in the city of Porto.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m026",
+   "content": "The Faculdade de Arquitetura da Universidade de Lisboa moved to its Alcântara campus in 2012.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m027",
+   "content": "Instituto Superior Técnico has its main campus in Alameda, Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m028",
+   "content": "Samuel Teixeira studied computer science at the Universidade do Minho.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Samuel Teixeira",
+     "type": "person",
+     "aliases": [
+      "Samuel"
+     ],
+     "description": "Foli maintainer"
+    },
+    {
+     "name": "Universidade do Minho",
+     "type": "organization",
+     "aliases": [
+      "Minho"
+     ],
+     "description": "public university"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Samuel Teixeira",
+     "predicate": "studied at",
+     "target": "Universidade do Minho",
+     "fact": "Samuel Teixeira studied at Universidade do Minho.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m029",
+   "content": "The Universidade do Minho's main campus is at Gualtar, in Braga.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m030",
+   "content": "Évora is the capital of the Alentejo region.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m031",
+   "content": "Penicillin belongs to the beta-lactam class of antibiotics.",
+   "kind": "fact",
+   "tags": [
+    "health"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m032",
+   "content": "Rui Carvalho reports to Pedro Vieira, head of translational research, since 2024.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "manager"
+   ],
+   "importance": 0.6,
+   "valid_from": "2024-06-01",
+   "entities": [
+    {
+     "name": "Rui Carvalho",
+     "type": "person",
+     "aliases": [
+      "Rui"
+     ],
+     "description": "senior scientist"
+    },
+    {
+     "name": "Pedro Vieira",
+     "type": "person",
+     "aliases": [
+      "Pedro"
+     ],
+     "description": "head of translational research"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rui Carvalho",
+     "predicate": "reports to",
+     "target": "Pedro Vieira",
+     "fact": "Rui Carvalho reports to Pedro Vieira.",
+     "exclusive": true,
+     "valid_from": "2024-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m033",
+   "content": "From March 2026, Rui Carvalho reports to Joana Pires, who took over from Pedro Vieira.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "manager"
+   ],
+   "importance": 0.7,
+   "valid_from": "2026-03-02",
+   "entities": [
+    {
+     "name": "Rui Carvalho",
+     "type": "person",
+     "aliases": [
+      "Rui"
+     ],
+     "description": "senior scientist"
+    },
+    {
+     "name": "Joana Pires",
+     "type": "person",
+     "aliases": [
+      "Joana"
+     ],
+     "description": "head of translational research"
+    },
+    {
+     "name": "Pedro Vieira",
+     "type": "person",
+     "aliases": [
+      "Pedro"
+     ],
+     "description": "former head of translational research"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rui Carvalho",
+     "predicate": "reports to",
+     "target": "Joana Pires",
+     "fact": "Rui Carvalho reports to Joana Pires.",
+     "exclusive": true,
+     "valid_from": "2026-03-02"
+    }
+   ]
+  },
+  {
+   "key": "m034",
+   "content": "Joana Pires grew up in Setúbal and still has family there.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Joana Pires",
+     "type": "person",
+     "aliases": [
+      "Joana"
+     ],
+     "description": "head of translational research"
+    },
+    {
+     "name": "Setúbal",
+     "type": "place",
+     "aliases": [],
+     "description": "town south of the Tagus"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Joana Pires",
+     "predicate": "grew up in",
+     "target": "Setúbal",
+     "fact": "Joana Pires grew up in Setúbal.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m035",
+   "content": "Diogo Matos stepped back from the Rua da Esperança renovation in June 2026.",
+   "kind": "fact",
+   "tags": [
+    "renovation"
+   ],
+   "importance": 0.6,
+   "valid_from": "2026-06-01",
+   "entities": [
+    {
+     "name": "Diogo Matos",
+     "type": "person",
+     "aliases": [
+      "Diogo"
+     ],
+     "description": "architect"
+    },
+    {
+     "name": "Rua da Esperança house",
+     "type": "place",
+     "aliases": [
+      "the house"
+     ],
+     "description": "house under renovation"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Diogo Matos",
+     "predicate": "stepped back from",
+     "target": "Rua da Esperança house",
+     "fact": "Diogo Matos stepped back from Rua da Esperança house.",
+     "exclusive": true,
+     "valid_from": "2026-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m036",
+   "content": "Since July 2026 Nuno Barbosa is the contractor on Sofia's Rua da Esperança renovation, taking over from Diogo Matos.",
+   "kind": "fact",
+   "tags": [
+    "renovation"
+   ],
+   "importance": 0.7,
+   "valid_from": "2026-07-01",
+   "entities": [
+    {
+     "name": "Nuno Barbosa",
+     "type": "person",
+     "aliases": [
+      "Nuno"
+     ],
+     "description": "contractor"
+    },
+    {
+     "name": "Rua da Esperança house",
+     "type": "place",
+     "aliases": [
+      "the house"
+     ],
+     "description": "house under renovation"
+    },
+    {
+     "name": "Diogo Matos",
+     "type": "person",
+     "aliases": [
+      "Diogo"
+     ],
+     "description": "former architect"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Nuno Barbosa",
+     "predicate": "is the contractor for",
+     "target": "Rua da Esperança house",
+     "fact": "Nuno Barbosa is the contractor for Rua da Esperança house.",
+     "exclusive": true,
+     "valid_from": "2026-07-01"
+    }
+   ]
+  },
+  {
+   "key": "m037",
+   "content": "Nuno Barbosa learned the trade under Jorge Pinho in Aveiro.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m038",
+   "content": "Sofia Quintela lived in Porto until February 2026.",
+   "kind": "fact",
+   "tags": [
+    "home"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Porto",
+     "type": "place",
+     "aliases": [],
+     "description": "city in northern Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sofia Quintela",
+     "predicate": "lived in",
+     "target": "Porto",
+     "fact": "Sofia Quintela lived in Porto.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m039",
+   "content": "Sofia Quintela moved to Lisbon in February 2026 to be closer to Mirante Bio.",
+   "kind": "fact",
+   "tags": [
+    "home"
+   ],
+   "importance": 0.6,
+   "valid_from": "2026-02-01",
+   "entities": [
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Lisbon",
+     "type": "place",
+     "aliases": [],
+     "description": "capital of Portugal"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sofia Quintela",
+     "predicate": "lives in",
+     "target": "Lisbon",
+     "fact": "Sofia Quintela lives in Lisbon.",
+     "exclusive": true,
+     "valid_from": "2026-02-01"
+    }
+   ]
+  },
+  {
+   "key": "m040",
+   "content": "Lisbon is the capital city of Portugal.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Lisbon",
+     "type": "place",
+     "aliases": [],
+     "description": "capital of Portugal"
+    },
+    {
+     "name": "Portugal",
+     "type": "place",
+     "aliases": [
+      "the country"
+     ],
+     "description": "country in southwest Europe"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Lisbon",
+     "predicate": "is the capital of",
+     "target": "Portugal",
+     "fact": "Lisbon is the capital of Portugal.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m041",
+   "content": "Clara Esteves led the assay team at Mirante Bio until April 2026, when she moved to the clinical group.",
+   "kind": "fact",
+   "tags": [
+    "lab",
+    "team"
+   ],
+   "importance": 0.6,
+   "valid_from": "2024-06-01",
+   "entities": [
+    {
+     "name": "Clara Esteves",
+     "type": "person",
+     "aliases": [
+      "Clara"
+     ],
+     "description": "former assay team lead"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Clara Esteves",
+     "predicate": "leads the assay team at",
+     "target": "Mirante Bio",
+     "fact": "Clara Esteves leads the assay team at Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2024-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m042",
+   "content": "Since May 2026 Beatriz Nunes leads the assay team at Mirante Bio.",
+   "kind": "fact",
+   "tags": [
+    "lab",
+    "team"
+   ],
+   "importance": 0.7,
+   "valid_from": "2026-05-01",
+   "entities": [
+    {
+     "name": "Beatriz Nunes",
+     "type": "person",
+     "aliases": [
+      "Beatriz N."
+     ],
+     "description": "assay team lead"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Beatriz Nunes",
+     "predicate": "leads the assay team at",
+     "target": "Mirante Bio",
+     "fact": "Beatriz Nunes leads the assay team at Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2026-05-01"
+    }
+   ]
+  },
+  {
+   "key": "m043",
+   "content": "Beatriz Nunes studied biochemistry at the University of Beira Interior.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m044",
+   "content": "Marta Lobato worked with Rui at Iberia Labs and now runs a lab in Porto.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.4,
+   "valid_from": "2019-01-01",
+   "entities": [
+    {
+     "name": "Marta Lobato",
+     "type": "person",
+     "aliases": [
+      "Marta"
+     ],
+     "description": "lab head in Porto"
+    },
+    {
+     "name": "Iberia Labs",
+     "type": "organization",
+     "aliases": [],
+     "description": "research company"
+    },
+    {
+     "name": "Porto",
+     "type": "place",
+     "aliases": [],
+     "description": "city in northern Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marta Lobato",
+     "predicate": "worked at",
+     "target": "Iberia Labs",
+     "fact": "Marta Lobato worked at Iberia Labs.",
+     "exclusive": false,
+     "valid_from": "2019-01-01"
+    },
+    {
+     "source": "Marta Lobato",
+     "predicate": "runs a lab in",
+     "target": "Porto",
+     "fact": "Marta Lobato runs a lab in Porto.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m045",
+   "content": "Marta Lobato studied at the University of Aveiro.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Marta Lobato",
+     "type": "person",
+     "aliases": [
+      "Marta"
+     ],
+     "description": "lab head in Porto"
+    },
+    {
+     "name": "University of Aveiro",
+     "type": "organization",
+     "aliases": [
+      "Aveiro"
+     ],
+     "description": "public university"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marta Lobato",
+     "predicate": "studied at",
+     "target": "University of Aveiro",
+     "fact": "Marta Lobato studied at University of Aveiro.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m046",
+   "content": "Joana Pinto is Sofia's dentist in Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "health"
+   ],
+   "importance": 0.4,
+   "valid_from": "2026-03-01",
+   "entities": [
+    {
+     "name": "Joana Pinto",
+     "type": "person",
+     "aliases": [
+      "Joana",
+      "the dentist"
+     ],
+     "description": "dentist"
+    },
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Lisbon",
+     "type": "place",
+     "aliases": [],
+     "description": "capital of Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Joana Pinto",
+     "predicate": "is the dentist of",
+     "target": "Sofia Quintela",
+     "fact": "Joana Pinto is the dentist of Sofia Quintela.",
+     "exclusive": false,
+     "valid_from": "2026-03-01"
+    }
+   ]
+  },
+  {
+   "key": "m047",
+   "content": "Joana Pinto grew up in Guimarães.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Joana Pinto",
+     "type": "person",
+     "aliases": [
+      "Joana"
+     ],
+     "description": "dentist"
+    },
+    {
+     "name": "Guimarães",
+     "type": "place",
+     "aliases": [],
+     "description": "city in the Minho"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Joana Pinto",
+     "predicate": "grew up in",
+     "target": "Guimarães",
+     "fact": "Joana Pinto grew up in Guimarães.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m048",
+   "content": "Hugo Lopes leads the purification group at Mirante Bio.",
+   "kind": "fact",
+   "tags": [
+    "lab"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-10-01",
+   "entities": [
+    {
+     "name": "Hugo Lopes",
+     "type": "person",
+     "aliases": [
+      "Hugo"
+     ],
+     "description": "purification lead"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Hugo Lopes",
+     "predicate": "leads the purification group at",
+     "target": "Mirante Bio",
+     "fact": "Hugo Lopes leads the purification group at Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2025-10-01"
+    }
+   ]
+  },
+  {
+   "key": "m049",
+   "content": "Hugo Lopes studied at the University of the Algarve.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Hugo Lopes",
+     "type": "person",
+     "aliases": [
+      "Hugo"
+     ],
+     "description": "purification lead"
+    },
+    {
+     "name": "University of the Algarve",
+     "type": "organization",
+     "aliases": [],
+     "description": "public university"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Hugo Lopes",
+     "predicate": "studied at",
+     "target": "University of the Algarve",
+     "fact": "Hugo Lopes studied at University of the Algarve.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m050",
+   "content": "Sofia Quintela mentors Inês Leal on product decisions for Tidewater.",
+   "kind": "fact",
+   "tags": [
+    "side-project"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-11-01",
+   "entities": [
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Inês Leal",
+     "type": "person",
+     "aliases": [
+      "Inês"
+     ],
+     "description": "founder of Tidewater"
+    },
+    {
+     "name": "Tidewater",
+     "type": "project",
+     "aliases": [
+      "the app"
+     ],
+     "description": "tide-forecast app"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sofia Quintela",
+     "predicate": "mentors",
+     "target": "Inês Leal",
+     "fact": "Sofia Quintela mentors Inês Leal.",
+     "exclusive": false,
+     "valid_from": "2025-11-01"
+    }
+   ]
+  },
+  {
+   "key": "m051",
+   "content": "Samuel Teixeira sponsors the CI servers that run Foli's tests.",
+   "kind": "fact",
+   "tags": [
+    "side-project"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-12-01",
+   "entities": [
+    {
+     "name": "Samuel Teixeira",
+     "type": "person",
+     "aliases": [
+      "Samuel"
+     ],
+     "description": "Foli maintainer"
+    },
+    {
+     "name": "Foli",
+     "type": "project",
+     "aliases": [
+      "the notebook tool"
+     ],
+     "description": "open-source notebook tool"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Samuel Teixeira",
+     "predicate": "sponsors",
+     "target": "Foli",
+     "fact": "Samuel Teixeira sponsors Foli.",
+     "exclusive": false,
+     "valid_from": "2025-12-01"
+    }
+   ]
+  },
+  {
+   "key": "m052",
+   "content": "Carlos Quintela is allergic to shellfish, which matters at family dinners in Covilhã.",
+   "kind": "fact",
+   "tags": [
+    "health",
+    "family"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Carlos Quintela",
+     "type": "person",
+     "aliases": [
+      "Carlos"
+     ],
+     "description": "retired postal worker"
+    },
+    {
+     "name": "shellfish",
+     "type": "thing",
+     "aliases": [],
+     "description": "food allergen"
+    },
+    {
+     "name": "Covilhã",
+     "type": "place",
+     "aliases": [],
+     "description": "town in the Serra da Estrela"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Carlos Quintela",
+     "predicate": "is allergic to",
+     "target": "shellfish",
+     "fact": "Carlos Quintela is allergic to shellfish.",
+     "exclusive": false,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m053",
+   "content": "Hugo Sá has coached the Graça under-10 team since 2023.",
+   "kind": "fact",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.3,
+   "valid_from": "2023-09-01",
+   "entities": [
+    {
+     "name": "Hugo Sá",
+     "type": "person",
+     "aliases": [
+      "Hugo"
+     ],
+     "description": "under-10 coach"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Hugo Sá",
+     "predicate": "coaches",
+     "target": "Clube Graça FC",
+     "fact": "Hugo Sá coaches Clube Graça FC.",
+     "exclusive": false,
+     "valid_from": "2023-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m054",
+   "content": "Luis Amaral sits on the board of the Lisbon Science Park.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-06-01",
+   "entities": [
+    {
+     "name": "Luis Amaral",
+     "type": "person",
+     "aliases": [
+      "Luis"
+     ],
+     "description": "CEO"
+    },
+    {
+     "name": "Lisbon Science Park",
+     "type": "organization",
+     "aliases": [
+      "the park"
+     ],
+     "description": "science park in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Luis Amaral",
+     "predicate": "sits on the board of",
+     "target": "Lisbon Science Park",
+     "fact": "Luis Amaral sits on the board of Lisbon Science Park.",
+     "exclusive": false,
+     "valid_from": "2025-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m055",
+   "content": "Nuno Barbosa owns Barbosa & Filhos, a renovation firm in Setúbal.",
+   "kind": "fact",
+   "tags": [
+    "renovation"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Nuno Barbosa",
+     "type": "person",
+     "aliases": [
+      "Nuno"
+     ],
+     "description": "contractor"
+    },
+    {
+     "name": "Barbosa & Filhos",
+     "type": "organization",
+     "aliases": [
+      "the firm"
+     ],
+     "description": "renovation firm"
+    },
+    {
+     "name": "Setúbal",
+     "type": "place",
+     "aliases": [],
+     "description": "town south of the Tagus"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Nuno Barbosa",
+     "predicate": "owns",
+     "target": "Barbosa & Filhos",
+     "fact": "Nuno Barbosa owns Barbosa & Filhos.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m056",
+   "content": "Sofia Quintela and Vasco Lima play Sunday five-a-side in Campo de Ourique.",
+   "kind": "note",
+   "tags": [
+    "social"
+   ],
+   "importance": 0.2,
+   "valid_from": "2026-01-10",
+   "entities": [
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Vasco Lima",
+     "type": "person",
+     "aliases": [
+      "Vasco"
+     ],
+     "description": "baker"
+    },
+    {
+     "name": "Campo de Ourique",
+     "type": "place",
+     "aliases": [],
+     "description": "Lisbon parish"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sofia Quintela",
+     "predicate": "plays five-a-side with",
+     "target": "Vasco Lima",
+     "fact": "Sofia Quintela plays five-a-side with Vasco Lima.",
+     "exclusive": false,
+     "valid_from": "2026-01-10"
+    }
+   ]
+  },
+  {
+   "key": "m057",
+   "content": "Teresa Moura leads regulatory affairs at Mirante Bio.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "team"
+   ],
+   "importance": 0.6,
+   "valid_from": "2024-04-01",
+   "entities": [
+    {
+     "name": "Teresa Moura",
+     "type": "person",
+     "aliases": [
+      "Teresa"
+     ],
+     "description": "head of regulatory affairs"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Teresa Moura",
+     "predicate": "leads regulatory affairs at",
+     "target": "Mirante Bio",
+     "fact": "Teresa Moura leads regulatory affairs at Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2024-04-01"
+    }
+   ]
+  },
+  {
+   "key": "m058",
+   "content": "Teresa Moura grew up in Leiria.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Teresa Moura",
+     "type": "person",
+     "aliases": [
+      "Teresa"
+     ],
+     "description": "head of regulatory affairs"
+    },
+    {
+     "name": "Leiria",
+     "type": "place",
+     "aliases": [],
+     "description": "city in central Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Teresa Moura",
+     "predicate": "grew up in",
+     "target": "Leiria",
+     "fact": "Teresa Moura grew up in Leiria.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m059",
+   "content": "Gonçalo Melo is a postdoc who reports to Clara Esteves.",
+   "kind": "fact",
+   "tags": [
+    "lab",
+    "career"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Gonçalo Melo",
+     "type": "person",
+     "aliases": [
+      "Gonçalo"
+     ],
+     "description": "postdoc"
+    },
+    {
+     "name": "Clara Esteves",
+     "type": "person",
+     "aliases": [
+      "Clara"
+     ],
+     "description": "assay team lead"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Gonçalo Melo",
+     "predicate": "reports to",
+     "target": "Clara Esteves",
+     "fact": "Gonçalo Melo reports to Clara Esteves.",
+     "exclusive": true,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m060",
+   "content": "Clara Esteves studied at the Universidade Nova de Lisboa.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Clara Esteves",
+     "type": "person",
+     "aliases": [
+      "Clara"
+     ],
+     "description": "assay team lead"
+    },
+    {
+     "name": "Universidade Nova de Lisboa",
+     "type": "organization",
+     "aliases": [
+      "NOVA"
+     ],
+     "description": "public university in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Clara Esteves",
+     "predicate": "studied at",
+     "target": "Universidade Nova de Lisboa",
+     "fact": "Clara Esteves studied at Universidade Nova de Lisboa.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m061",
+   "content": "Ivo Cardoso designed the Tidewater app icons and onboarding.",
+   "kind": "fact",
+   "tags": [
+    "side-project",
+    "design"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-02-01",
+   "entities": [
+    {
+     "name": "Ivo Cardoso",
+     "type": "person",
+     "aliases": [
+      "Ivo"
+     ],
+     "description": "designer"
+    },
+    {
+     "name": "Tidewater",
+     "type": "project",
+     "aliases": [
+      "the app"
+     ],
+     "description": "tide-forecast app"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ivo Cardoso",
+     "predicate": "designed",
+     "target": "Tidewater",
+     "fact": "Ivo Cardoso designed Tidewater.",
+     "exclusive": false,
+     "valid_from": "2025-02-01"
+    }
+   ]
+  },
+  {
+   "key": "m062",
+   "content": "Ivo Cardoso was born in Sintra.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m063",
+   "content": "Vasco Lima is Sofia's oldest friend and runs Padaria do Largo.",
+   "kind": "fact",
+   "tags": [
+    "friends"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Vasco Lima",
+     "type": "person",
+     "aliases": [
+      "Vasco"
+     ],
+     "description": "baker"
+    },
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Padaria do Largo",
+     "type": "organization",
+     "aliases": [
+      "the bakery"
+     ],
+     "description": "bakery in Alfama"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Vasco Lima",
+     "predicate": "is the oldest friend of",
+     "target": "Sofia Quintela",
+     "fact": "Vasco Lima is the oldest friend of Sofia Quintela.",
+     "exclusive": false,
+     "valid_from": "2025-08-01"
+    },
+    {
+     "source": "Vasco Lima",
+     "predicate": "runs",
+     "target": "Padaria do Largo",
+     "fact": "Vasco Lima runs Padaria do Largo.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m064",
+   "content": "Padaria do Largo, in Alfama, opened in 2018.",
+   "kind": "fact",
+   "tags": [
+    "business"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m065",
+   "content": "Lúcia Fontes is the club secretary of Clube Graça FC.",
+   "kind": "fact",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.4,
+   "valid_from": "2024-01-01",
+   "entities": [
+    {
+     "name": "Lúcia Fontes",
+     "type": "person",
+     "aliases": [
+      "Lúcia"
+     ],
+     "description": "club secretary"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Lúcia Fontes",
+     "predicate": "is club secretary of",
+     "target": "Clube Graça FC",
+     "fact": "Lúcia Fontes is club secretary of Clube Graça FC.",
+     "exclusive": true,
+     "valid_from": "2024-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m066",
+   "content": "Lúcia Fontes is the sister of Hugo Sá.",
+   "kind": "fact",
+   "tags": [
+    "family",
+    "football"
+   ],
+   "importance": 0.4,
+   "valid_from": "2024-01-01",
+   "entities": [
+    {
+     "name": "Lúcia Fontes",
+     "type": "person",
+     "aliases": [
+      "Lúcia"
+     ],
+     "description": "club secretary"
+    },
+    {
+     "name": "Hugo Sá",
+     "type": "person",
+     "aliases": [
+      "Hugo"
+     ],
+     "description": "under-10 coach"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Lúcia Fontes",
+     "predicate": "is the sister of",
+     "target": "Hugo Sá",
+     "fact": "Lúcia Fontes is the sister of Hugo Sá.",
+     "exclusive": false,
+     "valid_from": "2024-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m067",
+   "content": "Paula Santos chaired the ethics committee at the University of Lisbon in 2024.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.4,
+   "valid_from": "2024-01-01",
+   "entities": [
+    {
+     "name": "Paula Santos",
+     "type": "person",
+     "aliases": [
+      "Paula"
+     ],
+     "description": "professor"
+    },
+    {
+     "name": "Ethics Committee of the University of Lisbon",
+     "type": "organization",
+     "aliases": [
+      "ethics committee"
+     ],
+     "description": "university ethics body"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Paula Santos",
+     "predicate": "chaired",
+     "target": "Ethics Committee of the University of Lisbon",
+     "fact": "Paula Santos chaired Ethics Committee of the University of Lisbon.",
+     "exclusive": true,
+     "valid_from": "2024-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m068",
+   "content": "Paula Santos is the mother of Gonçalo Melo.",
+   "kind": "fact",
+   "tags": [
+    "family"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Paula Santos",
+     "type": "person",
+     "aliases": [
+      "Paula"
+     ],
+     "description": "professor"
+    },
+    {
+     "name": "Gonçalo Melo",
+     "type": "person",
+     "aliases": [
+      "Gonçalo"
+     ],
+     "description": "postdoc"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Paula Santos",
+     "predicate": "is the mother of",
+     "target": "Gonçalo Melo",
+     "fact": "Paula Santos is the mother of Gonçalo Melo.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m069",
+   "content": "Teresa Moura joined Mirante Bio in April 2024, as one of its first hires.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.4,
+   "valid_from": "2024-04-01",
+   "entities": [
+    {
+     "name": "Teresa Moura",
+     "type": "person",
+     "aliases": [
+      "Teresa"
+     ],
+     "description": "head of regulatory affairs"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Teresa Moura",
+     "predicate": "joined",
+     "target": "Mirante Bio",
+     "fact": "Teresa Moura joined Mirante Bio.",
+     "exclusive": false,
+     "valid_from": "2024-04-01"
+    }
+   ]
+  },
+  {
+   "key": "m070",
+   "content": "Mirante Bio's headquarters are at Rua do Instituto Bacteriológico in Lisbon, in the old lab building.",
+   "kind": "fact",
+   "tags": [
+    "company"
+   ],
+   "importance": 0.4,
+   "valid_from": "2024-04-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m071",
+   "content": "Pedro Vieira, Rui's former manager, now runs the Porto Bio Incubator.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.5,
+   "valid_from": "2026-02-01",
+   "entities": [
+    {
+     "name": "Pedro Vieira",
+     "type": "person",
+     "aliases": [
+      "Pedro"
+     ],
+     "description": "former head of translational research"
+    },
+    {
+     "name": "Porto Bio Incubator",
+     "type": "organization",
+     "aliases": [
+      "the incubator"
+     ],
+     "description": "life-sciences incubator in Porto"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Pedro Vieira",
+     "predicate": "runs",
+     "target": "Porto Bio Incubator",
+     "fact": "Pedro Vieira runs Porto Bio Incubator.",
+     "exclusive": true,
+     "valid_from": "2026-02-01"
+    }
+   ]
+  },
+  {
+   "key": "m072",
+   "content": "The Porto Bio Incubator is housed in the old Alfândega building.",
+   "kind": "fact",
+   "tags": [
+    "business"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-01-01",
+   "entities": [
+    {
+     "name": "Porto Bio Incubator",
+     "type": "organization",
+     "aliases": [
+      "the incubator"
+     ],
+     "description": "life-sciences incubator in Porto"
+    },
+    {
+     "name": "Alfândega",
+     "type": "place",
+     "aliases": [
+      "the old customs house"
+     ],
+     "description": "historic building in Porto"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Porto Bio Incubator",
+     "predicate": "is housed in",
+     "target": "Alfândega",
+     "fact": "Porto Bio Incubator is housed in Alfândega.",
+     "exclusive": true,
+     "valid_from": "2025-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m073",
+   "content": "Gonçalo Melo studied biology at the University of Madeira.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Gonçalo Melo",
+     "type": "person",
+     "aliases": [
+      "Gonçalo"
+     ],
+     "description": "postdoc"
+    },
+    {
+     "name": "University of Madeira",
+     "type": "organization",
+     "aliases": [
+      "Madeira"
+     ],
+     "description": "public university"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Gonçalo Melo",
+     "predicate": "studied at",
+     "target": "University of Madeira",
+     "fact": "Gonçalo Melo studied at University of Madeira.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m074",
+   "content": "The University of Madeira is in Funchal.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m075",
+   "content": "Afonso Reis gave a talk on bridge retrofits at the Lisbon Science Park.",
+   "kind": "note",
+   "tags": [
+    "events"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-05-01",
+   "entities": [
+    {
+     "name": "Afonso Reis",
+     "type": "person",
+     "aliases": [
+      "Afonso"
+     ],
+     "description": "civil engineer"
+    },
+    {
+     "name": "Lisbon Science Park",
+     "type": "organization",
+     "aliases": [
+      "the park"
+     ],
+     "description": "science park in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Afonso Reis",
+     "predicate": "gave a talk at",
+     "target": "Lisbon Science Park",
+     "fact": "Afonso Reis gave a talk at Lisbon Science Park.",
+     "exclusive": false,
+     "valid_from": "2025-05-01"
+    }
+   ]
+  },
+  {
+   "key": "m076",
+   "content": "Afonso Reis is the partner of Ivo Cardoso.",
+   "kind": "fact",
+   "tags": [
+    "family"
+   ],
+   "importance": 0.4,
+   "valid_from": "2024-05-01",
+   "entities": [
+    {
+     "name": "Afonso Reis",
+     "type": "person",
+     "aliases": [
+      "Afonso"
+     ],
+     "description": "civil engineer"
+    },
+    {
+     "name": "Ivo Cardoso",
+     "type": "person",
+     "aliases": [
+      "Ivo"
+     ],
+     "description": "designer"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Afonso Reis",
+     "predicate": "is the partner of",
+     "target": "Ivo Cardoso",
+     "fact": "Afonso Reis is the partner of Ivo Cardoso.",
+     "exclusive": true,
+     "valid_from": "2024-05-01"
+    }
+   ]
+  },
+  {
+   "key": "m077",
+   "content": "Afonso Reis studied civil engineering at the Universidade de Coimbra.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m078",
+   "content": "Universidade Nova de Lisboa is located in Campolide, Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m079",
+   "content": "Sintra is in the Lisbon district of Portugal.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m080",
+   "content": "Leiria is a city in the Centro region of Portugal.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m081",
+   "content": "Hugo Sá coaches the under-10s at Clube Graça FC, which is based in Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.4,
+   "valid_from": "2023-09-01",
+   "entities": [
+    {
+     "name": "Hugo Sá",
+     "type": "person",
+     "aliases": [
+      "Hugo"
+     ],
+     "description": "under-10 coach"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    },
+    {
+     "name": "Lisbon",
+     "type": "place",
+     "aliases": [],
+     "description": "capital of Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Clube Graça FC",
+     "predicate": "is based in",
+     "target": "Lisbon",
+     "fact": "Clube Graça FC is based in Lisbon.",
+     "exclusive": true,
+     "valid_from": "2023-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m082",
+   "content": "Alfama is a historic parish in central Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m083",
+   "content": "Coimbra's university sits on a hill above the old city of Coimbra.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m084",
+   "content": "Rua do Instituto Bacteriológico is in the Campo de Ourique parish.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m085",
+   "content": "Gonçalo Melo lives in Almada.",
+   "kind": "fact",
+   "tags": [
+    "home"
+   ],
+   "importance": 0.3,
+   "valid_from": "2024-09-01",
+   "entities": [
+    {
+     "name": "Gonçalo Melo",
+     "type": "person",
+     "aliases": [
+      "Gonçalo"
+     ],
+     "description": "postdoc"
+    },
+    {
+     "name": "Almada",
+     "type": "place",
+     "aliases": [],
+     "description": "town across the Tagus from Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Gonçalo Melo",
+     "predicate": "lives in",
+     "target": "Almada",
+     "fact": "Gonçalo Melo lives in Almada.",
+     "exclusive": true,
+     "valid_from": "2024-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m086",
+   "content": "Since February 2026 Gonçalo Melo lives in Benfica.",
+   "kind": "fact",
+   "tags": [
+    "home"
+   ],
+   "importance": 0.5,
+   "valid_from": "2026-02-01",
+   "entities": [
+    {
+     "name": "Gonçalo Melo",
+     "type": "person",
+     "aliases": [
+      "Gonçalo"
+     ],
+     "description": "postdoc"
+    },
+    {
+     "name": "Benfica",
+     "type": "place",
+     "aliases": [],
+     "description": "Lisbon neighbourhood"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Gonçalo Melo",
+     "predicate": "lives in",
+     "target": "Benfica",
+     "fact": "Gonçalo Melo lives in Benfica.",
+     "exclusive": true,
+     "valid_from": "2026-02-01"
+    }
+   ]
+  },
+  {
+   "key": "m087",
+   "content": "Benfica is served by the blue metro line.",
+   "kind": "fact",
+   "tags": [
+    "transport"
+   ],
+   "importance": 0.2,
+   "valid_from": "2026-02-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m088",
+   "content": "Ivo Cardoso works from a studio in Cascais.",
+   "kind": "fact",
+   "tags": [
+    "work"
+   ],
+   "importance": 0.3,
+   "valid_from": "2023-01-01",
+   "entities": [
+    {
+     "name": "Ivo Cardoso",
+     "type": "person",
+     "aliases": [
+      "Ivo"
+     ],
+     "description": "designer"
+    },
+    {
+     "name": "Cascais",
+     "type": "place",
+     "aliases": [],
+     "description": "coastal town near Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ivo Cardoso",
+     "predicate": "works from",
+     "target": "Cascais",
+     "fact": "Ivo Cardoso works from Cascais.",
+     "exclusive": true,
+     "valid_from": "2023-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m089",
+   "content": "Since 2025 Ivo Cardoso works from a studio in Porto.",
+   "kind": "fact",
+   "tags": [
+    "work"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-03-01",
+   "entities": [
+    {
+     "name": "Ivo Cardoso",
+     "type": "person",
+     "aliases": [
+      "Ivo"
+     ],
+     "description": "designer"
+    },
+    {
+     "name": "Porto",
+     "type": "place",
+     "aliases": [],
+     "description": "city in northern Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ivo Cardoso",
+     "predicate": "works from",
+     "target": "Porto",
+     "fact": "Ivo Cardoso works from Porto.",
+     "exclusive": true,
+     "valid_from": "2025-03-01"
+    }
+   ]
+  },
+  {
+   "key": "m090",
+   "content": "The studio Ivo rents in Porto is on Cedofeita street.",
+   "kind": "fact",
+   "tags": [
+    "work"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-03-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m091",
+   "content": "Rafaela Gomes left Mirante Bio in 2025 and now works at the Porto Bio Incubator.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.6,
+   "valid_from": "2025-06-01",
+   "entities": [
+    {
+     "name": "Rafaela Gomes",
+     "type": "person",
+     "aliases": [
+      "Rafaela"
+     ],
+     "description": "lab manager"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    },
+    {
+     "name": "Porto Bio Incubator",
+     "type": "organization",
+     "aliases": [
+      "the incubator"
+     ],
+     "description": "life-sciences incubator in Porto"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rafaela Gomes",
+     "predicate": "left",
+     "target": "Mirante Bio",
+     "fact": "Rafaela Gomes left Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2025-06-01"
+    },
+    {
+     "source": "Rafaela Gomes",
+     "predicate": "works at",
+     "target": "Porto Bio Incubator",
+     "fact": "Rafaela Gomes works at Porto Bio Incubator.",
+     "exclusive": true,
+     "valid_from": "2025-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m092",
+   "content": "Ivo Cardoso's icon set was shortlisted for the Lisbon Design Award in 2025.",
+   "kind": "fact",
+   "tags": [
+    "design"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Ivo Cardoso",
+     "type": "person",
+     "aliases": [
+      "Ivo"
+     ],
+     "description": "designer"
+    },
+    {
+     "name": "Lisbon Design Award",
+     "type": "thing",
+     "aliases": [],
+     "description": "design prize"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ivo Cardoso",
+     "predicate": "was shortlisted for",
+     "target": "Lisbon Design Award",
+     "fact": "Ivo Cardoso was shortlisted for Lisbon Design Award.",
+     "exclusive": false,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m093",
+   "content": "Paula Santos stepped down as chair of the ethics committee in December 2025.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-12-01",
+   "entities": [
+    {
+     "name": "Paula Santos",
+     "type": "person",
+     "aliases": [
+      "Paula"
+     ],
+     "description": "professor"
+    },
+    {
+     "name": "Ethics Committee of the University of Lisbon",
+     "type": "organization",
+     "aliases": [
+      "ethics committee"
+     ],
+     "description": "university ethics body"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Paula Santos",
+     "predicate": "stepped down as chair of",
+     "target": "Ethics Committee of the University of Lisbon",
+     "fact": "Paula Santos stepped down as chair of Ethics Committee of the University of Lisbon.",
+     "exclusive": true,
+     "valid_from": "2025-12-01"
+    }
+   ]
+  },
+  {
+   "key": "m094",
+   "content": "Since January 2026 Afonso Reis chairs the ethics committee at the University of Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.6,
+   "valid_from": "2026-01-01",
+   "entities": [
+    {
+     "name": "Afonso Reis",
+     "type": "person",
+     "aliases": [
+      "Afonso"
+     ],
+     "description": "civil engineer"
+    },
+    {
+     "name": "Ethics Committee of the University of Lisbon",
+     "type": "organization",
+     "aliases": [
+      "ethics committee"
+     ],
+     "description": "university ethics body"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Afonso Reis",
+     "predicate": "chairs",
+     "target": "Ethics Committee of the University of Lisbon",
+     "fact": "Afonso Reis chairs Ethics Committee of the University of Lisbon.",
+     "exclusive": true,
+     "valid_from": "2026-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m095",
+   "content": "Teresa Mota is a pharmacist who runs a pharmacy in Viseu.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.3,
+   "valid_from": "2022-03-01",
+   "entities": [
+    {
+     "name": "Teresa Mota",
+     "type": "person",
+     "aliases": [
+      "Teresa"
+     ],
+     "description": "pharmacist"
+    },
+    {
+     "name": "Viseu",
+     "type": "place",
+     "aliases": [],
+     "description": "city in central Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Teresa Mota",
+     "predicate": "runs a pharmacy in",
+     "target": "Viseu",
+     "fact": "Teresa Mota runs a pharmacy in Viseu.",
+     "exclusive": true,
+     "valid_from": "2022-03-01"
+    }
+   ]
+  },
+  {
+   "key": "m096",
+   "content": "Teresa Mota grew up in Viseu.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.2,
+   "valid_from": "2022-03-01",
+   "entities": [
+    {
+     "name": "Teresa Mota",
+     "type": "person",
+     "aliases": [
+      "Teresa"
+     ],
+     "description": "pharmacist"
+    },
+    {
+     "name": "Viseu",
+     "type": "place",
+     "aliases": [],
+     "description": "city in central Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Teresa Mota",
+     "predicate": "grew up in",
+     "target": "Viseu",
+     "fact": "Teresa Mota grew up in Viseu.",
+     "exclusive": true,
+     "valid_from": "2022-03-01"
+    }
+   ]
+  },
+  {
+   "key": "m097",
+   "content": "Clara Estevão designed the Clube Graça FC kit in 2025.",
+   "kind": "fact",
+   "tags": [
+    "football",
+    "design"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-03-01",
+   "entities": [
+    {
+     "name": "Clara Estevão",
+     "type": "person",
+     "aliases": [
+      "Clara"
+     ],
+     "description": "fashion designer"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Clara Estevão",
+     "predicate": "designed the kit for",
+     "target": "Clube Graça FC",
+     "fact": "Clara Estevão designed the kit for Clube Graça FC.",
+     "exclusive": false,
+     "valid_from": "2025-03-01"
+    }
+   ]
+  },
+  {
+   "key": "m098",
+   "content": "Clara Estevão studied at the Faculdade de Belas-Artes in Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Clara Estevão",
+     "type": "person",
+     "aliases": [
+      "Clara"
+     ],
+     "description": "fashion designer"
+    },
+    {
+     "name": "Faculdade de Belas-Artes",
+     "type": "organization",
+     "aliases": [
+      "Belas-Artes"
+     ],
+     "description": "art school in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Clara Estevão",
+     "predicate": "studied at",
+     "target": "Faculdade de Belas-Artes",
+     "fact": "Clara Estevão studied at Faculdade de Belas-Artes.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m099",
+   "content": "Vasco Lobo designed the Porto Bio Incubator building.",
+   "kind": "fact",
+   "tags": [
+    "business"
+   ],
+   "importance": 0.3,
+   "valid_from": "2022-01-01",
+   "entities": [
+    {
+     "name": "Vasco Lobo",
+     "type": "person",
+     "aliases": [
+      "Vasco"
+     ],
+     "description": "architect"
+    },
+    {
+     "name": "Porto Bio Incubator",
+     "type": "organization",
+     "aliases": [
+      "the incubator"
+     ],
+     "description": "life-sciences incubator in Porto"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Vasco Lobo",
+     "predicate": "designed",
+     "target": "Porto Bio Incubator",
+     "fact": "Vasco Lobo designed Porto Bio Incubator.",
+     "exclusive": true,
+     "valid_from": "2022-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m100",
+   "content": "Vasco Lobo studied architecture at the Escola Superior Gallaecia.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2015-08-01",
+   "entities": [
+    {
+     "name": "Vasco Lobo",
+     "type": "person",
+     "aliases": [
+      "Vasco"
+     ],
+     "description": "architect"
+    },
+    {
+     "name": "Escola Superior Gallaecia",
+     "type": "organization",
+     "aliases": [
+      "Gallaecia"
+     ],
+     "description": "architecture school"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Vasco Lobo",
+     "predicate": "studied at",
+     "target": "Escola Superior Gallaecia",
+     "fact": "Vasco Lobo studied at Escola Superior Gallaecia.",
+     "exclusive": true,
+     "valid_from": "2015-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m101",
+   "content": "Pedro Vieira Lopes is a cardiologist who works at Hospital de Santa Maria.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.3,
+   "valid_from": "2024-01-01",
+   "entities": [
+    {
+     "name": "Pedro Vieira Lopes",
+     "type": "person",
+     "aliases": [
+      "Pedro Vieira Lopes"
+     ],
+     "description": "cardiologist"
+    },
+    {
+     "name": "Hospital de Santa Maria",
+     "type": "organization",
+     "aliases": [
+      "Santa Maria"
+     ],
+     "description": "hospital in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Pedro Vieira Lopes",
+     "predicate": "works at",
+     "target": "Hospital de Santa Maria",
+     "fact": "Pedro Vieira Lopes works at Hospital de Santa Maria.",
+     "exclusive": true,
+     "valid_from": "2024-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m102",
+   "content": "Hospital de Santa Maria is part of the CHULN hospital centre.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m103",
+   "content": "Sofia Quintela renewed the Tidewater beta programme with Ivo Cardoso.",
+   "kind": "note",
+   "tags": [
+    "side-project"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-10-01",
+   "entities": [
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Tidewater",
+     "type": "project",
+     "aliases": [
+      "the app"
+     ],
+     "description": "tide-forecast app"
+    },
+    {
+     "name": "Ivo Cardoso",
+     "type": "person",
+     "aliases": [
+      "Ivo"
+     ],
+     "description": "designer"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sofia Quintela",
+     "predicate": "oversees",
+     "target": "Tidewater",
+     "fact": "Sofia Quintela oversees Tidewater.",
+     "exclusive": false,
+     "valid_from": "2025-10-01"
+    }
+   ]
+  },
+  {
+   "key": "m104",
+   "content": "Lúcia Fontes plays piano at the Graça club's spring gala.",
+   "kind": "note",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-04-01",
+   "entities": [
+    {
+     "name": "Lúcia Fontes",
+     "type": "person",
+     "aliases": [
+      "Lúcia"
+     ],
+     "description": "club secretary"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Lúcia Fontes",
+     "predicate": "plays piano at",
+     "target": "Clube Graça FC",
+     "fact": "Lúcia Fontes plays piano at Clube Graça FC.",
+     "exclusive": false,
+     "valid_from": "2025-04-01"
+    }
+   ]
+  },
+  {
+   "key": "m105",
+   "content": "Gonçalo Melo presented his assay validation poster at the Lisbon Bioscience Meeting.",
+   "kind": "note",
+   "tags": [
+    "lab",
+    "events"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-10-01",
+   "entities": [
+    {
+     "name": "Gonçalo Melo",
+     "type": "person",
+     "aliases": [
+      "Gonçalo"
+     ],
+     "description": "postdoc"
+    },
+    {
+     "name": "Lisbon Bioscience Meeting",
+     "type": "thing",
+     "aliases": [
+      "the meeting"
+     ],
+     "description": "annual bioscience meeting"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Gonçalo Melo",
+     "predicate": "presented at",
+     "target": "Lisbon Bioscience Meeting",
+     "fact": "Gonçalo Melo presented at Lisbon Bioscience Meeting.",
+     "exclusive": false,
+     "valid_from": "2025-10-01"
+    }
+   ]
+  },
+  {
+   "key": "m106",
+   "content": "Teresa Moura avoids gluten, so team lunches go to the Thai place.",
+   "kind": "note",
+   "tags": [
+    "team"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Teresa Moura",
+     "type": "person",
+     "aliases": [
+      "Teresa"
+     ],
+     "description": "head of regulatory affairs"
+    },
+    {
+     "name": "gluten",
+     "type": "thing",
+     "aliases": [],
+     "description": "food ingredient"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Teresa Moura",
+     "predicate": "avoids",
+     "target": "gluten",
+     "fact": "Teresa Moura avoids gluten.",
+     "exclusive": false,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m107",
+   "content": "Vasco Lima supplies bread to the Feira da Ladra stalls on Tuesdays.",
+   "kind": "note",
+   "tags": [
+    "business"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-06-01",
+   "entities": [
+    {
+     "name": "Vasco Lima",
+     "type": "person",
+     "aliases": [
+      "Vasco"
+     ],
+     "description": "baker"
+    },
+    {
+     "name": "Feira da Ladra",
+     "type": "place",
+     "aliases": [
+      "the flea market"
+     ],
+     "description": "flea market in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Vasco Lima",
+     "predicate": "supplies bread to",
+     "target": "Feira da Ladra",
+     "fact": "Vasco Lima supplies bread to Feira da Ladra.",
+     "exclusive": false,
+     "valid_from": "2025-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m108",
+   "content": "Paula Santos mentors Gonçalo Melo on grant writing.",
+   "kind": "note",
+   "tags": [
+    "lab",
+    "career"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Paula Santos",
+     "type": "person",
+     "aliases": [
+      "Paula"
+     ],
+     "description": "professor"
+    },
+    {
+     "name": "Gonçalo Melo",
+     "type": "person",
+     "aliases": [
+      "Gonçalo"
+     ],
+     "description": "postdoc"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Paula Santos",
+     "predicate": "mentors",
+     "target": "Gonçalo Melo",
+     "fact": "Paula Santos mentors Gonçalo Melo.",
+     "exclusive": false,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m109",
+   "content": "Ivo Cardoso is restoring a 1950s radio for the Graça club's office.",
+   "kind": "note",
+   "tags": [
+    "football",
+    "design"
+   ],
+   "importance": 0.2,
+   "valid_from": "2026-04-01",
+   "entities": [
+    {
+     "name": "Ivo Cardoso",
+     "type": "person",
+     "aliases": [
+      "Ivo"
+     ],
+     "description": "designer"
+    },
+    {
+     "name": "vintage radio",
+     "type": "thing",
+     "aliases": [
+      "the radio"
+     ],
+     "description": "1950s radio"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ivo Cardoso",
+     "predicate": "restores",
+     "target": "vintage radio",
+     "fact": "Ivo Cardoso restores vintage radio.",
+     "exclusive": false,
+     "valid_from": "2026-04-01"
+    }
+   ]
+  },
+  {
+   "key": "m110",
+   "content": "Rafaela Gomes advises the Porto Bio Incubator's cell culture bay.",
+   "kind": "note",
+   "tags": [
+    "business"
+   ],
+   "importance": 0.2,
+   "valid_from": "2026-01-15",
+   "entities": [
+    {
+     "name": "Rafaela Gomes",
+     "type": "person",
+     "aliases": [
+      "Rafaela"
+     ],
+     "description": "lab manager"
+    },
+    {
+     "name": "Porto Bio Incubator",
+     "type": "organization",
+     "aliases": [
+      "the incubator"
+     ],
+     "description": "life-sciences incubator in Porto"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rafaela Gomes",
+     "predicate": "advises",
+     "target": "Porto Bio Incubator",
+     "fact": "Rafaela Gomes advises Porto Bio Incubator.",
+     "exclusive": false,
+     "valid_from": "2026-01-15"
+    }
+   ]
+  },
+  {
+   "key": "m111",
+   "content": "Atlântico Ventures invested in Tidewater in 2025.",
+   "kind": "fact",
+   "tags": [
+    "side-project",
+    "funding"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-02-01",
+   "entities": [
+    {
+     "name": "Atlântico Ventures",
+     "type": "organization",
+     "aliases": [
+      "the firm"
+     ],
+     "description": "venture firm"
+    },
+    {
+     "name": "Tidewater",
+     "type": "project",
+     "aliases": [
+      "the app"
+     ],
+     "description": "tide-forecast app"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Atlântico Ventures",
+     "predicate": "invested in",
+     "target": "Tidewater",
+     "fact": "Atlântico Ventures invested in Tidewater.",
+     "exclusive": false,
+     "valid_from": "2025-02-01"
+    }
+   ]
+  },
+  {
+   "key": "m112",
+   "content": "Atlântico Ventures was founded in Oeiras in 2012.",
+   "kind": "fact",
+   "tags": [
+    "funding"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-02-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m113",
+   "content": "Helder Viana leads Atlântico Ventures.",
+   "kind": "fact",
+   "tags": [
+    "funding",
+    "career"
+   ],
+   "importance": 0.5,
+   "valid_from": "2019-01-01",
+   "entities": [
+    {
+     "name": "Helder Viana",
+     "type": "person",
+     "aliases": [
+      "Helder"
+     ],
+     "description": "investor"
+    },
+    {
+     "name": "Atlântico Ventures",
+     "type": "organization",
+     "aliases": [
+      "the firm"
+     ],
+     "description": "venture firm"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Helder Viana",
+     "predicate": "leads",
+     "target": "Atlântico Ventures",
+     "fact": "Helder Viana leads Atlântico Ventures.",
+     "exclusive": true,
+     "valid_from": "2019-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m114",
+   "content": "Helder Viana studied economics at the Universidade Católica Portuguesa.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Helder Viana",
+     "type": "person",
+     "aliases": [
+      "Helder"
+     ],
+     "description": "investor"
+    },
+    {
+     "name": "Universidade Católica Portuguesa",
+     "type": "organization",
+     "aliases": [
+      "UCP",
+      "Católica"
+     ],
+     "description": "private university in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Helder Viana",
+     "predicate": "studied at",
+     "target": "Universidade Católica Portuguesa",
+     "fact": "Helder Viana studied at Universidade Católica Portuguesa.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m115",
+   "content": "Eva Neves runs people operations at Mirante Bio.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "team"
+   ],
+   "importance": 0.5,
+   "valid_from": "2024-02-01",
+   "entities": [
+    {
+     "name": "Eva Neves",
+     "type": "person",
+     "aliases": [
+      "Eva"
+     ],
+     "description": "people operations lead"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Eva Neves",
+     "predicate": "runs people operations at",
+     "target": "Mirante Bio",
+     "fact": "Eva Neves runs people operations at Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2024-02-01"
+    }
+   ]
+  },
+  {
+   "key": "m116",
+   "content": "Sara Neves, Eva's sister, is a midwife in Setúbal.",
+   "kind": "fact",
+   "tags": [
+    "family"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m117",
+   "content": "Tiago Fonseca contributes to Foli's plugin system.",
+   "kind": "fact",
+   "tags": [
+    "side-project",
+    "open-source"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-11-01",
+   "entities": [
+    {
+     "name": "Tiago Fonseca",
+     "type": "person",
+     "aliases": [
+      "Tiago"
+     ],
+     "description": "Foli contributor"
+    },
+    {
+     "name": "Foli",
+     "type": "project",
+     "aliases": [
+      "the notebook tool"
+     ],
+     "description": "open-source notebook tool"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Tiago Fonseca",
+     "predicate": "contributes to",
+     "target": "Foli",
+     "fact": "Tiago Fonseca contributes to Foli.",
+     "exclusive": false,
+     "valid_from": "2025-11-01"
+    }
+   ]
+  },
+  {
+   "key": "m118",
+   "content": "Tiago Fonseca learned to code at Hackerspace Aveiro.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2016-09-01",
+   "entities": [
+    {
+     "name": "Tiago Fonseca",
+     "type": "person",
+     "aliases": [
+      "Tiago"
+     ],
+     "description": "Foli contributor"
+    },
+    {
+     "name": "Hackerspace Aveiro",
+     "type": "organization",
+     "aliases": [
+      "the hackerspace"
+     ],
+     "description": "community workshop in Aveiro"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Tiago Fonseca",
+     "predicate": "learned to code at",
+     "target": "Hackerspace Aveiro",
+     "fact": "Tiago Fonseca learned to code at Hackerspace Aveiro.",
+     "exclusive": true,
+     "valid_from": "2016-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m119",
+   "content": "Ricardo Faria is the CFO of Mirante Bio.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.5,
+   "valid_from": "2024-05-01",
+   "entities": [
+    {
+     "name": "Ricardo Faria",
+     "type": "person",
+     "aliases": [
+      "Ricardo"
+     ],
+     "description": "CFO"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ricardo Faria",
+     "predicate": "is the CFO of",
+     "target": "Mirante Bio",
+     "fact": "Ricardo Faria is the CFO of Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2024-05-01"
+    }
+   ]
+  },
+  {
+   "key": "m120",
+   "content": "Ricardo Faria keeps his sailing boat at the Cascais marina.",
+   "kind": "note",
+   "tags": [
+    "hobby"
+   ],
+   "importance": 0.2,
+   "valid_from": "2022-06-01",
+   "entities": [
+    {
+     "name": "Ricardo Faria",
+     "type": "person",
+     "aliases": [
+      "Ricardo"
+     ],
+     "description": "CFO"
+    },
+    {
+     "name": "Cascais marina",
+     "type": "place",
+     "aliases": [
+      "the marina"
+     ],
+     "description": "marina in Cascais"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ricardo Faria",
+     "predicate": "keeps his boat at",
+     "target": "Cascais marina",
+     "fact": "Ricardo Faria keeps his boat at Cascais marina.",
+     "exclusive": false,
+     "valid_from": "2022-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m121",
+   "content": "Simão Pais sponsors Clube Graça FC shirts.",
+   "kind": "fact",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-01-01",
+   "entities": [
+    {
+     "name": "Simão Pais",
+     "type": "person",
+     "aliases": [
+      "Simão"
+     ],
+     "description": "local business owner"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Simão Pais",
+     "predicate": "sponsors",
+     "target": "Clube Graça FC",
+     "fact": "Simão Pais sponsors Clube Graça FC.",
+     "exclusive": false,
+     "valid_from": "2025-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m122",
+   "content": "Simão Pais owns Pastelaria Pais on Rua do Salitre.",
+   "kind": "fact",
+   "tags": [
+    "business"
+   ],
+   "importance": 0.3,
+   "valid_from": "2019-01-01",
+   "entities": [
+    {
+     "name": "Simão Pais",
+     "type": "person",
+     "aliases": [
+      "Simão"
+     ],
+     "description": "local business owner"
+    },
+    {
+     "name": "Pastelaria Pais",
+     "type": "organization",
+     "aliases": [
+      "the pastelaria"
+     ],
+     "description": "pastry shop"
+    },
+    {
+     "name": "Rua do Salitre",
+     "type": "place",
+     "aliases": [
+      "the street"
+     ],
+     "description": "street in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Simão Pais",
+     "predicate": "owns",
+     "target": "Pastelaria Pais",
+     "fact": "Simão Pais owns Pastelaria Pais.",
+     "exclusive": true,
+     "valid_from": "2019-01-01"
+    },
+    {
+     "source": "Pastelaria Pais",
+     "predicate": "is located on",
+     "target": "Rua do Salitre",
+     "fact": "Pastelaria Pais is located on Rua do Salitre.",
+     "exclusive": true,
+     "valid_from": "2019-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m123",
+   "content": "Marisa Tavares is the allergist who treats Carlos Quintela.",
+   "kind": "fact",
+   "tags": [
+    "health",
+    "family"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-01-01",
+   "entities": [
+    {
+     "name": "Marisa Tavares",
+     "type": "person",
+     "aliases": [
+      "Marisa"
+     ],
+     "description": "allergist"
+    },
+    {
+     "name": "Carlos Quintela",
+     "type": "person",
+     "aliases": [
+      "Carlos",
+      "Sofia's father"
+     ],
+     "description": "retired postal worker"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marisa Tavares",
+     "predicate": "treats",
+     "target": "Carlos Quintela",
+     "fact": "Marisa Tavares treats Carlos Quintela.",
+     "exclusive": false,
+     "valid_from": "2025-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m124",
+   "content": "Marisa Tavares trained at the Universidade da Beira Interior.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2010-09-01",
+   "entities": [
+    {
+     "name": "Marisa Tavares",
+     "type": "person",
+     "aliases": [
+      "Marisa"
+     ],
+     "description": "allergist"
+    },
+    {
+     "name": "Universidade da Beira Interior",
+     "type": "organization",
+     "aliases": [
+      "UBI"
+     ],
+     "description": "public university in Covilhã"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marisa Tavares",
+     "predicate": "trained at",
+     "target": "Universidade da Beira Interior",
+     "fact": "Marisa Tavares trained at Universidade da Beira Interior.",
+     "exclusive": true,
+     "valid_from": "2010-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m125",
+   "content": "Marcos Rocha heads the protein lab at Iberia Labs.",
+   "kind": "fact",
+   "tags": [
+    "lab",
+    "career"
+   ],
+   "importance": 0.5,
+   "valid_from": "2022-01-01",
+   "entities": [
+    {
+     "name": "Marcos Rocha",
+     "type": "person",
+     "aliases": [
+      "Marcos"
+     ],
+     "description": "protein lab head"
+    },
+    {
+     "name": "Iberia Labs",
+     "type": "organization",
+     "aliases": [
+      "Iberia"
+     ],
+     "description": "research company"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marcos Rocha",
+     "predicate": "heads",
+     "target": "Iberia Labs",
+     "fact": "Marcos Rocha heads Iberia Labs.",
+     "exclusive": true,
+     "valid_from": "2022-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m126",
+   "content": "Iberia Labs' protein lab occupies the second floor of the Braga building.",
+   "kind": "fact",
+   "tags": [
+    "lab"
+   ],
+   "importance": 0.2,
+   "valid_from": "2022-01-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m127",
+   "content": "Duarte Lemos plays with Tomas Carvalho at Clube Graça FC.",
+   "kind": "fact",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Duarte Lemos",
+     "type": "person",
+     "aliases": [
+      "Duarte"
+     ],
+     "description": "midfielder"
+    },
+    {
+     "name": "Tomas Carvalho",
+     "type": "person",
+     "aliases": [
+      "Tomas"
+     ],
+     "description": "nine-year-old footballer"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Duarte Lemos",
+     "predicate": "plays with",
+     "target": "Tomas Carvalho",
+     "fact": "Duarte Lemos plays with Tomas Carvalho.",
+     "exclusive": false,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m128",
+   "content": "Mário Lemos, Duarte's father, runs a tyre shop in Loures.",
+   "kind": "fact",
+   "tags": [
+    "family",
+    "business"
+   ],
+   "importance": 0.3,
+   "valid_from": "2020-01-01",
+   "entities": [
+    {
+     "name": "Mário Lemos",
+     "type": "person",
+     "aliases": [
+      "Mário"
+     ],
+     "description": "tyre shop owner"
+    },
+    {
+     "name": "Duarte Lemos",
+     "type": "person",
+     "aliases": [
+      "Duarte"
+     ],
+     "description": "midfielder"
+    },
+    {
+     "name": "Pneus Lemos",
+     "type": "organization",
+     "aliases": [
+      "the tyre shop"
+     ],
+     "description": "tyre shop"
+    },
+    {
+     "name": "Loures",
+     "type": "place",
+     "aliases": [],
+     "description": "town north of Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Mário Lemos",
+     "predicate": "is the father of",
+     "target": "Duarte Lemos",
+     "fact": "Mário Lemos is the father of Duarte Lemos.",
+     "exclusive": false,
+     "valid_from": "2025-09-01"
+    },
+    {
+     "source": "Mário Lemos",
+     "predicate": "runs",
+     "target": "Pneus Lemos",
+     "fact": "Mário Lemos runs Pneus Lemos.",
+     "exclusive": true,
+     "valid_from": "2020-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m129",
+   "content": "Ana Frade interviewed Luis Amaral about the Lisbon biotech scene.",
+   "kind": "note",
+   "tags": [
+    "press"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-07-01",
+   "entities": [
+    {
+     "name": "Ana Frade",
+     "type": "person",
+     "aliases": [
+      "Ana"
+     ],
+     "description": "radio presenter"
+    },
+    {
+     "name": "Luis Amaral",
+     "type": "person",
+     "aliases": [
+      "Luis"
+     ],
+     "description": "CEO"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ana Frade",
+     "predicate": "interviewed",
+     "target": "Luis Amaral",
+     "fact": "Ana Frade interviewed Luis Amaral.",
+     "exclusive": false,
+     "valid_from": "2025-07-01"
+    }
+   ]
+  },
+  {
+   "key": "m130",
+   "content": "Ana Frade hosts the morning show on Radio Lisboa Norte.",
+   "kind": "fact",
+   "tags": [
+    "press"
+   ],
+   "importance": 0.3,
+   "valid_from": "2023-01-01",
+   "entities": [
+    {
+     "name": "Ana Frade",
+     "type": "person",
+     "aliases": [
+      "Ana"
+     ],
+     "description": "radio presenter"
+    },
+    {
+     "name": "Radio Lisboa Norte",
+     "type": "organization",
+     "aliases": [
+      "the station"
+     ],
+     "description": "radio station"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ana Frade",
+     "predicate": "hosts the morning show on",
+     "target": "Radio Lisboa Norte",
+     "fact": "Ana Frade hosts the morning show on Radio Lisboa Norte.",
+     "exclusive": true,
+     "valid_from": "2023-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m131",
+   "content": "Oeiras belongs to the Lisbon metropolitan area.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m132",
+   "content": "The Universidade Católica Portuguesa's Lisbon campus is in Palma de Cima.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m133",
+   "content": "Setúbal lies on the south bank of the Tagus.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m134",
+   "content": "Aveiro is the capital of the Aveiro district.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m135",
+   "content": "Cascais belongs to the Greater Lisbon area.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m136",
+   "content": "Rua do Salitre runs through the Avenidas Novas parish of Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m137",
+   "content": "The Universidade da Beira Interior is based in Covilhã.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m138",
+   "content": "Braga is the seat of the Braga district.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m139",
+   "content": "Eva Neves ran people operations at Mirante Bio until January 2026.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.5,
+   "valid_from": "2024-02-01",
+   "entities": [
+    {
+     "name": "Eva Neves",
+     "type": "person",
+     "aliases": [
+      "Eva"
+     ],
+     "description": "people operations lead"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Eva Neves",
+     "predicate": "ran people operations at",
+     "target": "Mirante Bio",
+     "fact": "Eva Neves ran people operations at Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2024-02-01"
+    }
+   ]
+  },
+  {
+   "key": "m140",
+   "content": "Since February 2026 Eva Neves runs people operations at Iberia Labs.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.7,
+   "valid_from": "2026-02-01",
+   "entities": [
+    {
+     "name": "Eva Neves",
+     "type": "person",
+     "aliases": [
+      "Eva"
+     ],
+     "description": "people operations lead"
+    },
+    {
+     "name": "Iberia Labs",
+     "type": "organization",
+     "aliases": [
+      "Iberia"
+     ],
+     "description": "research company"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Eva Neves",
+     "predicate": "runs people operations at",
+     "target": "Iberia Labs",
+     "fact": "Eva Neves runs people operations at Iberia Labs.",
+     "exclusive": true,
+     "valid_from": "2026-02-01"
+    }
+   ]
+  },
+  {
+   "key": "m141",
+   "content": "Iberia Labs is headquartered in Braga, with its people team on the top floor.",
+   "kind": "fact",
+   "tags": [
+    "company"
+   ],
+   "importance": 0.4,
+   "valid_from": "2026-02-01",
+   "entities": [
+    {
+     "name": "Iberia Labs",
+     "type": "organization",
+     "aliases": [
+      "Iberia"
+     ],
+     "description": "research company"
+    },
+    {
+     "name": "Braga",
+     "type": "place",
+     "aliases": [],
+     "description": "city in northern Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Iberia Labs",
+     "predicate": "is headquartered in",
+     "target": "Braga",
+     "fact": "Iberia Labs is headquartered in Braga.",
+     "exclusive": true,
+     "valid_from": "2026-02-01"
+    }
+   ]
+  },
+  {
+   "key": "m142",
+   "content": "Helder Viana stepped aside as head of Atlântico Ventures in March 2026.",
+   "kind": "fact",
+   "tags": [
+    "funding",
+    "career"
+   ],
+   "importance": 0.6,
+   "valid_from": "2026-03-01",
+   "entities": [
+    {
+     "name": "Helder Viana",
+     "type": "person",
+     "aliases": [
+      "Helder"
+     ],
+     "description": "investor"
+    },
+    {
+     "name": "Atlântico Ventures",
+     "type": "organization",
+     "aliases": [
+      "the firm"
+     ],
+     "description": "venture firm"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Helder Viana",
+     "predicate": "stepped aside as head of",
+     "target": "Atlântico Ventures",
+     "fact": "Helder Viana stepped aside as head of Atlântico Ventures.",
+     "exclusive": true,
+     "valid_from": "2026-03-01"
+    }
+   ]
+  },
+  {
+   "key": "m143",
+   "content": "Lara Quintino now leads Atlântico Ventures, after Helder Viana stepped aside.",
+   "kind": "fact",
+   "tags": [
+    "funding",
+    "career"
+   ],
+   "importance": 0.7,
+   "valid_from": "2026-03-01",
+   "entities": [
+    {
+     "name": "Lara Quintino",
+     "type": "person",
+     "aliases": [
+      "Lara"
+     ],
+     "description": "investor"
+    },
+    {
+     "name": "Atlântico Ventures",
+     "type": "organization",
+     "aliases": [
+      "the firm"
+     ],
+     "description": "venture firm"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Lara Quintino",
+     "predicate": "leads",
+     "target": "Atlântico Ventures",
+     "fact": "Lara Quintino leads Atlântico Ventures.",
+     "exclusive": true,
+     "valid_from": "2026-03-01"
+    }
+   ]
+  },
+  {
+   "key": "m144",
+   "content": "Lara Quintino studied at the Nova School of Business and Economics.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2010-09-01",
+   "entities": [
+    {
+     "name": "Lara Quintino",
+     "type": "person",
+     "aliases": [
+      "Lara"
+     ],
+     "description": "investor"
+    },
+    {
+     "name": "Nova School of Business and Economics",
+     "type": "organization",
+     "aliases": [
+      "Nova SBE"
+     ],
+     "description": "business school in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Lara Quintino",
+     "predicate": "studied at",
+     "target": "Nova School of Business and Economics",
+     "fact": "Lara Quintino studied at Nova School of Business and Economics.",
+     "exclusive": true,
+     "valid_from": "2010-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m145",
+   "content": "Marisa Tavares treated Carlos Quintela at the Covilhã clinic until 2025.",
+   "kind": "fact",
+   "tags": [
+    "health"
+   ],
+   "importance": 0.4,
+   "valid_from": "2019-01-01",
+   "entities": [
+    {
+     "name": "Marisa Tavares",
+     "type": "person",
+     "aliases": [
+      "Marisa"
+     ],
+     "description": "allergist"
+    },
+    {
+     "name": "Carlos Quintela",
+     "type": "person",
+     "aliases": [
+      "Carlos"
+     ],
+     "description": "retired postal worker"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marisa Tavares",
+     "predicate": "treated",
+     "target": "Carlos Quintela",
+     "fact": "Marisa Tavares treated Carlos Quintela.",
+     "exclusive": true,
+     "valid_from": "2019-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m146",
+   "content": "Since 2026 Marisa Tavares runs the Allergy Clinic Porto Norte.",
+   "kind": "fact",
+   "tags": [
+    "health"
+   ],
+   "importance": 0.7,
+   "valid_from": "2026-01-01",
+   "entities": [
+    {
+     "name": "Marisa Tavares",
+     "type": "person",
+     "aliases": [
+      "Marisa"
+     ],
+     "description": "allergist"
+    },
+    {
+     "name": "Allergy Clinic Porto Norte",
+     "type": "organization",
+     "aliases": [
+      "the clinic"
+     ],
+     "description": "allergy clinic"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marisa Tavares",
+     "predicate": "runs",
+     "target": "Allergy Clinic Porto Norte",
+     "fact": "Marisa Tavares runs Allergy Clinic Porto Norte.",
+     "exclusive": true,
+     "valid_from": "2026-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m147",
+   "content": "The Allergy Clinic Porto Norte is in Matosinhos.",
+   "kind": "fact",
+   "tags": [
+    "health"
+   ],
+   "importance": 0.4,
+   "valid_from": "2026-01-01",
+   "entities": [
+    {
+     "name": "Allergy Clinic Porto Norte",
+     "type": "organization",
+     "aliases": [
+      "the clinic"
+     ],
+     "description": "allergy clinic"
+    },
+    {
+     "name": "Matosinhos",
+     "type": "place",
+     "aliases": [],
+     "description": "town next to Porto"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Allergy Clinic Porto Norte",
+     "predicate": "is located in",
+     "target": "Matosinhos",
+     "fact": "Allergy Clinic Porto Norte is located in Matosinhos.",
+     "exclusive": true,
+     "valid_from": "2026-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m148",
+   "content": "Noémia Brito was chief pharmacist at Hospital de Tomar until 2025.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.5,
+   "valid_from": "2019-01-01",
+   "entities": [
+    {
+     "name": "Noémia Brito",
+     "type": "person",
+     "aliases": [
+      "Noémia"
+     ],
+     "description": "chief pharmacist"
+    },
+    {
+     "name": "Hospital de Tomar",
+     "type": "organization",
+     "aliases": [
+      "the hospital"
+     ],
+     "description": "hospital in Tomar"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Noémia Brito",
+     "predicate": "was chief pharmacist at",
+     "target": "Hospital de Tomar",
+     "fact": "Noémia Brito was chief pharmacist at Hospital de Tomar.",
+     "exclusive": true,
+     "valid_from": "2019-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m149",
+   "content": "Since 2026 Noémia Brito is chief pharmacist at Hospital de Beja.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.7,
+   "valid_from": "2026-01-01",
+   "entities": [
+    {
+     "name": "Noémia Brito",
+     "type": "person",
+     "aliases": [
+      "Noémia"
+     ],
+     "description": "chief pharmacist"
+    },
+    {
+     "name": "Hospital de Beja",
+     "type": "organization",
+     "aliases": [
+      "the hospital"
+     ],
+     "description": "hospital in Beja"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Noémia Brito",
+     "predicate": "is chief pharmacist at",
+     "target": "Hospital de Beja",
+     "fact": "Noémia Brito is chief pharmacist at Hospital de Beja.",
+     "exclusive": true,
+     "valid_from": "2026-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m150",
+   "content": "Hospital de Beja serves the Baixo Alentejo region.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2026-01-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m151",
+   "content": "Ricardo Faro designed the Clube Graça clubhouse.",
+   "kind": "fact",
+   "tags": [
+    "football",
+    "design"
+   ],
+   "importance": 0.3,
+   "valid_from": "2021-01-01",
+   "entities": [
+    {
+     "name": "Ricardo Faro",
+     "type": "person",
+     "aliases": [
+      "Ricardo"
+     ],
+     "description": "architect"
+    },
+    {
+     "name": "Clube Graça clubhouse",
+     "type": "place",
+     "aliases": [
+      "the clubhouse"
+     ],
+     "description": "clubhouse of Clube Graça FC"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ricardo Faro",
+     "predicate": "designed",
+     "target": "Clube Graça clubhouse",
+     "fact": "Ricardo Faro designed Clube Graça clubhouse.",
+     "exclusive": false,
+     "valid_from": "2021-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m152",
+   "content": "Ricardo Faro studied architecture at the Universidade do Algarve.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2010-09-01",
+   "entities": [
+    {
+     "name": "Ricardo Faro",
+     "type": "person",
+     "aliases": [
+      "Ricardo"
+     ],
+     "description": "architect"
+    },
+    {
+     "name": "Universidade do Algarve",
+     "type": "organization",
+     "aliases": [
+      "Algarve"
+     ],
+     "description": "public university"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ricardo Faro",
+     "predicate": "studied at",
+     "target": "Universidade do Algarve",
+     "fact": "Ricardo Faro studied at Universidade do Algarve.",
+     "exclusive": true,
+     "valid_from": "2010-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m153",
+   "content": "Iberia Lab Supplies sells centrifuges and is based in Porto.",
+   "kind": "fact",
+   "tags": [
+    "company"
+   ],
+   "importance": 0.3,
+   "valid_from": "2003-01-01",
+   "entities": [
+    {
+     "name": "Iberia Lab Supplies",
+     "type": "organization",
+     "aliases": [],
+     "description": "lab equipment supplier"
+    },
+    {
+     "name": "Porto",
+     "type": "place",
+     "aliases": [],
+     "description": "city in northern Portugal"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Iberia Lab Supplies",
+     "predicate": "is based in",
+     "target": "Porto",
+     "fact": "Iberia Lab Supplies is based in Porto.",
+     "exclusive": true,
+     "valid_from": "2003-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m154",
+   "content": "Lúcia Brandão founded Iberia Lab Supplies in 2003.",
+   "kind": "fact",
+   "tags": [
+    "company"
+   ],
+   "importance": 0.3,
+   "valid_from": "2003-01-01",
+   "entities": [
+    {
+     "name": "Lúcia Brandão",
+     "type": "person",
+     "aliases": [
+      "Lúcia B."
+     ],
+     "description": "founder of a lab supplier"
+    },
+    {
+     "name": "Iberia Lab Supplies",
+     "type": "organization",
+     "aliases": [],
+     "description": "lab equipment supplier"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Lúcia Brandão",
+     "predicate": "founded",
+     "target": "Iberia Lab Supplies",
+     "fact": "Lúcia Brandão founded Iberia Lab Supplies.",
+     "exclusive": true,
+     "valid_from": "2003-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m155",
+   "content": "Simão Pinho runs a fishing co-op in Peniche.",
+   "kind": "fact",
+   "tags": [
+    "business"
+   ],
+   "importance": 0.2,
+   "valid_from": "2018-01-01",
+   "entities": [
+    {
+     "name": "Simão Pinho",
+     "type": "person",
+     "aliases": [
+      "Simão"
+     ],
+     "description": "fishing co-op manager"
+    },
+    {
+     "name": "Peniche",
+     "type": "place",
+     "aliases": [],
+     "description": "fishing town on the Oeste coast"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Simão Pinho",
+     "predicate": "runs",
+     "target": "Peniche",
+     "fact": "Simão Pinho runs Peniche.",
+     "exclusive": true,
+     "valid_from": "2018-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m156",
+   "content": "Peniche is famous for its sardine festival.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2018-01-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m157",
+   "content": "Marisa Tavira directs the youth company at the Teatro Nacional.",
+   "kind": "fact",
+   "tags": [
+    "theatre"
+   ],
+   "importance": 0.3,
+   "valid_from": "2021-01-01",
+   "entities": [
+    {
+     "name": "Marisa Tavira",
+     "type": "person",
+     "aliases": [
+      "Marisa"
+     ],
+     "description": "theatre director"
+    },
+    {
+     "name": "Teatro Nacional",
+     "type": "organization",
+     "aliases": [],
+     "description": "national theatre"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marisa Tavira",
+     "predicate": "directs",
+     "target": "Teatro Nacional",
+     "fact": "Marisa Tavira directs Teatro Nacional.",
+     "exclusive": true,
+     "valid_from": "2021-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m158",
+   "content": "Marisa Tavira studied drama at the Escola Superior de Teatro e Cinema.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2005-09-01",
+   "entities": [
+    {
+     "name": "Marisa Tavira",
+     "type": "person",
+     "aliases": [
+      "Marisa"
+     ],
+     "description": "theatre director"
+    },
+    {
+     "name": "Escola Superior de Teatro e Cinema",
+     "type": "organization",
+     "aliases": [
+      "ESTC"
+     ],
+     "description": "drama school in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marisa Tavira",
+     "predicate": "studied at",
+     "target": "Escola Superior de Teatro e Cinema",
+     "fact": "Marisa Tavira studied at Escola Superior de Teatro e Cinema.",
+     "exclusive": true,
+     "valid_from": "2005-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m159",
+   "content": "Sofia Quintela volunteers at the Clube Graça FC youth camp.",
+   "kind": "note",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sofia Quintela",
+     "predicate": "volunteers at",
+     "target": "Clube Graça FC",
+     "fact": "Sofia Quintela volunteers at Clube Graça FC.",
+     "exclusive": false,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m160",
+   "content": "Helder Viana sits on the board of the Lisbon Science Park.",
+   "kind": "note",
+   "tags": [
+    "funding"
+   ],
+   "importance": 0.2,
+   "valid_from": "2024-01-01",
+   "entities": [
+    {
+     "name": "Helder Viana",
+     "type": "person",
+     "aliases": [
+      "Helder"
+     ],
+     "description": "investor"
+    },
+    {
+     "name": "Lisbon Science Park",
+     "type": "organization",
+     "aliases": [
+      "the park"
+     ],
+     "description": "science park in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Helder Viana",
+     "predicate": "sits on the board of",
+     "target": "Lisbon Science Park",
+     "fact": "Helder Viana sits on the board of Lisbon Science Park.",
+     "exclusive": false,
+     "valid_from": "2024-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m161",
+   "content": "Vasco Lima tests Tidewater as a beta user.",
+   "kind": "note",
+   "tags": [
+    "side-project"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-11-01",
+   "entities": [
+    {
+     "name": "Vasco Lima",
+     "type": "person",
+     "aliases": [
+      "Vasco"
+     ],
+     "description": "baker"
+    },
+    {
+     "name": "Tidewater",
+     "type": "project",
+     "aliases": [
+      "the app"
+     ],
+     "description": "tide-forecast app"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Vasco Lima",
+     "predicate": "tests",
+     "target": "Tidewater",
+     "fact": "Vasco Lima tests Tidewater.",
+     "exclusive": false,
+     "valid_from": "2025-11-01"
+    }
+   ]
+  },
+  {
+   "key": "m162",
+   "content": "Tiago Fonseca gave a talk at PyCon Lisboa.",
+   "kind": "note",
+   "tags": [
+    "events"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-10-01",
+   "entities": [
+    {
+     "name": "Tiago Fonseca",
+     "type": "person",
+     "aliases": [
+      "Tiago"
+     ],
+     "description": "Foli contributor"
+    },
+    {
+     "name": "PyCon Lisboa",
+     "type": "thing",
+     "aliases": [
+      "the conference"
+     ],
+     "description": "Python conference"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Tiago Fonseca",
+     "predicate": "gave a talk at",
+     "target": "PyCon Lisboa",
+     "fact": "Tiago Fonseca gave a talk at PyCon Lisboa.",
+     "exclusive": false,
+     "valid_from": "2025-10-01"
+    }
+   ]
+  },
+  {
+   "key": "m163",
+   "content": "Eva Neves trains Simão Pais on payroll software.",
+   "kind": "note",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.2,
+   "valid_from": "2026-03-01",
+   "entities": [
+    {
+     "name": "Eva Neves",
+     "type": "person",
+     "aliases": [
+      "Eva"
+     ],
+     "description": "people operations lead"
+    },
+    {
+     "name": "Simão Pais",
+     "type": "person",
+     "aliases": [
+      "Simão"
+     ],
+     "description": "local business owner"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Eva Neves",
+     "predicate": "trains",
+     "target": "Simão Pais",
+     "fact": "Eva Neves trains Simão Pais.",
+     "exclusive": false,
+     "valid_from": "2026-03-01"
+    }
+   ]
+  },
+  {
+   "key": "m164",
+   "content": "Marcos Rocha co-writes a grant with Paula Santos.",
+   "kind": "note",
+   "tags": [
+    "lab"
+   ],
+   "importance": 0.2,
+   "valid_from": "2026-02-01",
+   "entities": [
+    {
+     "name": "Marcos Rocha",
+     "type": "person",
+     "aliases": [
+      "Marcos"
+     ],
+     "description": "protein lab head"
+    },
+    {
+     "name": "Paula Santos",
+     "type": "person",
+     "aliases": [
+      "Paula"
+     ],
+     "description": "professor"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marcos Rocha",
+     "predicate": "co-writes a grant with",
+     "target": "Paula Santos",
+     "fact": "Marcos Rocha co-writes a grant with Paula Santos.",
+     "exclusive": false,
+     "valid_from": "2026-02-01"
+    }
+   ]
+  },
+  {
+   "key": "m165",
+   "content": "Noémia Brito is Sofia's aunt.",
+   "kind": "fact",
+   "tags": [
+    "family"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Noémia Brito",
+     "type": "person",
+     "aliases": [
+      "Noémia"
+     ],
+     "description": "chief pharmacist"
+    },
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Noémia Brito",
+     "predicate": "is the aunt of",
+     "target": "Sofia Quintela",
+     "fact": "Noémia Brito is the aunt of Sofia Quintela.",
+     "exclusive": false,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m166",
+   "content": "Gustavo Pinheiro leads bioinformatics at Iberia Labs.",
+   "kind": "fact",
+   "tags": [
+    "lab",
+    "career"
+   ],
+   "importance": 0.5,
+   "valid_from": "2022-01-01",
+   "entities": [
+    {
+     "name": "Gustavo Pinheiro",
+     "type": "person",
+     "aliases": [
+      "Gustavo"
+     ],
+     "description": "bioinformatics lead"
+    },
+    {
+     "name": "Iberia Labs",
+     "type": "organization",
+     "aliases": [
+      "Iberia"
+     ],
+     "description": "research company"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Gustavo Pinheiro",
+     "predicate": "leads bioinformatics at",
+     "target": "Iberia Labs",
+     "fact": "Gustavo Pinheiro leads bioinformatics at Iberia Labs.",
+     "exclusive": true,
+     "valid_from": "2022-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m167",
+   "content": "Gustavo Pinheiro trained at the Instituto Gulbenkian de Ciência.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2012-09-01",
+   "entities": [
+    {
+     "name": "Gustavo Pinheiro",
+     "type": "person",
+     "aliases": [
+      "Gustavo"
+     ],
+     "description": "bioinformatics lead"
+    },
+    {
+     "name": "Instituto Gulbenkian de Ciência",
+     "type": "organization",
+     "aliases": [
+      "Gulbenkian"
+     ],
+     "description": "research institute"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Gustavo Pinheiro",
+     "predicate": "trained at",
+     "target": "Instituto Gulbenkian de Ciência",
+     "fact": "Gustavo Pinheiro trained at Instituto Gulbenkian de Ciência.",
+     "exclusive": true,
+     "valid_from": "2012-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m168",
+   "content": "Carla Azevedo heads clinical development at Mirante Bio.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "team"
+   ],
+   "importance": 0.5,
+   "valid_from": "2024-09-01",
+   "entities": [
+    {
+     "name": "Carla Azevedo",
+     "type": "person",
+     "aliases": [
+      "Carla"
+     ],
+     "description": "clinical head"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Carla Azevedo",
+     "predicate": "heads clinical development at",
+     "target": "Mirante Bio",
+     "fact": "Carla Azevedo heads clinical development at Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2024-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m169",
+   "content": "Carla Azevedo was born in Lamego.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m170",
+   "content": "Telma Varela directs the Lisbon Science Park.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.5,
+   "valid_from": "2020-01-01",
+   "entities": [
+    {
+     "name": "Telma Varela",
+     "type": "person",
+     "aliases": [
+      "Telma"
+     ],
+     "description": "park director"
+    },
+    {
+     "name": "Lisbon Science Park",
+     "type": "organization",
+     "aliases": [
+      "the park"
+     ],
+     "description": "science park in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Telma Varela",
+     "predicate": "directs",
+     "target": "Lisbon Science Park",
+     "fact": "Telma Varela directs Lisbon Science Park.",
+     "exclusive": true,
+     "valid_from": "2020-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m171",
+   "content": "The Lisbon Science Park opened in 2009 on the Tagus waterfront.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.2,
+   "valid_from": "2020-01-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m172",
+   "content": "Nádia Coelho is the physio of Clube Graça FC.",
+   "kind": "fact",
+   "tags": [
+    "football",
+    "health"
+   ],
+   "importance": 0.4,
+   "valid_from": "2024-09-01",
+   "entities": [
+    {
+     "name": "Nádia Coelho",
+     "type": "person",
+     "aliases": [
+      "Nádia"
+     ],
+     "description": "physio"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Nádia Coelho",
+     "predicate": "is the physio of",
+     "target": "Clube Graça FC",
+     "fact": "Nádia Coelho is the physio of Clube Graça FC.",
+     "exclusive": true,
+     "valid_from": "2024-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m173",
+   "content": "Nádia Coelho trained at the Escola Superior de Saúde de Lisboa.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2016-09-01",
+   "entities": [
+    {
+     "name": "Nádia Coelho",
+     "type": "person",
+     "aliases": [
+      "Nádia"
+     ],
+     "description": "physio"
+    },
+    {
+     "name": "Escola Superior de Saúde de Lisboa",
+     "type": "organization",
+     "aliases": [
+      "ESSL"
+     ],
+     "description": "health school in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Nádia Coelho",
+     "predicate": "trained at",
+     "target": "Escola Superior de Saúde de Lisboa",
+     "fact": "Nádia Coelho trained at Escola Superior de Saúde de Lisboa.",
+     "exclusive": true,
+     "valid_from": "2016-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m174",
+   "content": "Bruno Tavares is the lawyer for Tidewater.",
+   "kind": "fact",
+   "tags": [
+    "side-project",
+    "legal"
+   ],
+   "importance": 0.5,
+   "valid_from": "2025-03-01",
+   "entities": [
+    {
+     "name": "Bruno Tavares",
+     "type": "person",
+     "aliases": [
+      "Bruno"
+     ],
+     "description": "lawyer"
+    },
+    {
+     "name": "Tidewater",
+     "type": "project",
+     "aliases": [
+      "the app"
+     ],
+     "description": "tide-forecast app"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Bruno Tavares",
+     "predicate": "is the lawyer for",
+     "target": "Tidewater",
+     "fact": "Bruno Tavares is the lawyer for Tidewater.",
+     "exclusive": false,
+     "valid_from": "2025-03-01"
+    }
+   ]
+  },
+  {
+   "key": "m175",
+   "content": "Bruno Tavares works at the law firm Almeida & Leão.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "legal"
+   ],
+   "importance": 0.3,
+   "valid_from": "2018-01-01",
+   "entities": [
+    {
+     "name": "Bruno Tavares",
+     "type": "person",
+     "aliases": [
+      "Bruno"
+     ],
+     "description": "lawyer"
+    },
+    {
+     "name": "Almeida & Leão",
+     "type": "organization",
+     "aliases": [
+      "the law firm"
+     ],
+     "description": "law firm"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Bruno Tavares",
+     "predicate": "works at",
+     "target": "Almeida & Leão",
+     "fact": "Bruno Tavares works at Almeida & Leão.",
+     "exclusive": true,
+     "valid_from": "2018-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m176",
+   "content": "Vítor Leão plays violin in the Orquestra do Tejo.",
+   "kind": "fact",
+   "tags": [
+    "music"
+   ],
+   "importance": 0.3,
+   "valid_from": "2019-01-01",
+   "entities": [
+    {
+     "name": "Vítor Leão",
+     "type": "person",
+     "aliases": [
+      "Vítor"
+     ],
+     "description": "violinist"
+    },
+    {
+     "name": "Orquestra do Tejo",
+     "type": "organization",
+     "aliases": [
+      "the orchestra"
+     ],
+     "description": "symphony orchestra"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Vítor Leão",
+     "predicate": "plays violin in",
+     "target": "Orquestra do Tejo",
+     "fact": "Vítor Leão plays violin in Orquestra do Tejo.",
+     "exclusive": false,
+     "valid_from": "2019-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m177",
+   "content": "The Orquestra do Tejo performs at the Coliseu de Lisboa.",
+   "kind": "fact",
+   "tags": [
+    "music"
+   ],
+   "importance": 0.3,
+   "valid_from": "2024-01-01",
+   "entities": [
+    {
+     "name": "Orquestra do Tejo",
+     "type": "organization",
+     "aliases": [
+      "the orchestra"
+     ],
+     "description": "symphony orchestra"
+    },
+    {
+     "name": "Coliseu de Lisboa",
+     "type": "place",
+     "aliases": [
+      "the Coliseu"
+     ],
+     "description": "concert hall"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Orquestra do Tejo",
+     "predicate": "performs at",
+     "target": "Coliseu de Lisboa",
+     "fact": "Orquestra do Tejo performs at Coliseu de Lisboa.",
+     "exclusive": false,
+     "valid_from": "2024-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m178",
+   "content": "Rita Almeida hosts the Mar Alto reading club.",
+   "kind": "fact",
+   "tags": [
+    "book-club"
+   ],
+   "importance": 0.4,
+   "valid_from": "2023-01-01",
+   "entities": [
+    {
+     "name": "Rita Almeida",
+     "type": "person",
+     "aliases": [
+      "Rita"
+     ],
+     "description": "reading club host"
+    },
+    {
+     "name": "Clube de Leitura Mar Alto",
+     "type": "organization",
+     "aliases": [
+      "Mar Alto",
+      "the reading club"
+     ],
+     "description": "reading club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rita Almeida",
+     "predicate": "hosts",
+     "target": "Clube de Leitura Mar Alto",
+     "fact": "Rita Almeida hosts Clube de Leitura Mar Alto.",
+     "exclusive": false,
+     "valid_from": "2023-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m179",
+   "content": "Rita Almeida studied at the Universidade Lusófona.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2008-09-01",
+   "entities": [
+    {
+     "name": "Rita Almeida",
+     "type": "person",
+     "aliases": [
+      "Rita"
+     ],
+     "description": "reading club host"
+    },
+    {
+     "name": "Universidade Lusófona",
+     "type": "organization",
+     "aliases": [
+      "Lusófona"
+     ],
+     "description": "private university in Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rita Almeida",
+     "predicate": "studied at",
+     "target": "Universidade Lusófona",
+     "fact": "Rita Almeida studied at Universidade Lusófona.",
+     "exclusive": true,
+     "valid_from": "2008-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m180",
+   "content": "Miguel Antunes is Sofia's neighbour.",
+   "kind": "fact",
+   "tags": [
+    "home"
+   ],
+   "importance": 0.3,
+   "valid_from": "2024-06-01",
+   "entities": [
+    {
+     "name": "Miguel Antunes",
+     "type": "person",
+     "aliases": [
+      "Miguel"
+     ],
+     "description": "electrician, neighbour"
+    },
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Miguel Antunes",
+     "predicate": "is the neighbour of",
+     "target": "Sofia Quintela",
+     "fact": "Miguel Antunes is the neighbour of Sofia Quintela.",
+     "exclusive": false,
+     "valid_from": "2024-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m181",
+   "content": "Miguel Antunes, an electrician, works for Eletricidade do Tejo.",
+   "kind": "fact",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.3,
+   "valid_from": "2021-01-01",
+   "entities": [
+    {
+     "name": "Miguel Antunes",
+     "type": "person",
+     "aliases": [
+      "Miguel"
+     ],
+     "description": "electrician, neighbour"
+    },
+    {
+     "name": "Eletricidade do Tejo",
+     "type": "organization",
+     "aliases": [],
+     "description": "electrical contractor"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Miguel Antunes",
+     "predicate": "works for",
+     "target": "Eletricidade do Tejo",
+     "fact": "Miguel Antunes works for Eletricidade do Tejo.",
+     "exclusive": true,
+     "valid_from": "2021-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m182",
+   "content": "Filipa Sousa is Beatriz Quintela's best friend and works at Faro airport.",
+   "kind": "fact",
+   "tags": [
+    "friends",
+    "career"
+   ],
+   "importance": 0.4,
+   "valid_from": "2019-06-01",
+   "entities": [
+    {
+     "name": "Filipa Sousa",
+     "type": "person",
+     "aliases": [
+      "Filipa"
+     ],
+     "description": "airport worker"
+    },
+    {
+     "name": "Beatriz Quintela",
+     "type": "person",
+     "aliases": [
+      "Beatriz"
+     ],
+     "description": "nurse"
+    },
+    {
+     "name": "Faro airport",
+     "type": "place",
+     "aliases": [
+      "the airport"
+     ],
+     "description": "airport in Faro"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Filipa Sousa",
+     "predicate": "is the best friend of",
+     "target": "Beatriz Quintela",
+     "fact": "Filipa Sousa is the best friend of Beatriz Quintela.",
+     "exclusive": false,
+     "valid_from": "2015-01-01"
+    },
+    {
+     "source": "Filipa Sousa",
+     "predicate": "works at",
+     "target": "Faro airport",
+     "fact": "Filipa Sousa works at Faro airport.",
+     "exclusive": true,
+     "valid_from": "2019-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m183",
+   "content": "The Faro airport is operated by ANA.",
+   "kind": "fact",
+   "tags": [
+    "transport"
+   ],
+   "importance": 0.3,
+   "valid_from": "2013-01-01",
+   "entities": [
+    {
+     "name": "Faro airport",
+     "type": "place",
+     "aliases": [
+      "the airport"
+     ],
+     "description": "airport in Faro"
+    },
+    {
+     "name": "ANA",
+     "type": "organization",
+     "aliases": [
+      "ANA Aeroportos"
+     ],
+     "description": "airport operator"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Faro airport",
+     "predicate": "is operated by",
+     "target": "ANA",
+     "fact": "Faro airport is operated by ANA.",
+     "exclusive": true,
+     "valid_from": "2013-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m184",
+   "content": "Rodrigo Pina makes the kits for Clube Graça FC.",
+   "kind": "fact",
+   "tags": [
+    "football",
+    "design"
+   ],
+   "importance": 0.3,
+   "valid_from": "2022-01-01",
+   "entities": [
+    {
+     "name": "Rodrigo Pina",
+     "type": "person",
+     "aliases": [
+      "Rodrigo"
+     ],
+     "description": "kit maker"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rodrigo Pina",
+     "predicate": "makes the kits for",
+     "target": "Clube Graça FC",
+     "fact": "Rodrigo Pina makes the kits for Clube Graça FC.",
+     "exclusive": false,
+     "valid_from": "2022-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m185",
+   "content": "Rodrigo Pina has his workshop in Barreiro.",
+   "kind": "fact",
+   "tags": [
+    "business"
+   ],
+   "importance": 0.2,
+   "valid_from": "2022-01-01",
+   "entities": [
+    {
+     "name": "Rodrigo Pina",
+     "type": "person",
+     "aliases": [
+      "Rodrigo"
+     ],
+     "description": "kit maker"
+    },
+    {
+     "name": "Barreiro",
+     "type": "place",
+     "aliases": [],
+     "description": "town south of the Tagus"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rodrigo Pina",
+     "predicate": "has a workshop in",
+     "target": "Barreiro",
+     "fact": "Rodrigo Pina has a workshop in Barreiro.",
+     "exclusive": true,
+     "valid_from": "2022-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m186",
+   "content": "The Instituto Gulbenkian de Ciência is in Oeiras.",
+   "kind": "fact",
+   "tags": [],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m187",
+   "content": "Lamego is in the Douro wine region.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m188",
+   "content": "The Tagus waterfront is home to Parque das Nações.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2020-01-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m189",
+   "content": "Hélio Campos founded Nimbus Cloud.",
+   "kind": "fact",
+   "tags": [
+    "company"
+   ],
+   "importance": 0.4,
+   "valid_from": "2018-01-01",
+   "entities": [
+    {
+     "name": "Hélio Campos",
+     "type": "person",
+     "aliases": [
+      "Hélio"
+     ],
+     "description": "founder"
+    },
+    {
+     "name": "Nimbus Cloud",
+     "type": "organization",
+     "aliases": [
+      "Nimbus"
+     ],
+     "description": "cloud hosting company"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Hélio Campos",
+     "predicate": "founded",
+     "target": "Nimbus Cloud",
+     "fact": "Hélio Campos founded Nimbus Cloud.",
+     "exclusive": true,
+     "valid_from": "2018-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m190",
+   "content": "Nimbus Cloud hosts the backend of Tidewater.",
+   "kind": "fact",
+   "tags": [
+    "side-project",
+    "hosting"
+   ],
+   "importance": 0.4,
+   "valid_from": "2025-06-01",
+   "entities": [
+    {
+     "name": "Nimbus Cloud",
+     "type": "organization",
+     "aliases": [
+      "Nimbus"
+     ],
+     "description": "cloud hosting company"
+    },
+    {
+     "name": "Tidewater",
+     "type": "project",
+     "aliases": [
+      "the app"
+     ],
+     "description": "tide-forecast app"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Nimbus Cloud",
+     "predicate": "hosts the backend of",
+     "target": "Tidewater",
+     "fact": "Nimbus Cloud hosts the backend of Tidewater.",
+     "exclusive": false,
+     "valid_from": "2025-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m191",
+   "content": "Nimbus Cloud's data centre sits in Alcântara, Lisbon.",
+   "kind": "fact",
+   "tags": [
+    "hosting"
+   ],
+   "importance": 0.2,
+   "valid_from": "2018-01-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m192",
+   "content": "Almeida & Leão was founded in Porto in 1990.",
+   "kind": "fact",
+   "tags": [
+    "legal"
+   ],
+   "importance": 0.2,
+   "valid_from": "2018-01-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m193",
+   "content": "The Coliseu de Lisboa stands on Rua das Portas de Santo Antão.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2024-01-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m194",
+   "content": "Universidade Lusófona is based in Lisbon's Campo Grande area.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m195",
+   "content": "Since April 2026 Gustavo Pinheiro leads bioinformatics at Mirante Bio, after leaving Iberia Labs.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "lab"
+   ],
+   "importance": 0.7,
+   "valid_from": "2026-04-01",
+   "entities": [
+    {
+     "name": "Gustavo Pinheiro",
+     "type": "person",
+     "aliases": [
+      "Gustavo"
+     ],
+     "description": "bioinformatics lead"
+    },
+    {
+     "name": "Mirante Bio",
+     "type": "organization",
+     "aliases": [
+      "Mirante"
+     ],
+     "description": "Lisbon biotech startup"
+    },
+    {
+     "name": "Iberia Labs",
+     "type": "organization",
+     "aliases": [
+      "Iberia"
+     ],
+     "description": "research company"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Gustavo Pinheiro",
+     "predicate": "leads bioinformatics at",
+     "target": "Mirante Bio",
+     "fact": "Gustavo Pinheiro leads bioinformatics at Mirante Bio.",
+     "exclusive": true,
+     "valid_from": "2026-04-01"
+    }
+   ]
+  },
+  {
+   "key": "m196",
+   "content": "Mirante Bio's bioinformatics group is based in the Lisbon Science Park.",
+   "kind": "fact",
+   "tags": [],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m197",
+   "content": "Sónia Ferraz managed a lab at the Porto Bio Incubator until 2025.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "lab"
+   ],
+   "importance": 0.4,
+   "valid_from": "2019-01-01",
+   "entities": [
+    {
+     "name": "Sónia Ferraz",
+     "type": "person",
+     "aliases": [
+      "Sónia"
+     ],
+     "description": "lab manager"
+    },
+    {
+     "name": "Porto Bio Incubator",
+     "type": "organization",
+     "aliases": [
+      "the incubator"
+     ],
+     "description": "life-sciences incubator in Porto"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sónia Ferraz",
+     "predicate": "managed a lab at",
+     "target": "Porto Bio Incubator",
+     "fact": "Sónia Ferraz managed a lab at Porto Bio Incubator.",
+     "exclusive": true,
+     "valid_from": "2019-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m198",
+   "content": "Since 2026 Sónia Ferraz manages a lab at the Oeiras Biotech Hub.",
+   "kind": "fact",
+   "tags": [
+    "career",
+    "lab"
+   ],
+   "importance": 0.7,
+   "valid_from": "2026-01-01",
+   "entities": [
+    {
+     "name": "Sónia Ferraz",
+     "type": "person",
+     "aliases": [
+      "Sónia"
+     ],
+     "description": "lab manager"
+    },
+    {
+     "name": "Oeiras Biotech Hub",
+     "type": "organization",
+     "aliases": [
+      "the hub"
+     ],
+     "description": "biotech hub in Oeiras"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sónia Ferraz",
+     "predicate": "manages a lab at",
+     "target": "Oeiras Biotech Hub",
+     "fact": "Sónia Ferraz manages a lab at Oeiras Biotech Hub.",
+     "exclusive": true,
+     "valid_from": "2026-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m199",
+   "content": "The Oeiras Biotech Hub is next to the Oeiras marina.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.3,
+   "valid_from": "2026-01-01",
+   "entities": [
+    {
+     "name": "Oeiras Biotech Hub",
+     "type": "organization",
+     "aliases": [
+      "the hub"
+     ],
+     "description": "biotech hub in Oeiras"
+    },
+    {
+     "name": "Oeiras marina",
+     "type": "place",
+     "aliases": [
+      "the marina"
+     ],
+     "description": "marina in Oeiras"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Oeiras Biotech Hub",
+     "predicate": "is next to",
+     "target": "Oeiras marina",
+     "fact": "Oeiras Biotech Hub is next to Oeiras marina.",
+     "exclusive": true,
+     "valid_from": "2026-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m200",
+   "content": "Rita Almeida hosted the Mar Alto reading club at the Biblioteca Municipal da Graça until 2025.",
+   "kind": "fact",
+   "tags": [
+    "book-club"
+   ],
+   "importance": 0.4,
+   "valid_from": "2019-01-01",
+   "entities": [
+    {
+     "name": "Rita Almeida",
+     "type": "person",
+     "aliases": [
+      "Rita"
+     ],
+     "description": "reading club host"
+    },
+    {
+     "name": "Biblioteca Municipal da Graça",
+     "type": "organization",
+     "aliases": [
+      "the library"
+     ],
+     "description": "public library"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rita Almeida",
+     "predicate": "hosted the reading club at",
+     "target": "Biblioteca Municipal da Graça",
+     "fact": "Rita Almeida hosted the reading club at Biblioteca Municipal da Graça.",
+     "exclusive": true,
+     "valid_from": "2019-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m201",
+   "content": "Since 2026 Rita Almeida hosts the Mar Alto reading club at Café Central.",
+   "kind": "fact",
+   "tags": [
+    "book-club"
+   ],
+   "importance": 0.7,
+   "valid_from": "2026-01-01",
+   "entities": [
+    {
+     "name": "Rita Almeida",
+     "type": "person",
+     "aliases": [
+      "Rita"
+     ],
+     "description": "reading club host"
+    },
+    {
+     "name": "Café Central",
+     "type": "organization",
+     "aliases": [],
+     "description": "café"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rita Almeida",
+     "predicate": "hosts the reading club at",
+     "target": "Café Central",
+     "fact": "Rita Almeida hosts the reading club at Café Central.",
+     "exclusive": true,
+     "valid_from": "2026-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m202",
+   "content": "Café Central is in the old town of Setúbal.",
+   "kind": "fact",
+   "tags": [],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m203",
+   "content": "Rita Alves is a dietician who grew up in Viana do Castelo.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2025-08-01",
+   "entities": [
+    {
+     "name": "Rita Alves",
+     "type": "person",
+     "aliases": [
+      "Rita"
+     ],
+     "description": "dietician"
+    },
+    {
+     "name": "Viana do Castelo",
+     "type": "place",
+     "aliases": [],
+     "description": "coastal town in the north"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rita Alves",
+     "predicate": "grew up in",
+     "target": "Viana do Castelo",
+     "fact": "Rita Alves grew up in Viana do Castelo.",
+     "exclusive": true,
+     "valid_from": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m204",
+   "content": "Rita Alves studied nutrition at the Escola Superior de Saúde do Porto.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2014-09-01",
+   "entities": [
+    {
+     "name": "Rita Alves",
+     "type": "person",
+     "aliases": [
+      "Rita"
+     ],
+     "description": "dietician"
+    },
+    {
+     "name": "Escola Superior de Saúde do Porto",
+     "type": "organization",
+     "aliases": [
+      "ESS Porto"
+     ],
+     "description": "health school in Porto"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rita Alves",
+     "predicate": "studied at",
+     "target": "Escola Superior de Saúde do Porto",
+     "fact": "Rita Alves studied at Escola Superior de Saúde do Porto.",
+     "exclusive": true,
+     "valid_from": "2014-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m205",
+   "content": "Telma Varejão makes the trophies for Clube Graça FC.",
+   "kind": "fact",
+   "tags": [
+    "football",
+    "design"
+   ],
+   "importance": 0.3,
+   "valid_from": "2023-01-01",
+   "entities": [
+    {
+     "name": "Telma Varejão",
+     "type": "person",
+     "aliases": [
+      "Telma V."
+     ],
+     "description": "jeweller"
+    },
+    {
+     "name": "Clube Graça FC",
+     "type": "organization",
+     "aliases": [
+      "Graça FC"
+     ],
+     "description": "amateur football club"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Telma Varejão",
+     "predicate": "makes trophies for",
+     "target": "Clube Graça FC",
+     "fact": "Telma Varejão makes trophies for Clube Graça FC.",
+     "exclusive": false,
+     "valid_from": "2023-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m206",
+   "content": "Telma Varejão studied goldsmithing at the Escola de Artes Decorativas.",
+   "kind": "fact",
+   "tags": [
+    "background"
+   ],
+   "importance": 0.3,
+   "valid_from": "2001-09-01",
+   "entities": [
+    {
+     "name": "Telma Varejão",
+     "type": "person",
+     "aliases": [
+      "Telma V."
+     ],
+     "description": "jeweller"
+    },
+    {
+     "name": "Escola de Artes Decorativas",
+     "type": "organization",
+     "aliases": [],
+     "description": "art school"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Telma Varejão",
+     "predicate": "studied at",
+     "target": "Escola de Artes Decorativas",
+     "fact": "Telma Varejão studied at Escola de Artes Decorativas.",
+     "exclusive": true,
+     "valid_from": "2001-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m207",
+   "content": "Hélio Campelo sells fresh fish in Sesimbra.",
+   "kind": "fact",
+   "tags": [
+    "business"
+   ],
+   "importance": 0.2,
+   "valid_from": "2020-01-01",
+   "entities": [
+    {
+     "name": "Hélio Campelo",
+     "type": "person",
+     "aliases": [
+      "Hélio"
+     ],
+     "description": "fish seller"
+    },
+    {
+     "name": "Sesimbra",
+     "type": "place",
+     "aliases": [],
+     "description": "fishing town south of Lisbon"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Hélio Campelo",
+     "predicate": "sells fish in",
+     "target": "Sesimbra",
+     "fact": "Hélio Campelo sells fish in Sesimbra.",
+     "exclusive": true,
+     "valid_from": "2020-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m208",
+   "content": "The Sesimbra fishing harbour is known for grilled sardines.",
+   "kind": "fact",
+   "tags": [
+    "geography"
+   ],
+   "importance": 0.2,
+   "valid_from": "2020-01-01",
+   "entities": [
+    {
+     "name": "Sesimbra fishing harbour",
+     "type": "place",
+     "aliases": [
+      "the harbour"
+     ],
+     "description": "harbour in Sesimbra"
+    },
+    {
+     "name": "grilled sardines",
+     "type": "thing",
+     "aliases": [],
+     "description": "local dish"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sesimbra fishing harbour",
+     "predicate": "is known for",
+     "target": "grilled sardines",
+     "fact": "Sesimbra fishing harbour is known for grilled sardines.",
+     "exclusive": true,
+     "valid_from": "2020-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m209",
+   "content": "Bruno Tavira plays as a winger for Clube Desportivo Porto Norte.",
+   "kind": "fact",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.2,
+   "valid_from": "2024-08-01",
+   "entities": [
+    {
+     "name": "Bruno Tavira",
+     "type": "person",
+     "aliases": [
+      "Bruno"
+     ],
+     "description": "winger"
+    },
+    {
+     "name": "Clube Desportivo Porto Norte",
+     "type": "organization",
+     "aliases": [
+      "CD Porto Norte"
+     ],
+     "description": "football club in Porto"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Bruno Tavira",
+     "predicate": "plays winger for",
+     "target": "Clube Desportivo Porto Norte",
+     "fact": "Bruno Tavira plays winger for Clube Desportivo Porto Norte.",
+     "exclusive": false,
+     "valid_from": "2024-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m210",
+   "content": "Estádio do Bom Pastor is the stadium of Clube Desportivo Porto Norte.",
+   "kind": "fact",
+   "tags": [
+    "football"
+   ],
+   "importance": 0.2,
+   "valid_from": "2024-08-01",
+   "entities": [
+    {
+     "name": "Estádio do Bom Pastor",
+     "type": "place",
+     "aliases": [
+      "the stadium"
+     ],
+     "description": "football stadium"
+    },
+    {
+     "name": "Clube Desportivo Porto Norte",
+     "type": "organization",
+     "aliases": [
+      "CD Porto Norte"
+     ],
+     "description": "football club in Porto"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Estádio do Bom Pastor",
+     "predicate": "is the stadium of",
+     "target": "Clube Desportivo Porto Norte",
+     "fact": "Estádio do Bom Pastor is the stadium of Clube Desportivo Porto Norte.",
+     "exclusive": true,
+     "valid_from": "2024-08-01"
+    }
+   ]
+  },
+  {
+   "key": "m211",
+   "content": "Sofia Quintela is in Rita Almeida's book club.",
+   "kind": "note",
+   "tags": [
+    "book-club"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-10-01",
+   "entities": [
+    {
+     "name": "Sofia Quintela",
+     "type": "person",
+     "aliases": [
+      "Sofia"
+     ],
+     "description": "user"
+    },
+    {
+     "name": "Rita Almeida",
+     "type": "person",
+     "aliases": [
+      "Rita"
+     ],
+     "description": "reading club host"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sofia Quintela",
+     "predicate": "is in the book club of",
+     "target": "Rita Almeida",
+     "fact": "Sofia Quintela is in the book club of Rita Almeida.",
+     "exclusive": false,
+     "valid_from": "2025-10-01"
+    }
+   ]
+  },
+  {
+   "key": "m212",
+   "content": "The Mar Alto reading club meets on the first Tuesday of every month.",
+   "kind": "fact",
+   "tags": [],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m213",
+   "content": "Telma Varela advises Gustavo Pinheiro on his grant applications.",
+   "kind": "note",
+   "tags": [
+    "career"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-10-01",
+   "entities": [
+    {
+     "name": "Telma Varela",
+     "type": "person",
+     "aliases": [
+      "Telma"
+     ],
+     "description": "park director"
+    },
+    {
+     "name": "Gustavo Pinheiro",
+     "type": "person",
+     "aliases": [
+      "Gustavo"
+     ],
+     "description": "bioinformatics lead"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Telma Varela",
+     "predicate": "advises",
+     "target": "Gustavo Pinheiro",
+     "fact": "Telma Varela advises Gustavo Pinheiro.",
+     "exclusive": false,
+     "valid_from": "2025-10-01"
+    }
+   ]
+  },
+  {
+   "key": "m214",
+   "content": "Vítor Leão teaches violin to Tomas Carvalho on Thursdays.",
+   "kind": "note",
+   "tags": [
+    "music",
+    "family"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-09-01",
+   "entities": [
+    {
+     "name": "Vítor Leão",
+     "type": "person",
+     "aliases": [
+      "Vítor"
+     ],
+     "description": "violinist"
+    },
+    {
+     "name": "Tomas Carvalho",
+     "type": "person",
+     "aliases": [
+      "Tomas"
+     ],
+     "description": "nine-year-old footballer"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Vítor Leão",
+     "predicate": "teaches violin to",
+     "target": "Tomas Carvalho",
+     "fact": "Vítor Leão teaches violin to Tomas Carvalho.",
+     "exclusive": false,
+     "valid_from": "2025-09-01"
+    }
+   ]
+  },
+  {
+   "key": "m215",
+   "content": "The Oeiras council meets in a converted cannery.",
+   "kind": "fact",
+   "tags": [],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m216",
+   "content": "Bruno Tavares sits on the board of Tidewater.",
+   "kind": "note",
+   "tags": [
+    "side-project"
+   ],
+   "importance": 0.2,
+   "valid_from": "2025-05-01",
+   "entities": [
+    {
+     "name": "Bruno Tavares",
+     "type": "person",
+     "aliases": [
+      "Bruno"
+     ],
+     "description": "lawyer"
+    },
+    {
+     "name": "Tidewater",
+     "type": "project",
+     "aliases": [
+      "the app"
+     ],
+     "description": "tide-forecast app"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Bruno Tavares",
+     "predicate": "sits on the board of",
+     "target": "Tidewater",
+     "fact": "Bruno Tavares sits on the board of Tidewater.",
+     "exclusive": false,
+     "valid_from": "2025-05-01"
+    }
+   ]
+  },
+  {
+   "key": "m217",
+   "content": "Hélio Campos is Miguel Antunes's neighbour.",
+   "kind": "note",
+   "tags": [
+    "home"
+   ],
+   "importance": 0.2,
+   "valid_from": "2024-06-01",
+   "entities": [
+    {
+     "name": "Hélio Campos",
+     "type": "person",
+     "aliases": [
+      "Hélio"
+     ],
+     "description": "founder"
+    },
+    {
+     "name": "Miguel Antunes",
+     "type": "person",
+     "aliases": [
+      "Miguel"
+     ],
+     "description": "electrician, neighbour"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Hélio Campos",
+     "predicate": "is the neighbour of",
+     "target": "Miguel Antunes",
+     "fact": "Hélio Campos is the neighbour of Miguel Antunes.",
+     "exclusive": false,
+     "valid_from": "2024-06-01"
+    }
+   ]
+  },
+  {
+   "key": "m218",
+   "content": "Miguel Antunes grills sardines every Sunday in the courtyard.",
+   "kind": "fact",
+   "tags": [],
+   "importance": 0.2,
+   "valid_from": "2025-08-01",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "key": "m219",
+   "content": "Filipa Sousa plays in the same band as Vítor Leão.",
+   "kind": "note",
+   "tags": [
+    "music"
+   ],
+   "importance": 0.2,
+   "valid_from": "2022-01-01",
+   "entities": [
+    {
+     "name": "Filipa Sousa",
+     "type": "person",
+     "aliases": [
+      "Filipa"
+     ],
+     "description": "airport worker"
+    },
+    {
+     "name": "Vítor Leão",
+     "type": "person",
+     "aliases": [
+      "Vítor"
+     ],
+     "description": "violinist"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Filipa Sousa",
+     "predicate": "plays in the same band as",
+     "target": "Vítor Leão",
+     "fact": "Filipa Sousa plays in the same band as Vítor Leão.",
+     "exclusive": false,
+     "valid_from": "2022-01-01"
+    }
+   ]
+  },
+  {
+   "key": "m220",
+   "content": "Rita Alves is Rita Almeida's cousin.",
+   "kind": "fact",
+   "tags": [
+    "family"
+   ],
+   "importance": 0.2,
+   "valid_from": "2024-03-01",
+   "entities": [
+    {
+     "name": "Rita Alves",
+     "type": "person",
+     "aliases": [
+      "Rita"
+     ],
+     "description": "dietician"
+    },
+    {
+     "name": "Rita Almeida",
+     "type": "person",
+     "aliases": [
+      "Rita"
+     ],
+     "description": "reading club host"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rita Alves",
+     "predicate": "is the cousin of",
+     "target": "Rita Almeida",
+     "fact": "Rita Alves is the cousin of Rita Almeida.",
+     "exclusive": false,
+     "valid_from": "2024-03-01"
+    }
+   ]
+  }
+ ],
+ "queries": [
+  {
+   "q": "Which city did Rui's mentor grow up in?",
+   "category": "two-hop",
+   "expect": [
+    "m003",
+    "m004"
+   ],
+   "answers": [
+    "Braga"
+   ],
+   "k": 5,
+   "note": "chain: Rui -mentored by-> Marta -grew up in-> Braga"
+  },
+  {
+   "q": "Where did the person who coaches Rui's son study?",
+   "category": "two-hop",
+   "expect": [
+    "m005",
+    "m006"
+   ],
+   "answers": [
+    "University of Porto"
+   ],
+   "k": 5,
+   "note": "chain: Rui's son -coached by-> Hugo -studied at-> Porto"
+  },
+  {
+   "q": "Which hospital does Sofia's sister work at?",
+   "category": "two-hop",
+   "expect": [
+    "m013",
+    "m014"
+   ],
+   "answers": [
+    "Hospital de Faro"
+   ],
+   "k": 5,
+   "note": "chain: Sofia -sister-> Beatriz -works at-> Hospital de Faro"
+  },
+  {
+   "q": "What is the home ground of the club where Rui's son plays?",
+   "category": "two-hop",
+   "expect": [
+    "m005",
+    "m022"
+   ],
+   "answers": [
+    "Campo da Graça"
+   ],
+   "k": 5,
+   "note": "chain: Rui's son -plays for-> Graça FC -home at-> Campo da Graça"
+  },
+  {
+   "q": "Which university did the Tidewater founder attend?",
+   "category": "two-hop",
+   "expect": [
+    "m017",
+    "m018"
+   ],
+   "answers": [
+    "Instituto Superior Técnico"
+   ],
+   "k": 5,
+   "note": "chain: Tidewater -founded by-> Inês -studied at-> IST"
+  },
+  {
+   "q": "What language is the notebook tool Samuel keeps up written in?",
+   "category": "two-hop",
+   "expect": [
+    "m019",
+    "m020"
+   ],
+   "answers": [
+    "Rust"
+   ],
+   "k": 5,
+   "note": "chain: Samuel -maintains-> Foli -written in-> Rust"
+  },
+  {
+   "q": "Where did the CEO of Mirante Bio study?",
+   "category": "two-hop",
+   "expect": [
+    "m001",
+    "m021"
+   ],
+   "answers": [
+    "University of Lisbon"
+   ],
+   "k": 5,
+   "note": "chain: Mirante -founded by-> Luis -studied at-> Univ. of Lisbon"
+  },
+  {
+   "q": "What is the allergy of whoever used to lead Mirante's assay team?",
+   "category": "two-hop",
+   "expect": [
+    "m009",
+    "m010"
+   ],
+   "answers": [
+    "penicillin"
+   ],
+   "k": 5,
+   "note": "chain: assay team -led by-> Clara -allergic to-> penicillin"
+  },
+  {
+   "q": "Where did the architect on Sofia's renovation study?",
+   "category": "two-hop",
+   "expect": [
+    "m011",
+    "m012"
+   ],
+   "answers": [
+    "Faculdade de Arquitetura da Universidade de Lisboa"
+   ],
+   "k": 5,
+   "note": "chain: Sofia house -architect-> Diogo -studied at-> FAUL"
+  },
+  {
+   "q": "Which town did Sofia's father, the retired postal worker, grow up in?",
+   "category": "two-hop",
+   "expect": [
+    "m015",
+    "m016"
+   ],
+   "answers": [
+    "Covilhã"
+   ],
+   "k": 5,
+   "note": "chain: Sofia -father-> Carlos -grew up in-> Covilhã"
+  },
+  {
+   "q": "Where was the founder of Rui's employer raised?",
+   "category": "three-hop",
+   "expect": [
+    "m007",
+    "m001",
+    "m008"
+   ],
+   "answers": [
+    "Évora"
+   ],
+   "k": 5,
+   "note": "chain: Rui -works at-> Mirante -founded by-> Luis -grew up in-> Évora"
+  },
+  {
+   "q": "Which region is the hometown of the man who started Mirante Bio located in?",
+   "category": "three-hop",
+   "expect": [
+    "m001",
+    "m008",
+    "m030"
+   ],
+   "answers": [
+    "Alentejo"
+   ],
+   "k": 5,
+   "note": "chain: Mirante -founded by-> Luis -grew up in-> Évora -capital of-> Alentejo"
+  },
+  {
+   "q": "In what year was the university that Rui's mentor attended founded?",
+   "category": "three-hop",
+   "expect": [
+    "m003",
+    "m004",
+    "m023"
+   ],
+   "answers": [
+    "1290"
+   ],
+   "k": 5,
+   "note": "chain: Rui -mentored by-> Marta -studied at-> Coimbra -founded-> 1290"
+  },
+  {
+   "q": "Which city is the university attended by the coach of Rui's son located in?",
+   "category": "three-hop",
+   "expect": [
+    "m005",
+    "m006",
+    "m025"
+   ],
+   "answers": [
+    "Porto"
+   ],
+   "k": 5,
+   "note": "chain: Rui's son -coached by-> Hugo -studied at-> Univ. of Porto -based in-> Porto"
+  },
+  {
+   "q": "Where is the campus of the school the Tidewater founder went to?",
+   "category": "three-hop",
+   "expect": [
+    "m017",
+    "m018",
+    "m027"
+   ],
+   "answers": [
+    "Alameda"
+   ],
+   "k": 5,
+   "note": "chain: Tidewater -founded by-> Inês -studied at-> IST -campus in-> Alameda"
+  },
+  {
+   "q": "Which campus did the person who maintains Foli graduate from?",
+   "category": "three-hop",
+   "expect": [
+    "m019",
+    "m028",
+    "m029"
+   ],
+   "answers": [
+    "Gualtar"
+   ],
+   "k": 5,
+   "note": "chain: Foli -maintained by-> Samuel -studied at-> Minho -campus at-> Gualtar"
+  },
+  {
+   "q": "What drug class does the allergy of Mirante's former assay lead fall under?",
+   "category": "three-hop",
+   "expect": [
+    "m009",
+    "m010",
+    "m031"
+   ],
+   "answers": [
+    "beta-lactam"
+   ],
+   "k": 5,
+   "note": "chain: assay lead Clara -allergic to-> penicillin -class-> beta-lactam"
+  },
+  {
+   "q": "Which campus did the school of the architect on Sofia's renovation move its building to?",
+   "category": "three-hop",
+   "expect": [
+    "m011",
+    "m012",
+    "m026"
+   ],
+   "answers": [
+    "Alcântara"
+   ],
+   "k": 5,
+   "note": "chain: Sofia house -architect Diogo-> studied at FAUL -moved to-> Alcântara"
+  },
+  {
+   "q": "Who currently manages Rui, and which city did that person grow up in?",
+   "category": "updated-chain",
+   "expect": [
+    "m033",
+    "m034"
+   ],
+   "answers": [
+    "Setúbal"
+   ],
+   "k": 5,
+   "note": "chain: Rui -reports to (current)-> Joana -grew up in-> Setúbal; old manager Pedro replaced"
+  },
+  {
+   "q": "Which city did the contractor who took over Sofia's renovation learn his trade in?",
+   "category": "updated-chain",
+   "expect": [
+    "m036",
+    "m037"
+   ],
+   "answers": [
+    "Aveiro"
+   ],
+   "k": 5,
+   "note": "chain: Sofia house -contractor (current)-> Nuno -learned under Jorge in-> Aveiro; Diogo replaced"
+  },
+  {
+   "q": "Which country is the city Sofia currently lives in located in?",
+   "category": "updated-chain",
+   "expect": [
+    "m039",
+    "m040"
+   ],
+   "answers": [
+    "Portugal"
+   ],
+   "k": 5,
+   "note": "chain: Sofia -lives in (current)-> Lisbon -capital of-> Portugal; Porto replaced"
+  },
+  {
+   "q": "Which university did the current lead of Mirante's assay team attend?",
+   "category": "updated-chain",
+   "expect": [
+    "m042",
+    "m043"
+   ],
+   "answers": [
+    "University of Beira Interior"
+   ],
+   "k": 5,
+   "note": "chain: assay team -led by (current)-> Beatriz Nunes -studied at-> UBI; Clara replaced"
+  },
+  {
+   "q": "Who was the Marta who mentored Rui during his PhD, and which university did she attend?",
+   "category": "distractor",
+   "expect": [
+    "m003",
+    "m004"
+   ],
+   "answers": [
+    "University of Coimbra"
+   ],
+   "k": 5,
+   "note": "disambiguate Marta Lobo (mentor) from Marta Lobato (Porto lab)"
+  },
+  {
+   "q": "Which university did Marta Lobato, the one running a lab in Porto, attend?",
+   "category": "distractor",
+   "expect": [
+    "m044",
+    "m045"
+   ],
+   "answers": [
+    "University of Aveiro"
+   ],
+   "k": 5,
+   "note": "lookalike chain ends at Aveiro, not Coimbra"
+  },
+  {
+   "q": "Which city did the dentist named Joana grow up in?",
+   "category": "distractor",
+   "expect": [
+    "m046",
+    "m047"
+   ],
+   "answers": [
+    "Guimarães"
+   ],
+   "k": 5,
+   "note": "disambiguate dentist Joana Pinto from Joana Pires"
+  },
+  {
+   "q": "Which town did the head of regulatory affairs at Mirante grow up in?",
+   "category": "two-hop",
+   "expect": [
+    "m057",
+    "m058"
+   ],
+   "answers": [
+    "Leiria"
+   ],
+   "k": 5,
+   "note": "chain: Mirante RA head -> Teresa -grew up in-> Leiria"
+  },
+  {
+   "q": "Which university did the person Gonçalo reports to attend?",
+   "category": "two-hop",
+   "expect": [
+    "m059",
+    "m060"
+   ],
+   "answers": [
+    "Universidade Nova de Lisboa"
+   ],
+   "k": 5,
+   "note": "chain: Gonçalo -reports to-> Clara -studied at-> UNL"
+  },
+  {
+   "q": "Where was the designer of Tidewater's icons born?",
+   "category": "two-hop",
+   "expect": [
+    "m061",
+    "m062"
+   ],
+   "answers": [
+    "Sintra"
+   ],
+   "k": 5,
+   "note": "chain: Tidewater -designed by-> Ivo -born in-> Sintra"
+  },
+  {
+   "q": "What year did the bakery of Sofia's oldest friend open?",
+   "category": "two-hop",
+   "expect": [
+    "m063",
+    "m064"
+   ],
+   "answers": [
+    "2018"
+   ],
+   "k": 5,
+   "note": "chain: Sofia -oldest friend-> Vasco -runs-> Padaria do Largo -opened-> 2018"
+  },
+  {
+   "q": "Who is the sibling of the club secretary of Clube Graça FC?",
+   "category": "two-hop",
+   "expect": [
+    "m065",
+    "m066"
+   ],
+   "answers": [
+    "Hugo Sá"
+   ],
+   "k": 5,
+   "note": "chain: Graça FC -secretary-> Lúcia -sister of-> Hugo Sá"
+  },
+  {
+   "q": "Which committee does Gonçalo's mother chair?",
+   "category": "two-hop",
+   "expect": [
+    "m068",
+    "m067"
+   ],
+   "answers": [
+    "ethics committee"
+   ],
+   "k": 5,
+   "note": "chain: Gonçalo -mother-> Paula -chaired-> ethics committee"
+  },
+  {
+   "q": "Where are the offices of the company Teresa joined in 2024?",
+   "category": "two-hop",
+   "expect": [
+    "m069",
+    "m070"
+   ],
+   "answers": [
+    "Rua do Instituto Bacteriológico"
+   ],
+   "k": 5,
+   "note": "chain: Teresa -joined-> Mirante -HQ-> Rua do Instituto Bacteriológico"
+  },
+  {
+   "q": "What building houses the incubator that Rui's former manager runs?",
+   "category": "two-hop",
+   "expect": [
+    "m071",
+    "m072"
+   ],
+   "answers": [
+    "Alfândega"
+   ],
+   "k": 5,
+   "note": "chain: Rui's former manager -runs-> Porto Bio Incubator -housed in-> Alfândega"
+  },
+  {
+   "q": "Which city is the university Gonçalo studied at located in?",
+   "category": "two-hop",
+   "expect": [
+    "m073",
+    "m074"
+   ],
+   "answers": [
+    "Funchal"
+   ],
+   "k": 5,
+   "note": "chain: Gonçalo -studied at-> Madeira -in-> Funchal"
+  },
+  {
+   "q": "Where did the civil engineer married to Tidewater's designer study?",
+   "category": "two-hop",
+   "expect": [
+    "m076",
+    "m077"
+   ],
+   "answers": [
+    "Universidade de Coimbra"
+   ],
+   "k": 5,
+   "note": "chain: Ivo's partner Afonso -studied at-> Coimbra"
+  },
+  {
+   "q": "Which neighbourhood is the university of the person Gonçalo reports to based in?",
+   "category": "three-hop",
+   "expect": [
+    "m059",
+    "m060",
+    "m078"
+   ],
+   "answers": [
+    "Campolide"
+   ],
+   "k": 5,
+   "note": "chain: Gonçalo -> Clara -> UNL -> Campolide"
+  },
+  {
+   "q": "Which district is the birthplace of the designer behind Tidewater's icons located in?",
+   "category": "three-hop",
+   "expect": [
+    "m061",
+    "m062",
+    "m079"
+   ],
+   "answers": [
+    "Lisbon district"
+   ],
+   "k": 5,
+   "note": "chain: Tidewater -> Ivo -> Sintra -> Lisbon district"
+  },
+  {
+   "q": "Which region is the hometown of Mirante's regulatory affairs lead in?",
+   "category": "three-hop",
+   "expect": [
+    "m057",
+    "m058",
+    "m080"
+   ],
+   "answers": [
+    "Centro"
+   ],
+   "k": 5,
+   "note": "chain: Mirante RA -> Teresa -> Leiria -> Centro"
+  },
+  {
+   "q": "In which city is the club whose secretary is the sister of Hugo Sá based?",
+   "category": "three-hop",
+   "expect": [
+    "m066",
+    "m065",
+    "m081"
+   ],
+   "answers": [
+    "Lisbon"
+   ],
+   "k": 5,
+   "note": "chain: Hugo -sister Lúcia-> secretary of Graça FC -> Lisbon"
+  },
+  {
+   "q": "In which part of town is the bakery of Sofia's oldest friend, opened in 2018, located?",
+   "category": "three-hop",
+   "expect": [
+    "m063",
+    "m064",
+    "m082"
+   ],
+   "answers": [
+    "central Lisbon"
+   ],
+   "k": 5,
+   "note": "chain: Sofia -> Vasco -> Padaria do Largo (Alfama) -> central Lisbon"
+  },
+  {
+   "q": "Which city did the civil engineer married to Tidewater's designer study in?",
+   "category": "three-hop",
+   "expect": [
+    "m076",
+    "m077",
+    "m083"
+   ],
+   "answers": [
+    "Coimbra"
+   ],
+   "k": 5,
+   "note": "chain: Ivo -> Afonso -> Coimbra university -> Coimbra"
+  },
+  {
+   "q": "Which parish is the headquarters of the company Teresa joined in 2024 in?",
+   "category": "three-hop",
+   "expect": [
+    "m069",
+    "m070",
+    "m084"
+   ],
+   "answers": [
+    "Campo de Ourique"
+   ],
+   "k": 5,
+   "note": "chain: Teresa -> Mirante -> HQ -> Campo de Ourique"
+  },
+  {
+   "q": "What metro line serves the neighbourhood where Gonçalo now lives?",
+   "category": "updated-chain",
+   "expect": [
+    "m086",
+    "m087"
+   ],
+   "answers": [
+    "blue metro line"
+   ],
+   "k": 5,
+   "note": "chain: Gonçalo -lives in (current)-> Benfica -served by-> blue metro line; Almada replaced"
+  },
+  {
+   "q": "What street is the studio where Tidewater's designer now works on?",
+   "category": "updated-chain",
+   "expect": [
+    "m089",
+    "m090"
+   ],
+   "answers": [
+    "Cedofeita"
+   ],
+   "k": 5,
+   "note": "chain: Ivo -works from (current)-> Porto -studio on-> Cedofeita; Cascais replaced"
+  },
+  {
+   "q": "Where does Rafaela Gomes work now, and what building is it housed in?",
+   "category": "updated-chain",
+   "expect": [
+    "m091",
+    "m072"
+   ],
+   "answers": [
+    "Alfândega"
+   ],
+   "k": 5,
+   "note": "chain: Rafaela -works at (current)-> Porto Bio Incubator -housed in-> Alfândega; Mirante replaced"
+  },
+  {
+   "q": "Where did the person who now chairs the ethics committee at the University of Lisbon study?",
+   "category": "updated-chain",
+   "expect": [
+    "m094",
+    "m077"
+   ],
+   "answers": [
+    "Universidade de Coimbra"
+   ],
+   "k": 5,
+   "note": "chain: ethics committee -chairs (current)-> Afonso -studied at-> Coimbra; Paula replaced"
+  },
+  {
+   "q": "Where did Teresa, the pharmacist in Viseu, grow up?",
+   "category": "distractor",
+   "expect": [
+    "m095",
+    "m096"
+   ],
+   "answers": [
+    "Viseu"
+   ],
+   "k": 5,
+   "note": "lookalike Teresa Mota; Mirante Teresa Moura grew up in Leiria"
+  },
+  {
+   "q": "Which school did the Clara who designed the Graça kit attend?",
+   "category": "distractor",
+   "expect": [
+    "m097",
+    "m098"
+   ],
+   "answers": [
+    "Faculdade de Belas-Artes"
+   ],
+   "k": 5,
+   "note": "lookalike Clara Estevão; Clara Esteves is the lab lead"
+  },
+  {
+   "q": "Which school did the Vasco who designed the Porto incubator study at?",
+   "category": "distractor",
+   "expect": [
+    "m099",
+    "m100"
+   ],
+   "answers": [
+    "Escola Superior Gallaecia"
+   ],
+   "k": 5,
+   "note": "lookalike Vasco Lobo; Vasco Lima is the baker"
+  },
+  {
+   "q": "Which hospital centre does the cardiologist Pedro Vieira Lopes work for?",
+   "category": "distractor",
+   "expect": [
+    "m101",
+    "m102"
+   ],
+   "answers": [
+    "CHULN"
+   ],
+   "k": 5,
+   "note": "lookalike Pedro Vieira Lopes; Pedro Vieira is the former manager"
+  },
+  {
+   "q": "Where was the venture firm that backed Tidewater founded?",
+   "category": "two-hop",
+   "expect": [
+    "m111",
+    "m112"
+   ],
+   "answers": [
+    "Oeiras"
+   ],
+   "k": 5,
+   "note": "chain: Tidewater -invested in by-> Atlântico -founded in-> Oeiras"
+  },
+  {
+   "q": "Which university did the head of Atlântico Ventures attend?",
+   "category": "two-hop",
+   "expect": [
+    "m113",
+    "m114"
+   ],
+   "answers": [
+    "Universidade Católica Portuguesa"
+   ],
+   "k": 5,
+   "note": "chain: Atlântico -led by-> Helder -studied at-> UCP"
+  },
+  {
+   "q": "What town is the sister of the person who used to run people operations at Mirante Bio based in?",
+   "category": "two-hop",
+   "expect": [
+    "m115",
+    "m116"
+   ],
+   "answers": [
+    "Setúbal"
+   ],
+   "k": 5,
+   "note": "chain: Mirante people ops -Eva-> sister Sara -midwife in-> Setúbal"
+  },
+  {
+   "q": "Where did the main plugin developer of Foli learn to code?",
+   "category": "two-hop",
+   "expect": [
+    "m117",
+    "m118"
+   ],
+   "answers": [
+    "Hackerspace Aveiro"
+   ],
+   "k": 5,
+   "note": "chain: Foli -contributor-> Tiago -learned to code at-> Hackerspace Aveiro"
+  },
+  {
+   "q": "Where does the CFO of Mirante Bio keep his boat?",
+   "category": "two-hop",
+   "expect": [
+    "m119",
+    "m120"
+   ],
+   "answers": [
+    "Cascais marina"
+   ],
+   "k": 5,
+   "note": "chain: Mirante CFO -> Ricardo -keeps boat at-> Cascais marina"
+  },
+  {
+   "q": "What street is the bakery owned by the sponsor of Clube Graça's shirts on?",
+   "category": "two-hop",
+   "expect": [
+    "m121",
+    "m122"
+   ],
+   "answers": [
+    "Rua do Salitre"
+   ],
+   "k": 5,
+   "note": "chain: Graça shirts -sponsor-> Simão -owns-> Pastelaria Pais -on-> Rua do Salitre"
+  },
+  {
+   "q": "Where did the allergist treating Sofia's father train?",
+   "category": "two-hop",
+   "expect": [
+    "m123",
+    "m124"
+   ],
+   "answers": [
+    "Universidade da Beira Interior"
+   ],
+   "k": 5,
+   "note": "chain: Sofia's father -treated by-> Marisa -trained at-> UBI"
+  },
+  {
+   "q": "Where is the workplace of the protein lab head at Iberia Labs located?",
+   "category": "two-hop",
+   "expect": [
+    "m125",
+    "m126"
+   ],
+   "answers": [
+    "Braga"
+   ],
+   "k": 5,
+   "note": "chain: Iberia protein lab -headed by-> Marcos -in-> Braga"
+  },
+  {
+   "q": "In which town does the father of Rui's son's teammate run a shop?",
+   "category": "two-hop",
+   "expect": [
+    "m127",
+    "m128"
+   ],
+   "answers": [
+    "Loures"
+   ],
+   "k": 5,
+   "note": "chain: Rui's son -teammate-> Duarte -father-> Mário runs shop in Loures"
+  },
+  {
+   "q": "Which station does the presenter who interviewed Mirante's CEO host her show on?",
+   "category": "two-hop",
+   "expect": [
+    "m129",
+    "m130"
+   ],
+   "answers": [
+    "Radio Lisboa Norte"
+   ],
+   "k": 5,
+   "note": "chain: Mirante CEO -interviewed by-> Ana Frade -hosts on-> Radio Lisboa Norte"
+  },
+  {
+   "q": "Which metro area is the town where the firm backing Tidewater was founded in?",
+   "category": "three-hop",
+   "expect": [
+    "m111",
+    "m112",
+    "m131"
+   ],
+   "answers": [
+    "Lisbon metropolitan area"
+   ],
+   "k": 5,
+   "note": "chain: Tidewater -> Atlântico -> Oeiras -> Lisbon metropolitan area"
+  },
+  {
+   "q": "Which campus did the head of Atlântico Ventures study on?",
+   "category": "three-hop",
+   "expect": [
+    "m113",
+    "m114",
+    "m132"
+   ],
+   "answers": [
+    "Palma de Cima"
+   ],
+   "k": 5,
+   "note": "chain: Atlântico -> Helder -> UCP -> Palma de Cima"
+  },
+  {
+   "q": "On which bank of the Tagus is the town where Mirante's former people-ops lead's sister works?",
+   "category": "three-hop",
+   "expect": [
+    "m115",
+    "m116",
+    "m133"
+   ],
+   "answers": [
+    "south bank of the Tagus"
+   ],
+   "k": 5,
+   "note": "chain: Mirante people ops -> Eva -> Sara -> Setúbal -> south bank"
+  },
+  {
+   "q": "Which district is the hackerspace where Foli's plugin lead learned to code in?",
+   "category": "three-hop",
+   "expect": [
+    "m117",
+    "m118",
+    "m134"
+   ],
+   "answers": [
+    "Aveiro district"
+   ],
+   "k": 5,
+   "note": "chain: Foli -> Tiago -> Hackerspace Aveiro -> Aveiro district"
+  },
+  {
+   "q": "Which area is the marina where the CFO keeps his boat located in?",
+   "category": "three-hop",
+   "expect": [
+    "m119",
+    "m120",
+    "m135"
+   ],
+   "answers": [
+    "Greater Lisbon area"
+   ],
+   "k": 5,
+   "note": "chain: Mirante CFO -> Ricardo -> Cascais marina -> Greater Lisbon area"
+  },
+  {
+   "q": "Which parish is the street of the pastelaria owned by Clube Graça's shirt sponsor in?",
+   "category": "three-hop",
+   "expect": [
+    "m121",
+    "m122",
+    "m136"
+   ],
+   "answers": [
+    "Avenidas Novas"
+   ],
+   "k": 5,
+   "note": "chain: Graça sponsor -> Simão -> Rua do Salitre -> Avenidas Novas"
+  },
+  {
+   "q": "In which town is the university where Sofia's father's allergist trained located?",
+   "category": "three-hop",
+   "expect": [
+    "m123",
+    "m124",
+    "m137"
+   ],
+   "answers": [
+    "Covilhã"
+   ],
+   "k": 5,
+   "note": "chain: Sofia's father -> Marisa -> UBI -> Covilhã"
+  },
+  {
+   "q": "Which district holds the headquarters of the company where the protein lab head works?",
+   "category": "three-hop",
+   "expect": [
+    "m125",
+    "m126",
+    "m138"
+   ],
+   "answers": [
+    "Braga district"
+   ],
+   "k": 5,
+   "note": "chain: Iberia protein lab -> Marcos -> Braga -> Braga district"
+  },
+  {
+   "q": "Which city is the office of the people-operations lead at her current employer in?",
+   "category": "updated-chain",
+   "expect": [
+    "m140",
+    "m141"
+   ],
+   "answers": [
+    "Braga"
+   ],
+   "k": 5,
+   "note": "chain: Eva -runs people ops (current)-> Iberia -HQ-> Braga; Mirante replaced"
+  },
+  {
+   "q": "Which school did the current leader of the firm backing Tidewater study at?",
+   "category": "updated-chain",
+   "expect": [
+    "m143",
+    "m144"
+   ],
+   "answers": [
+    "Nova School of Business and Economics"
+   ],
+   "k": 5,
+   "note": "chain: Tidewater -> Atlântico -leads (current)-> Lara -studied at-> Nova SBE; Helder replaced"
+  },
+  {
+   "q": "Which town is the allergy clinic that Sofia's father's current allergist runs located in?",
+   "category": "updated-chain",
+   "expect": [
+    "m146",
+    "m147"
+   ],
+   "answers": [
+    "Matosinhos"
+   ],
+   "k": 5,
+   "note": "chain: Sofia's father -> Marisa -runs (current)-> Allergy Clinic Porto Norte -> Matosinhos; Covilhã clinic replaced"
+  },
+  {
+   "q": "Which region does the hospital where Noémia Brito is now chief pharmacist serve?",
+   "category": "updated-chain",
+   "expect": [
+    "m149",
+    "m150"
+   ],
+   "answers": [
+    "Baixo Alentejo"
+   ],
+   "k": 5,
+   "note": "chain: Noémia -chief pharmacist (current)-> Hospital de Beja -serves-> Baixo Alentejo; Tomar replaced"
+  },
+  {
+   "q": "Which university did the Ricardo who designed the clubhouse attend?",
+   "category": "distractor",
+   "expect": [
+    "m151",
+    "m152"
+   ],
+   "answers": [
+    "Universidade do Algarve"
+   ],
+   "k": 5,
+   "note": "lookalike Ricardo Faro; Ricardo Faria is the Mirante CFO"
+  },
+  {
+   "q": "Which city is the centrifuge supplier that Lúcia Brandão founded based in?",
+   "category": "distractor",
+   "expect": [
+    "m154",
+    "m153"
+   ],
+   "answers": [
+    "Porto"
+   ],
+   "k": 5,
+   "note": "lookalike lab supplier, not Iberia Labs (research company)"
+  },
+  {
+   "q": "What is the town known for where Simão Pinho's fishing co-op is based?",
+   "category": "distractor",
+   "expect": [
+    "m155",
+    "m156"
+   ],
+   "answers": [
+    "sardine festival"
+   ],
+   "k": 5,
+   "note": "lookalike Simão Pinho; Simão Pais is the shirt sponsor"
+  },
+  {
+   "q": "Where did the theatre director Marisa, who runs the youth company, study drama?",
+   "category": "distractor",
+   "expect": [
+    "m157",
+    "m158"
+   ],
+   "answers": [
+    "Escola Superior de Teatro e Cinema"
+   ],
+   "k": 5,
+   "note": "lookalike Marisa Tavira; Marisa Tavares is the allergist"
+  },
+  {
+   "q": "Which institute did the bioinformatics head at Iberia Labs train at?",
+   "category": "two-hop",
+   "expect": [
+    "m166",
+    "m167"
+   ],
+   "answers": [
+    "Instituto Gulbenkian de Ciência"
+   ],
+   "k": 5,
+   "note": "chain: Iberia bioinformatics -Gustavo-> trained at Gulbenkian"
+  },
+  {
+   "q": "Where was the clinical development head at Mirante Bio born?",
+   "category": "two-hop",
+   "expect": [
+    "m168",
+    "m169"
+   ],
+   "answers": [
+    "Lamego"
+   ],
+   "k": 5,
+   "note": "chain: Mirante clinical head -Carla-> born in Lamego"
+  },
+  {
+   "q": "When did the park run by Telma Varela open?",
+   "category": "two-hop",
+   "expect": [
+    "m170",
+    "m171"
+   ],
+   "answers": [
+    "2009"
+   ],
+   "k": 5,
+   "note": "chain: Telma -directs-> Lisbon Science Park -opened-> 2009"
+  },
+  {
+   "q": "Where did the physio who treated Clube Graça's players train?",
+   "category": "two-hop",
+   "expect": [
+    "m172",
+    "m173"
+   ],
+   "answers": [
+    "Escola Superior de Saúde de Lisboa"
+   ],
+   "k": 5,
+   "note": "chain: Graça FC physio Nádia -trained at-> ESSL"
+  },
+  {
+   "q": "Which firm does Tidewater's lawyer work at?",
+   "category": "two-hop",
+   "expect": [
+    "m174",
+    "m175"
+   ],
+   "answers": [
+    "Almeida & Leão"
+   ],
+   "k": 5,
+   "note": "chain: Tidewater -lawyer Bruno-> works at Almeida & Leão"
+  },
+  {
+   "q": "Where does the orchestra that Vítor Leão plays in perform?",
+   "category": "two-hop",
+   "expect": [
+    "m176",
+    "m177"
+   ],
+   "answers": [
+    "Coliseu de Lisboa"
+   ],
+   "k": 5,
+   "note": "chain: Vítor -plays in-> Orquestra do Tejo -performs at-> Coliseu"
+  },
+  {
+   "q": "Which university did the host of the Mar Alto reading club attend?",
+   "category": "two-hop",
+   "expect": [
+    "m178",
+    "m179"
+   ],
+   "answers": [
+    "Universidade Lusófona"
+   ],
+   "k": 5,
+   "note": "chain: Mar Alto club -hosted by Rita-> studied at Lusófona"
+  },
+  {
+   "q": "Which company employs the neighbour of Sofia who does the wiring?",
+   "category": "two-hop",
+   "expect": [
+    "m180",
+    "m181"
+   ],
+   "answers": [
+    "Eletricidade do Tejo"
+   ],
+   "k": 5,
+   "note": "chain: Sofia -neighbour Miguel-> works for Eletricidade do Tejo"
+  },
+  {
+   "q": "Which company operates the airport where Sofia's sister's best friend works?",
+   "category": "two-hop",
+   "expect": [
+    "m182",
+    "m183"
+   ],
+   "answers": [
+    "ANA"
+   ],
+   "k": 5,
+   "note": "chain: Beatriz -best friend Filipa-> works at Faro airport -operated by-> ANA"
+  },
+  {
+   "q": "Where is the workshop of the person who makes Clube Graça's kits?",
+   "category": "two-hop",
+   "expect": [
+    "m184",
+    "m185"
+   ],
+   "answers": [
+    "Barreiro"
+   ],
+   "k": 5,
+   "note": "chain: Graça kits -made by Rodrigo-> workshop in Barreiro"
+  },
+  {
+   "q": "Which town is the institute where Iberia Labs' bioinformatics head trained located in?",
+   "category": "three-hop",
+   "expect": [
+    "m166",
+    "m167",
+    "m186"
+   ],
+   "answers": [
+    "Oeiras"
+   ],
+   "k": 5,
+   "note": "chain: Iberia bioinformatics -> Gustavo -> Gulbenkian -> Oeiras"
+  },
+  {
+   "q": "Which wine region holds the town where Mirante's clinical head was born?",
+   "category": "three-hop",
+   "expect": [
+    "m168",
+    "m169",
+    "m187"
+   ],
+   "answers": [
+    "Douro"
+   ],
+   "k": 5,
+   "note": "chain: Mirante clinical head -> Carla -> Lamego -> Douro"
+  },
+  {
+   "q": "In which area is the site of the park run by Telma Varela located?",
+   "category": "three-hop",
+   "expect": [
+    "m170",
+    "m171",
+    "m188"
+   ],
+   "answers": [
+    "Parque das Nações"
+   ],
+   "k": 5,
+   "note": "chain: Telma -> Lisbon Science Park -> Tagus waterfront -> Parque das Nações"
+  },
+  {
+   "q": "Which district holds the data centre of Hélio's company, the one hosting Tidewater's backend?",
+   "category": "three-hop",
+   "expect": [
+    "m189",
+    "m190",
+    "m191"
+   ],
+   "answers": [
+    "Alcântara"
+   ],
+   "k": 5,
+   "note": "chain: Hélio -founded-> Nimbus -hosts-> Tidewater -> Alcântara data centre"
+  },
+  {
+   "q": "In which city was the firm founded where Tidewater's lawyer works?",
+   "category": "three-hop",
+   "expect": [
+    "m174",
+    "m175",
+    "m192"
+   ],
+   "answers": [
+    "Porto"
+   ],
+   "k": 5,
+   "note": "chain: Tidewater -lawyer Bruno-> Almeida & Leão -founded in-> Porto"
+  },
+  {
+   "q": "What street is the venue of the orchestra where Vítor Leão plays located on?",
+   "category": "three-hop",
+   "expect": [
+    "m176",
+    "m177",
+    "m193"
+   ],
+   "answers": [
+    "Rua das Portas de Santo Antão"
+   ],
+   "k": 5,
+   "note": "chain: Vítor -> Orquestra do Tejo -> Coliseu -> Rua das Portas de Santo Antão"
+  },
+  {
+   "q": "Which area is the university attended by the host of the Mar Alto reading club in?",
+   "category": "three-hop",
+   "expect": [
+    "m178",
+    "m179",
+    "m194"
+   ],
+   "answers": [
+    "Campo Grande area"
+   ],
+   "k": 5,
+   "note": "chain: Mar Alto host Rita -> Lusófona -> Campo Grande area"
+  },
+  {
+   "q": "Which science park is the bioinformatics group of Gustavo's current employer based in?",
+   "category": "updated-chain",
+   "expect": [
+    "m195",
+    "m196"
+   ],
+   "answers": [
+    "Lisbon Science Park"
+   ],
+   "k": 5,
+   "note": "chain: Gustavo -leads bioinformatics at (current)-> Mirante -based in-> Lisbon Science Park; Iberia replaced"
+  },
+  {
+   "q": "What landmark is next to the lab that Sónia Ferraz now manages?",
+   "category": "updated-chain",
+   "expect": [
+    "m198",
+    "m199"
+   ],
+   "answers": [
+    "Oeiras marina"
+   ],
+   "k": 5,
+   "note": "chain: Sónia -manages (current)-> Oeiras Biotech Hub -next to-> Oeiras marina; Porto incubator replaced"
+  },
+  {
+   "q": "Which town is the venue where the Mar Alto reading club's host now meets in?",
+   "category": "updated-chain",
+   "expect": [
+    "m201",
+    "m202"
+   ],
+   "answers": [
+    "Setúbal"
+   ],
+   "k": 5,
+   "note": "chain: Mar Alto host Rita -hosts at (current)-> Café Central -in-> Setúbal; Biblioteca da Graça replaced"
+  },
+  {
+   "q": "Which school did the dietician named Rita study at?",
+   "category": "distractor",
+   "expect": [
+    "m203",
+    "m204"
+   ],
+   "answers": [
+    "Escola Superior de Saúde do Porto"
+   ],
+   "k": 5,
+   "note": "lookalike Rita Alves (dietician); Rita Almeida runs the book club"
+  },
+  {
+   "q": "Which school did the jeweller who makes the club trophies study at?",
+   "category": "distractor",
+   "expect": [
+    "m205",
+    "m206"
+   ],
+   "answers": [
+    "Escola de Artes Decorativas"
+   ],
+   "k": 5,
+   "note": "lookalike Telma Varejão; Telma Varela directs the park"
+  },
+  {
+   "q": "What is the harbour known for where the fish seller Hélio works?",
+   "category": "distractor",
+   "expect": [
+    "m207",
+    "m208"
+   ],
+   "answers": [
+    "grilled sardines"
+   ],
+   "k": 5,
+   "note": "lookalike Hélio Campelo; Hélio Campos founded Nimbus Cloud"
+  },
+  {
+   "q": "What is the stadium of the club where the winger Bruno plays?",
+   "category": "distractor",
+   "expect": [
+    "m209",
+    "m210"
+   ],
+   "answers": [
+    "Estádio do Bom Pastor"
+   ],
+   "k": 5,
+   "note": "lookalike Bruno Tavira; Bruno Tavares is the lawyer"
+  }
+ ]
+}

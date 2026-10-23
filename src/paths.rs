@@ -14,7 +14,7 @@ use crate::db::Db;
 use crate::engine::{Engine, FactHit};
 use crate::text;
 use crate::Result;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -209,6 +209,9 @@ pub(crate) struct Step {
     pub fact: String,
     pub reverse: bool,
     pub matched: usize,
+    /// A text-only memory used as the hop (no relation behind it).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memory: Option<i64>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -346,6 +349,7 @@ pub(crate) fn search(db: &Db, query: &str, seeds: &[i64], vis: Visibility) -> Re
                     fact: edge.fact.clone(),
                     reverse: edge.reverse,
                     matched: edge.mask.count_ones() as usize,
+                    memory: None,
                 });
                 next.push(State {
                     entity: edge.other,
@@ -407,9 +411,13 @@ pub(crate) fn search(db: &Db, query: &str, seeds: &[i64], vis: Visibility) -> Re
 
 /// Facts recognised as relevant to the question: one KNN over relation fact
 /// vectors bounds the semantic beam below.
-const SEM_FACTS: usize = 100;
+pub(crate) const SEM_FACTS: usize = 100;
 /// Edges taken from one entity in the semantic beam.
 const SEM_EDGES: usize = 6;
+/// Score factor for a hop through a text-only memory.
+const PROSE_HOP: f64 = 0.8;
+/// Target of a hop through a memory that names no other entity.
+const NO_ENTITY: i64 = -1;
 
 /// Semantic twin of [`search`] for questions that paraphrase the stored
 /// predicates ("who guides Noor's career" vs `mentors`): hops may only use
@@ -421,22 +429,71 @@ pub(crate) fn search_semantic(
     db: &Db,
     query_vec: &[f32],
     seeds: &[i64],
+    anchors: &[i64],
+    nearest_memories: &[i64],
     vis: Visibility,
 ) -> Result<Vec<PathHit>> {
     if seeds.is_empty() {
         return Ok(Vec::new());
     }
-    let mut relevant: HashMap<i64, Vec<f32>> = HashMap::new();
-    let mut st = db.sql().prepare_cached(
-        "SELECT rowid, embedding FROM relations_vec WHERE embedding MATCH ?1 AND k=?2",
-    )?;
-    for row in st.query_map(
-        params![crate::db::vec_blob(query_vec), SEM_FACTS as i64],
-        |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Vec<u8>>(1)?)),
-    )? {
-        let (id, blob) = row?;
-        if let Some(vector) = crate::db::blob_to_vec(&blob) {
-            relevant.insert(id, vector);
+    // Facts the question recognises; their vectors are read lazily, only for
+    // the edges the beam reaches (a vec0 vector read costs ~0.3 ms).
+    let relevant: HashSet<i64> = db
+        .sql()
+        .prepare_cached("SELECT rowid FROM relations_vec WHERE embedding MATCH ?1 AND k=?2")?
+        .query_map(
+            params![crate::db::vec_blob(query_vec), SEM_FACTS as i64],
+            |r| r.get::<_, i64>(0),
+        )?
+        .collect::<rusqlite::Result<_>>()?;
+    let mut relation_vector_st = db
+        .sql()
+        .prepare_cached("SELECT embedding FROM relations_vec WHERE rowid=?1")?;
+    // Text-only memories are hops too (passage nodes): a memory that states
+    // "Atlântico Ventures was founded in Oeiras" in prose links the entities
+    // it mentions, scored by its own vector. Only the question's nearest
+    // memories qualify, indexed once by the entities they mention.
+    type Prose = (i64, String, Vec<i64>);
+    let mut prose: HashMap<i64, Vec<Prose>> = HashMap::new();
+    // Prose hops need an exact anchor to stand on: from fuzzy seeds alone
+    // they chain unrelated memories ("the boat she takes out on the river").
+    if !anchors.is_empty() {
+        // The recall vector channel's neighbours; vectors are read lazily
+        // (a vec0 vector read costs ~0.3 ms) for the memories a hop reaches.
+        let mut memory_st = db.sql().prepare_cached(
+            "SELECT content,valid_from,valid_to,expired_at FROM memories m WHERE id=?1
+               AND NOT EXISTS (SELECT 1 FROM relation_evidence e WHERE e.memory_id=m.id)",
+        )?;
+        let mut mentions_st = db
+            .sql()
+            .prepare_cached("SELECT DISTINCT entity_id FROM mentions WHERE memory_id=?1")?;
+        for &id in nearest_memories {
+            let Some((content, from, to, expired)) = memory_st
+                .query_row([id], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, i64>(1)?,
+                        r.get::<_, Option<i64>>(2)?,
+                        r.get::<_, Option<i64>>(3)?,
+                    ))
+                })
+                .optional()?
+            else {
+                continue;
+            };
+            if !vis.shows(from, to, expired) {
+                continue;
+            }
+            let mentioned: Vec<i64> = mentions_st
+                .query_map([id], |r| r.get(0))?
+                .collect::<rusqlite::Result<_>>()?;
+            for &entity in &mentioned {
+                let others = mentioned.iter().copied().filter(|x| *x != entity).collect();
+                prose
+                    .entry(entity)
+                    .or_default()
+                    .push((id, content.clone(), others));
+            }
         }
     }
     let mut edges_st = db.sql().prepare_cached(
@@ -444,6 +501,10 @@ pub(crate) fn search_semantic(
          FROM relations r JOIN predicates p ON p.id=r.predicate_id
          WHERE (r.src=?1 OR r.dst=?1) AND r.polarity=1",
     )?;
+    let mut vector_st = db
+        .sql()
+        .prepare_cached("SELECT embedding FROM memories_vec WHERE rowid=?1")?;
+    let mut memory_vectors: HashMap<i64, Vec<f32>> = HashMap::new();
     let mut cache: HashMap<i64, Vec<(Step, i64, Vec<f32>)>> = HashMap::new();
     let mut edges = |entity: i64| -> Result<Vec<(Step, i64, Vec<f32>)>> {
         if let Some(hit) = cache.get(&entity) {
@@ -463,12 +524,16 @@ pub(crate) fn search_semantic(
             ))
         })? {
             let (relation_id, src, dst, predicate, fact, from, to, expired) = row?;
-            let Some(vector) = relevant.get(&relation_id) else {
-                continue;
-            };
-            if src == dst || !vis.shows(from, to, expired) {
+            if !relevant.contains(&relation_id) || src == dst || !vis.shows(from, to, expired) {
                 continue;
             }
+            let Some(vector) = relation_vector_st
+                .query_row([relation_id], |r| r.get::<_, Vec<u8>>(0))
+                .optional()?
+                .and_then(|blob| crate::db::blob_to_vec(&blob))
+            else {
+                continue;
+            };
             let reverse = dst == entity;
             let other = if reverse { src } else { dst };
             out.push((
@@ -480,10 +545,49 @@ pub(crate) fn search_semantic(
                     fact,
                     reverse,
                     matched: 0,
+                    memory: None,
                 },
                 other,
-                vector.clone(),
+                vector,
             ));
+        }
+        for (memory_id, content, others) in prose.get(&entity).into_iter().flatten() {
+            let vector = match memory_vectors.get(memory_id) {
+                Some(v) => v.clone(),
+                None => {
+                    let Some(v) = vector_st
+                        .query_row([memory_id], |r| r.get::<_, Vec<u8>>(0))
+                        .optional()?
+                        .and_then(|blob| crate::db::blob_to_vec(&blob))
+                    else {
+                        continue;
+                    };
+                    memory_vectors.insert(*memory_id, v.clone());
+                    v
+                }
+            };
+            // A memory naming nobody else ends the chain (NO_ENTITY).
+            let targets = if others.is_empty() {
+                vec![NO_ENTITY]
+            } else {
+                others.clone()
+            };
+            for other in targets {
+                out.push((
+                    Step {
+                        relation_id: 0,
+                        src: entity,
+                        dst: other,
+                        predicate: String::new(),
+                        fact: content.clone(),
+                        reverse: false,
+                        matched: 0,
+                        memory: Some(*memory_id),
+                    },
+                    other,
+                    vector.clone(),
+                ));
+            }
         }
         out.truncate(64);
         cache.insert(entity, out.clone());
@@ -501,9 +605,17 @@ pub(crate) fn search_semantic(
         for (entity, visited, sum, steps, residual) in &frontier {
             let mut scored: Vec<(Step, i64, Vec<f32>, f64)> = edges(*entity)?
                 .into_iter()
-                .filter(|(_, other, _)| !visited.contains(other))
+                // A chain may start at a question anchor but never pass
+                // through one: that walk lists sibling facts about the anchor.
+                .filter(|(_, other, _)| !visited.contains(other) && !anchors.contains(other))
                 .map(|(step, other, vector)| {
-                    let cosine = f64::from(crate::rank::cosine(residual, &vector));
+                    // Prose is weaker evidence of a link than a stated relation.
+                    let weight = if step.memory.is_some() {
+                        PROSE_HOP
+                    } else {
+                        1.0
+                    };
+                    let cosine = weight * f64::from(crate::rank::cosine(residual, &vector));
                     (step, other, vector, cosine)
                 })
                 .collect();
@@ -528,7 +640,9 @@ pub(crate) fn search_semantic(
                         coverage: 1,
                     });
                 }
-                next.push((other, visited, sum, steps, residual));
+                if other != NO_ENTITY {
+                    next.push((other, visited, sum, steps, residual));
+                }
             }
         }
         next.sort_by(|a, b| b.2.total_cmp(&a.2));
@@ -570,8 +684,13 @@ pub(crate) fn evidence(db: &Db, hits: &[PathHit]) -> Result<Vec<i64>> {
         let base = hit.score * (1.0 + hit.coverage as f64).powi(2);
         for (position, step) in hit.steps.iter().enumerate() {
             let weight = base * if position == last { 3.0 } else { 1.0 };
-            for memory_id in st.query_map([step.relation_id], |r| r.get::<_, i64>(0))? {
-                let memory_id = memory_id?;
+            let ids: Vec<i64> = match step.memory {
+                Some(memory_id) => vec![memory_id],
+                None => st
+                    .query_map([step.relation_id], |r| r.get::<_, i64>(0))?
+                    .collect::<rusqlite::Result<_>>()?,
+            };
+            for memory_id in ids {
                 scores
                     .entry(memory_id)
                     .and_modify(|current| *current = current.max(weight))

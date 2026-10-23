@@ -304,3 +304,28 @@ The lexical beam's world numbers lean on a synonym table written for the world g
 The lexical beam barely fires there: questions paraphrase predicates and name people by first name ("Noor's") while path starts were exact aliases only. `paths::search_semantic` fixes both: one KNN (k=100) over `relations_vec` picks the facts the question recognises, the beam starts from the exact anchors plus the top fuzzy entity seeds, walks only recognised facts (6 per entity, depth 3), scores each hop against the *residual* question (question vector minus the components earlier hop facts explained), sums hop scores, and emits only >= 2-hop chains into their own RRF channel `sem` (weight `w_sempath`). Measured path scores on the independent set: mean cosine 0.775/0.640, sum 0.850/0.640, residual sum 0.875/0.720 (two/three-hop). A weight of 1.0 cost 0.014-0.04 fixtures recall and collapsed world aggregation/as-of MRR (0.99 -> 0.39); 0.25 keeps every other family. World-300 at the default: two-hop 0.958, three-hop 1.000, all other families 1.000, p50 93 ms.
 
 Caveat: `w_sempath` was chosen on this set (4 values, all sets agreeing), so it is no longer fully independent; a second independent multi-hop set is the next honest check.
+
+## 7. Second independent set, homonym merges and prose hops (2026-10-23, orchestrator)
+
+`eval/multihop-holdout2.json` was written by an agent forbidden to read `src/`, `examples/`, `docs/research/` and the other multi-hop sets: 220 memories (25% text-only prose with no entities or relations passed), 112 distinct predicates, 100 queries (40 two-hop, 30 three-hop, 15 updated-chain, 15 distractor). Nothing was tuned on it before the first measurement.
+
+| build | acc@10 | two-hop | three-hop | updated-chain | distractor |
+|---|---|---|---|---|---|
+| main 261dfb0 (first, untouched measurement) | **0.720** | 0.750 | 0.500 | 0.867 | 0.933 |
+| + F2 + alias guard | 0.720 | 0.800 | 0.467 | 0.800 | 0.933 |
+| + prose hops + anchor pass-through block (PROSE_HOP 0.8) | **0.820** | 0.875 | 0.667 | 0.867 | 0.933 |
+
+What the misses were (main):
+* 22 of 38 missing chain memories were text-only (25% of the set): the beams walked relations only, so a link stated in prose was unreachable.
+* Three homonym pairs were merged into one entity: "Teresa Mota" (alias "Teresa") resolved to "Teresa Moura" through the shared short alias. Fixed in `resolve::exact_match`: an alias match needs the alias to be the entity's own name or compatible full names (word subset; words with digits ignored so dose/version variants still merge).
+* Fuzzy seeds walked back through the question's anchor and outranked the real chain with sibling facts ("Ivo designed Tidewater | Tidewater was founded by Inês"). Fixed: a semantic chain may start at an exact anchor but never pass through one.
+
+Prose hops (`search_semantic`): a text-only memory (no relation evidence) among the recall vector channel's top-100 neighbours is a hop between the entities it mentions, or a terminal hop when it names nobody else; it is scored by its own vector times `PROSE_HOP` (0.8) and only with an exact anchor in the question. Its evidence is the memory itself (`Step.memory`).
+
+Latency: reading a vector out of vec0 costs ~0.3 ms, so a second k=100 KNN returning embeddings added 38 ms per recall on world-300. The beam now reuses the vector channel's neighbour ids and reads vectors lazily, only for edges it reaches (relation facts too, which the first semantic beam also read eagerly). Same 200 world-300 queries, same session: main 261dfb0 125 ms p50, F2 131 ms, eager prose hops 170 ms, final 122 ms. Absolute numbers drift with machine state (full world-300 runs measured 81-87 ms earlier in the day, 114 ms at the final gate); compare within one session.
+
+Rejected: reserving an output slot for the best prose-ending chain's memory (its answer renders nowhere else) gave +0.01 on this set and fixtures but cost a holdout query (recall 0.913 -> 0.901).
+
+Trade-offs, measured: holdout recall 0.924 -> 0.913 is one query ("the boat she takes out on the river": the expect_absent touring-kayak memory now outranks the single scull, reached through Ingrid's prose memories); multihop-holdout two-hop 0.850 -> 0.825 is one query ("partner of Ravi Menon": "resides in Antwerp | Seun born in Antwerp" outscores "married to | born in Naples" because "partner" barely matches "married to"). Both are the paraphrase weakness a trained triple scorer would address. Variants that fixed the boat query (memory hops only after a relation hop; anchor-only seeds) cost more elsewhere (fixtures recall 0.941; holdout MRR 0.778).
+
+Remaining misses are three-hop chains whose middle hop is a paraphrase ("partner"/"married to", "trained"/"studied at") or whose answer sits in a long prose memory. Single-shot retrieval is at 0.82 on this set; the >90% bar needs either the agent loop (`follow` on the bridge entity, measured 600/600 on world-1000 in 3.3) or a learned hop scorer.

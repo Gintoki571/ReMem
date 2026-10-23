@@ -41,8 +41,9 @@ Store something when it will still matter next week:
 - **Always pass relations for facts**: you are the extractor. neocortex cannot
   reliably pull facts out of free text (measured: relation F1 0.07-0.20 for
   rules and GLiNER on held-out text), so a fact you do not pass as a relation
-  is searchable text only and never joins the graph, multi-hop or conflict
-  handling. One relation per stated fact: `{"source": "Bob", "predicate":
+  never gets conflict handling, history or a rendered fact; multi-hop recall
+  can only follow it weakly through the names it mentions. One relation per
+  stated fact: `{"source": "Bob", "predicate":
   "reports to", "target": "Alice"}`; split multi-fact sentences.
 - **One entity per real thing**: same name with a different type is fine (a
   person and a project both called "Zephyr" become two cards). When the

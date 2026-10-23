@@ -416,15 +416,22 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
          WHERE embedding MATCH ?1 AND k=?2 AND live=1 ORDER BY distance"
     };
     let mut st = engine.db.sql().prepare(knn_sql)?;
-    let knn: Vec<(i64, f32)> = st
+    // At least SEM_FACTS neighbours: the semantic beam uses them as prose hops.
+    let mut knn: Vec<(i64, f32)> = st
         .query_map(
-            params![crate::db::vec_blob(&query_vec), fetch_depth as i64],
+            params![
+                crate::db::vec_blob(&query_vec),
+                fetch_depth.max(paths::SEM_FACTS) as i64
+            ],
             |r| Ok((r.get::<_, i64>(0)?, r.get::<_, f32>(1)?)),
         )?
         .collect::<rusqlite::Result<_>>()?;
-    let missing: Vec<i64> = knn
+    let nearest_memories: Vec<i64> = knn.iter().map(|(id, _)| *id).collect();
+    knn.truncate(fetch_depth);
+    let knn_ids: Vec<i64> = knn.iter().map(|(id, _)| *id).collect();
+    let missing: Vec<i64> = knn_ids
         .iter()
-        .map(|(id, _)| *id)
+        .copied()
         .filter(|id| !rows.contains_key(id))
         .collect();
     rows.extend(fetch_rows(&engine.db, &missing)?);
@@ -674,7 +681,14 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
             paths::search(&engine.db, &query_text, &path_starts, vis)?
         };
         let semantic = if engine.cfg.w_sempath > 0.0 {
-            paths::search_semantic(&engine.db, &query_vec, &sem_starts, vis)?
+            paths::search_semantic(
+                &engine.db,
+                &query_vec,
+                &sem_starts,
+                &path_starts,
+                &nearest_memories,
+                vis,
+            )?
         } else {
             Vec::new()
         };
