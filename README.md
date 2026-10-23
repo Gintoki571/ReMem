@@ -73,7 +73,7 @@ entities: [e1] Mom (person; aka mother) · [e2] Pune (place)
 | `recall <query...>` | retrieve memories, facts and entities |
 | `entity <name\|eID>` | profile, current/past facts and timeline of one entity |
 | `invalidate <mID\|rID>` | end a memory or relation at a time, keeping it as history |
-| `forget <mID>` | retire a memory (`--hard` deletes it with vectors and mentions) |
+| `forget <mID>` | retire a memory; its sole-evidence relations are retracted (`--hard` deletes it with vectors and mentions) |
 | `merge <keep> <merge>` | merge one entity into another |
 | `alias <entity> <alias>` | add another name to an entity |
 | `overview [query...]` | clusters of the entity graph |
@@ -200,7 +200,10 @@ near-duplicates and the result is packed into a token budget, whole items only.
 Facts are bi-temporal: `valid_from`/`valid_to` say when something was true in
 the world, `expired_at` says when neocortex retired it. Changed facts are kept
 as history and are never presented as current unless you ask for history or an
-`as_of` snapshot.
+`as_of` snapshot. A memory's `--until` or `invalidate m<id>` ends the facts only
+that memory states; `forget` retracts them without an end date. Without
+`--when`, one explicit date in the text (`March 5, 2025`, `2019`, `yesterday`)
+becomes the start; several dates, or none, leave it at today.
 
 Relation writes use tri-state `exclusive`: `true` ends competing values,
 `false` keeps this write without conflict reporting, and omitted uses the

@@ -1396,7 +1396,8 @@ fn soft_forget_ends_relations_with_no_other_live_evidence() {
     let rid = first.relations[0].id;
     engine.forget(&format!("m{}", first.id), false).unwrap();
     let (_, valid_to, expired_at) = relation_state(&engine, rid);
-    assert_eq!(valid_to, Some(NOW), "an open relation ends at forget time");
+    // Retracted, not ended: forgetting the source is not a world-time event.
+    assert_eq!(valid_to, None, "forget must not invent an end date");
     assert_eq!(expired_at, Some(NOW));
     let current = engine.entity("Mom", 10).unwrap().current_facts;
     assert!(

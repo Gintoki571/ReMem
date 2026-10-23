@@ -259,6 +259,9 @@ pub struct RememberOutput {
     pub related: Vec<RelatedMemory>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub hints: Vec<String>,
+    /// The text phrase a valid_from was inferred from (no --when given).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub when_inferred: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -342,6 +345,9 @@ pub struct FactHit {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub valid_to: Option<i64>,
     pub ended: bool,
+    /// Ended by forgetting its source rather than by a world-time end.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub retracted: bool,
     pub polarity: i64,
     /// Set when >= 2 positive values of (source, predicate) are current.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -375,6 +381,12 @@ pub struct RecallOutput {
     pub tokens_budget: usize,
     /// Memories dropped by the budget.
     pub omitted: usize,
+    /// The query's time window overlaps no live memory (results are unfiltered).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub window_empty: bool,
+    /// The top item alone exceeds the budget.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub over_budget: bool,
 }
 
 // ---------------------------------------------------------------- others
@@ -484,8 +496,20 @@ impl Engine {
                 if at < vf {
                     return Err(crate::err!("at precedes memory valid_from"));
                 }
+                let end: Option<i64> =
+                    db.sql()
+                        .query_row("SELECT valid_to FROM memories WHERE id=?1", [id], |r| {
+                            r.get(0)
+                        })?;
+                if let Some(end) = end.filter(|e| *e <= at) {
+                    let when = crate::temporal::fmt_date(end, &self.clock());
+                    return Ok(ChangeOutput {
+                        changed: vec![format!("m{id} already ended at {when}")],
+                    });
+                }
                 db.sql()
                     .execute("UPDATE memories SET valid_to=?1 WHERE id=?2", [at, id])?;
+                crate::remember::end_relations_losing_evidence(db, id, at)?;
                 crate::kg::bump_gen(db)?;
                 return Ok(ChangeOutput {
                     changed: vec![format!("m{id} valid_to={at}")],
@@ -502,6 +526,17 @@ impl Engine {
                     .map_err(|_| crate::err!("unknown relation r{id}"))?;
                 if at < vf {
                     return Err(crate::err!("at precedes relation valid_from"));
+                }
+                let end: Option<i64> = db.sql().query_row(
+                    "SELECT valid_to FROM relations WHERE id=?1",
+                    [id],
+                    |r| r.get(0),
+                )?;
+                if let Some(end) = end.filter(|e| *e <= at) {
+                    let when = crate::temporal::fmt_date(end, &self.clock());
+                    return Ok(ChangeOutput {
+                        changed: vec![format!("r{id} already ended at {when}")],
+                    });
                 }
                 db.sql()
                     .execute("UPDATE relations SET valid_to=?1 WHERE id=?2", [at, id])?;
@@ -538,7 +573,7 @@ impl Engine {
             }
             // Relations with no other live evidence stop being current.
             let losing = crate::remember::relations_losing_their_last_evidence(db, id)?;
-            crate::remember::expire_relations(db, &losing, now)?;
+            crate::remember::retract_relations(db, &losing, now)?;
             if _hard {
                 // Relations whose only evidence was this memory disappear with
                 // it, including their FTS/vector rows.
@@ -830,6 +865,21 @@ impl Engine {
         if dangling_evidence != 0 {
             out.push(format!(
                 "{dangling_evidence} relation_evidence rows point at missing rows"
+            ));
+        }
+        // A current relation whose every evidence memory has ended is contradictory.
+        let mut st = c.prepare(
+            "SELECT r.id FROM relations r
+             WHERE r.expired_at IS NULL AND r.valid_to IS NULL
+               AND EXISTS (SELECT 1 FROM relation_evidence e WHERE e.relation_id=r.id)
+               AND NOT EXISTS (
+                 SELECT 1 FROM relation_evidence e JOIN memories m ON m.id=e.memory_id
+                 WHERE e.relation_id=r.id AND m.expired_at IS NULL AND m.valid_to IS NULL)",
+        )?;
+        for rid in st.query_map([], |r| r.get::<_, i64>(0))? {
+            out.push(format!(
+                "relation r{} is current but every memory that states it has ended",
+                rid?
             ));
         }
         Ok(out)

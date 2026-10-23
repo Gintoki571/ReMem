@@ -118,7 +118,12 @@ Steps, in one `BEGIN IMMEDIATE` transaction (embeddings computed before the tran
   - a backfilled fact (`new.valid_from < old.valid_from`) is stored already ended: `new.valid_to = min(existing later valid_from)`, and it is history;
   - equal valid_from: the newer write wins, and the old one gets `valid_to = valid_from` and `expired_at`.
   Invalidated relations keep their rows; `expired_at` is set only when the new write makes the old fact wrong (equal start). An ended-but-true-in-the-past fact keeps `expired_at` NULL with a non-NULL `valid_to`.
-- A memory whose evidenced relations have ALL ended gets `valid_to` = the latest relation end (if still open): "Alex lives in Austin" becomes history once "lives in Denver" is written. A memory that still evidences a live fact stays open.
+- A memory whose evidenced relations have ALL ended gets `valid_to` = the latest relation end (if still open), including an equal start (empty interval, shown `[ended]`): "Alex lives in Austin" becomes history once "lives in Denver" is written. A memory that still evidences a live fact stays open.
+- The reverse holds too: a memory with an end (`--until`, `invalidate m<id>`, or as the superseded one) ends the relations only it keeps current, at that time, never later than their current end. `validate` reports a live relation whose every evidence memory has ended.
+- `invalidate` keeps the earliest end: re-invalidating answers `already ended at <date>` and changes nothing.
+- `forget` (soft) retracts the relations only it evidenced: `expired_at = now`, `valid_to` untouched (no invented end date). Retracted facts render as `retracted`, not `ended`.
+- `--when "from X to Y"` / `"between X and Y"` sets `valid_from` and `valid_to` (exclusive end). `N weeks ago` / `N months ago` store that exact day; `last <month>` is the bare month, as in recall.
+- Without `--when`, the one explicit date in the content (`March 5, 2025`, `in 2019`, `2027-06-15`, `yesterday`, `3 days ago`) becomes `valid_from`, reported as `when: inferred from text '...'`. Several dates, or relative phrases (`next month`), infer nothing. No recurrence is invented.
 - Exclusivity is a property of the canonical predicate. It is global (entities are global across scopes) and applies per source entity: `(src, predicate)` has at most one valid object at any world time.
 
 ## 7. Entity and relation resolution
@@ -141,7 +146,7 @@ Predicate resolution: `norm_pred` = lowercase, words split on non-alphanumerics,
 
 Input: `query`, `k` (default 8), `budget` tokens (default 1200, approx chars/4), filters (`kinds`, `tags`, `scope`, `source`, `session`, `since`, `until`), `as_of` (world-time snapshot), `include_history` (default false), optional agent-supplied `entities` / `keywords` (LightRAG low/high-level keys).
 
-1. Temporal analysis: parse time expressions in the query (today, yesterday, last/this/next week|month|year, N days/weeks/months ago, weekday names, month names with or without a year, years, ISO dates, since/before/after/between, recently). The result is a soft window W. Explicit `since`/`until` are hard filters. History intent (used to, previously, before, formerly, history, changed, was … until, `include_history`) turns off the expired penalty.
+1. Temporal analysis: parse time expressions in the query (today, yesterday, last/this/next week|month|year, N days/weeks/months ago, weekday names, month names with or without a year, years, ISO dates, since/before/after/between, recently). The result is a soft window W. Explicit `since`/`until` are hard filters on interval overlap (`[valid_from, valid_to)` meets `[since, until)`) for memories and facts alike. A query window that overlaps no live memory is reported (`window_empty`) and does not filter results. History intent (used to, previously, before, formerly, history, changed, was … until, `include_history`) turns off the expired penalty.
 2. Channels (each is a ranked list of memory ids, depth `N = max(50, 5k)`):
    - **bm25**: FTS5 `MATCH` over the stopword-filtered OR of query terms (and keywords), with `bm25(memories_fts, 1.0, 2.0)`.
    - **vector**: query-mode embedding, KNN on `memories_vec` over live rows (plus expired rows when history or as_of applies).
@@ -168,7 +173,7 @@ Input: `query`, `k` (default 8), `budget` tokens (default 1200, approx chars/4),
    - the top memories;
    - up to 8 facts: relations among the top-PPR entities, valid at as_of (or with validity shown), ranked by PPR(src)+PPR(dst) and fact relevance;
    - up to 3 entity cards (name, type, aliases, description).
-   - Everything is packed into the budget: whole items only; the top memory always fits; omissions are reported.
+   - Everything is packed into the budget: whole items only; the top memory always fits (`over_budget` is set when it alone exceeds the budget); omissions are reported.
 7. Side effect: bump `access_count`/`last_access` of returned memories (recorded only; not used in ranking unless eval shows benefit).
 
 Default output (text, compact; `json: true` gives the same structure as JSON):

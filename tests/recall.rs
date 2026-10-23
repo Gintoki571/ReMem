@@ -132,12 +132,14 @@ fn filters_apply_to_kind_tags_scope_and_validity() {
     });
     assert_eq!(scope, vec![event_home]);
 
-    let since = recall(RecallInput {
+    // Interval overlap: the open-ended January event still holds in May.
+    let mut since = recall(RecallInput {
         query: "deployment checklist".into(),
         since: Some("2026-05-01".into()),
         ..Default::default()
     });
-    assert_eq!(since, vec![fact_work, event_home]);
+    since.sort();
+    assert_eq!(since, vec![event_work, fact_work, event_home]);
 
     let until = recall(RecallInput {
         query: "deployment checklist".into(),

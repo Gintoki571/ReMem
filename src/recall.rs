@@ -153,7 +153,8 @@ fn eligible(
     {
         return false;
     }
-    if since.is_some_and(|x| *from < x) || until.is_some_and(|x| *from >= x) {
+    // Overlap, not containment: [from, to) must meet [since, until).
+    if until.is_some_and(|x| *from >= x) || since.is_some_and(|x| to.is_some_and(|t| t <= x)) {
         return false;
     }
     true
@@ -433,7 +434,15 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
 
     // ------------------------------------------------------- temporal
     let mut time_ids: Vec<i64> = Vec::new();
+    let mut window_empty = false;
     if let Some(w) = &window {
+        let overlapping: i64 = engine.db.sql().query_row(
+            "SELECT count(*) FROM memories WHERE expired_at IS NULL
+             AND valid_from < ?2 AND (valid_to IS NULL OR valid_to > ?1)",
+            params![w.start, w.end],
+            |r| r.get(0),
+        )?;
+        window_empty = overlapping == 0;
         let count: i64 = engine.db.sql().query_row(
             "SELECT count(*) FROM memories WHERE valid_from >= ?1 AND valid_from < ?2",
             params![w.start, w.end],
@@ -717,6 +726,7 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         }
     }
     let tokens_used: usize = kept.iter().map(|&i| costs[i]).sum();
+    let over_budget = tokens_used > budget;
     if !selected.is_empty() {
         let marks = std::iter::repeat_n("?", selected.len())
             .collect::<Vec<_>>()
@@ -759,11 +769,13 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         .take(10)
         .map(|x| x.0)
         .collect();
+    // A time window asks about past states too, so ended facts stay in view.
     let facts = facts_for(
         engine,
         &top_entities,
-        history,
+        history || since.is_some() || until.is_some(),
         cutoff,
+        (since, until),
         8,
         Some(&ppr_score),
         Some(&query_vec),
@@ -795,11 +807,13 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         memories,
         facts,
         entities,
+        window_empty,
         window: window.map(|w| (w.start, w.end, w.matched)),
         candidates: candidates.len(),
         tokens_used,
         tokens_budget: budget,
         omitted: selected.len().saturating_sub(kept.len()),
+        over_budget,
     })
 }
 
@@ -837,11 +851,13 @@ fn card(engine: &Engine, id: i64) -> Result<EntityCard> {
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn facts_for(
     engine: &Engine,
     ids: &[i64],
     history: bool,
     cutoff: i64,
+    (since, until): (Option<i64>, Option<i64>),
     limit: usize,
     ppr: Option<&HashMap<i64, f64>>,
     query_vec: Option<&[f32]>,
@@ -905,6 +921,9 @@ fn facts_for(
         if !history && (expired.is_some() || vt.is_some_and(|v| cutoff >= v)) {
             continue;
         }
+        if until.is_some_and(|u| vf >= u) || since.is_some_and(|s| vt.is_some_and(|t| t <= s)) {
+            continue;
+        }
         let cosine = if let Some(query) = query_vec {
             engine
                 .db
@@ -933,6 +952,7 @@ fn facts_for(
                 valid_from: vf,
                 valid_to: vt,
                 ended: expired.is_some() || vt.is_some_and(|v| v <= cutoff),
+                retracted: expired.is_some() && vt.is_none(),
                 polarity,
                 current_values: if polarity == 1 && expired.is_none() && vt.is_none_or(|v| v > cutoff) {
                     let n: i64 = engine.db.sql().query_row(
@@ -972,7 +992,16 @@ pub fn entity(engine: &Engine, name: &str, limit: usize) -> Result<EntityOutput>
         .unwrap_or_else(|| lookup_entity_fuzzy(engine, name))?;
     let now = engine.clock().now;
     let card = card(engine, id)?;
-    let all = facts_for(engine, &[id], true, now, limit.min(200), None, None)?;
+    let all = facts_for(
+        engine,
+        &[id],
+        true,
+        now,
+        (None, None),
+        limit.min(200),
+        None,
+        None,
+    )?;
     let current: Vec<_> = all.iter().filter(|f| !f.ended).cloned().collect();
     let past: Vec<_> = all
         .into_iter()
@@ -1271,6 +1300,7 @@ pub fn overview(engine: &Engine, query: Option<&str>, k: usize) -> Result<Overvi
             &ordered_ids,
             false,
             engine.clock().now,
+            (None, None),
             3,
             None,
             None,

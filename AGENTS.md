@@ -102,7 +102,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - Relational tables are the source of truth; graphqlite nodes/edges are a projection rebuilt by `neocortex reindex`.
 - One connection per process (`db::Db`): sqlite-vec via `sqlite3_auto_extension`, graphqlite via `Connection::from_rusqlite`. Writes go through `Db::write` (BEGIN IMMEDIATE). Cypher runs inside the same transaction.
 - Validity is half-open `[valid_from, valid_to)`; system retirement is `expired_at`. Times are unix seconds UTC.
-- One live memory per `content_hash` (unique partial index); a hash hit only counts as a duplicate when kind + folded text match. Retiring a memory (forget/supersede) ends the relations it alone still evidenced; hard forget and merge patch the graph projection incrementally, never `rebuild_all`.
+- One live memory per `content_hash` (unique partial index); a hash hit only counts as a duplicate when kind + folded text match. A memory's end (`--until`, `invalidate m`, supersede) ends the relations it alone still evidenced; soft forget retracts them (`expired_at`, no end date); hard forget and merge patch the graph projection incrementally, never `rebuild_all`.
 - Embedding-only similarity never merges entities; it only adds `similar` soft edges.
 - Ids shown to agents: `m<id>`, `e<id>`, `r<id>`; tools accept both forms.
 - The embedder sets `RAYON_NUM_THREADS` to candle's thread count at model load when unset (gemm and rayon pools must agree; 2x faster).
@@ -122,6 +122,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - `src/engine.rs` - public API (Engine, input/output types = MCP tool schema), Config tunables.
 - `src/mcp.rs` - MCP stdio server (JSON-RPC 2.0, 8 tools, LazyEmbedder). `src/render.rs` - compact text output. `src/main.rs` - CLI. `src/import.rs` - one-shot ReMem v3 import.
 - `src/export.rs` - JSON Lines `export`/`import` (backup and embedder migration: re-ingest through remember). `src/bench.rs` - synthetic corpus + latency/size report (`neocortex bench --n N`). `src/eval.rs` - `neocortex eval` (ablation, failures, `--set`, `--sweep` on one ingestion).
+- `tests/temporal_fixes.rs` - regression tests for the temporal/invalidation hunt (until/invalidate/forget ends, interval overlap, `--when` spans, text-date inference, budget and duplicate flags).
 - `tests/ops.rs` - export/import round trip, concurrent writer processes. `tests/world.rs` - batch == sequential on a mixed workload (ids, whole outputs, tables) including a negation, a seeded single-valued change and a non-exclusive conflict, batch error isolation, and the committed world fixture's key/answer integrity.
 - `eval/fixtures.json` (tuning, 95 memories / 84 queries) + `eval/holdout.json` (independent check, 105 / 88) + `eval/world-300.json` (generated, 300 people / 3264 memories / 600 queries) + `eval/README.md` (format, scoring incl. acc@10, tuning protocol: defaults change only if both sets agree, world protocol).
 - `examples/gen_world.rs` - deterministic (`--seed`) synthetic year of agent memory + ground-truth queries; the only writer of `eval/world-*.json`. Generated worlds over 2 MB stay out of git.

@@ -86,6 +86,7 @@ struct Prepared {
     session: String,
     valid_from: i64,
     valid_to: Option<i64>,
+    when_inferred: Option<String>,
     entities: Vec<EntityIn>,
     relations: Vec<RelationIn>,
     facts: Vec<String>,
@@ -205,19 +206,26 @@ fn prepare(clock: Clock, inp: RememberInput) -> Result<Prepared> {
             crate::engine::KINDS.join(", ")
         ));
     }
-    let valid_from = inp
-        .valid_from
-        .as_deref()
-        .map(|s| {
-            temporal::parse_instant(s, &clock).ok_or_else(|| {
-                crate::err!(
-                    "invalid valid_from '{}'; use ISO date, unix seconds, or 'yesterday'",
-                    s
-                )
-            })
-        })
-        .transpose()?
-        .unwrap_or(clock.now);
+    // Without --when, a date written in the content is the start (one only).
+    let (valid_from, span_end, when_inferred) = match inp.valid_from.as_deref() {
+        Some(s) => match temporal::parse_span(s, &clock) {
+            Some((start, end)) => (start, Some(end), None),
+            None => {
+                let start = temporal::parse_instant(s, &clock).ok_or_else(|| {
+                    crate::err!(
+                        "invalid valid_from '{s}'; use an ISO date (2025-03-05), a month (March 2025), \
+                         a year, unix seconds, or a phrase like yesterday, last week, last March, \
+                         3 days ago, 2 weeks ago, next Monday, or a span 'from X to Y'"
+                    )
+                })?;
+                (start, None, None)
+            }
+        },
+        None => match temporal::text_date(&content, &clock) {
+            Some(w) => (w.start, None, Some(w.matched)),
+            None => (clock.now, None, None),
+        },
+    };
     let valid_to = inp
         .valid_to
         .as_deref()
@@ -230,6 +238,12 @@ fn prepare(clock: Clock, inp: RememberInput) -> Result<Prepared> {
             })
         })
         .transpose()?;
+    if span_end.is_some() && valid_to.is_some() {
+        return Err(crate::err!(
+            "give a span in --when or an end in --until, not both"
+        ));
+    }
+    let valid_to = valid_to.or(span_end);
     if valid_to.is_some_and(|v| v <= valid_from) {
         return Err(crate::err!("valid_to must be after valid_from"));
     }
@@ -323,6 +337,7 @@ fn prepare(clock: Clock, inp: RememberInput) -> Result<Prepared> {
         session: inp.session.unwrap_or_default(),
         valid_from,
         valid_to,
+        when_inferred,
         entities,
         relations: inp.relations,
         facts,
@@ -376,6 +391,7 @@ fn write_prepared(
         session,
         valid_from,
         valid_to,
+        when_inferred,
         entities,
         relations,
         facts,
@@ -755,18 +771,13 @@ fn write_prepared(
             },
         });
     }
+    // A memory with an end (--until) ends the relations only it keeps current.
+    if let (None, Some(to)) = (duplicate_of, valid_to) {
+        end_relations_losing_evidence(db, id, to)?;
+    }
     for target in &supersedes {
-        // Relations this memory was the only live evidence for were true
-        // until the new memory's world-time starts; they end there and stay
-        // true-in-the-past (expired_at stays NULL).
-        let ending = relations_losing_their_last_evidence(db, *target)?;
-        for rid in &ending {
-            db.sql().execute(
-                "UPDATE relations SET valid_to=MIN(COALESCE(valid_to,?1),?1)
-                     WHERE id=?2 AND expired_at IS NULL",
-                params![valid_from, rid],
-            )?;
-        }
+        // The superseded memory's relations end where the new memory starts.
+        end_relations_losing_evidence(db, *target, valid_from)?;
         db.sql().execute(
             "UPDATE memories SET valid_to=COALESCE(valid_to,?1),expired_at=?2,superseded_by=?3 WHERE id=?4",
             params![valid_from, now, id, target],
@@ -799,7 +810,7 @@ fn write_prepared(
     Ok(RememberOutput {
         id,
         duplicate_of,
-        near_duplicate: near,
+        near_duplicate: if duplicate_of.is_some() { None } else { near },
         entities: resolutions,
         relations: rel_results,
         invalidated_relations: invalidated,
@@ -807,6 +818,7 @@ fn write_prepared(
         conflicts,
         related,
         hints,
+        when_inferred,
     })
 }
 
@@ -856,7 +868,7 @@ pub fn end_memories_of_ended_facts(db: &Db, relation_ids: &[i64]) -> Result<()> 
                  SELECT 1 FROM relation_evidence e JOIN relations r ON r.id = e.relation_id
                  WHERE e.memory_id = memories.id AND r.valid_to IS NULL)
                AND (SELECT MAX(r.valid_to) FROM relation_evidence e JOIN relations r ON r.id = e.relation_id
-                    WHERE e.memory_id = memories.id) > valid_from",
+                    WHERE e.memory_id = memories.id) >= valid_from",
             [rid],
         )?;
     }
@@ -956,12 +968,25 @@ pub fn relations_losing_their_last_evidence(db: &Db, memory: i64) -> Result<Vec<
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
-/// Soft-retire relations: `valid_to = now` when still open, `expired_at = now`.
-pub fn expire_relations(db: &Db, ids: &[i64], now: i64) -> Result<()> {
+/// Relations that `memory` alone keeps current end at `at` (never later than
+/// their current end). Callers pick `at`: the memory's own end, or the start of a
+/// memory that supersedes it.
+pub fn end_relations_losing_evidence(db: &Db, memory: i64, at: i64) -> Result<()> {
+    for rid in relations_losing_their_last_evidence(db, memory)? {
+        db.sql().execute(
+            "UPDATE relations SET valid_to=MIN(COALESCE(valid_to,?1),?1)
+             WHERE id=?2 AND expired_at IS NULL",
+            params![at, rid],
+        )?;
+    }
+    Ok(())
+}
+
+/// Retract relations (system time): `expired_at = now`, world validity untouched.
+pub fn retract_relations(db: &Db, ids: &[i64], now: i64) -> Result<()> {
     for rid in ids {
         db.sql().execute(
-            "UPDATE relations SET valid_to=COALESCE(valid_to,?1), expired_at=?1
-             WHERE id=?2 AND expired_at IS NULL",
+            "UPDATE relations SET expired_at=?1 WHERE id=?2 AND expired_at IS NULL",
             params![now, rid],
         )?;
     }

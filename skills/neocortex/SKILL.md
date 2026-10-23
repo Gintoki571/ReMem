@@ -20,7 +20,8 @@ Store something when it will still matter next week:
 - mistakes and the fix that worked, so they are not repeated
 - procedures that worked (build steps, deploy order, gotchas)
 - outcomes: what shipped, what failed, what was measured
-- dates of events and when a fact became true
+- dates of events and when a fact became true (`--when`; if omitted, one
+  explicit date in the text such as "March 5, 2025" is used, and the output says so)
 
 ## When NOT to remember
 
@@ -49,7 +50,8 @@ Store something when it will still matter next week:
   `remember` returns `conflicts` or `related`, decide whether to invalidate or
   supersede the candidate; neocortex never guesses and never deletes history.
 - **Correct, don't contradict**: use `supersedes: ["m12"]` for a newer memory
-  that replaces an older one, or `invalidate` when a fact stopped being true.
+  that replaces an older one, or `invalidate m<id>` when a fact stopped being
+  true (it also ends the facts that memory alone states).
   Never write two live facts that disagree.
 - Pick a `kind`: `fact`, `event`, `decision`, `preference`, `mistake`,
   `procedure`, `observation`, `note`. Add `tags` for filtering and
@@ -67,6 +69,7 @@ Store something when it will still matter next week:
 - `[m42]` memory, `[r9]` relation, `[e3]` entity. Pass ids back with or without
   the prefix.
 - A date range with `[ended]` or "ended" is **history**: true then, not now.
+  `retracted` means the source was forgotten, not that it stopped being true.
   Current facts have `since <date>` or no end.
 - `(bm25#2 vec#1 graph#1)` says which channels matched; more agreeing channels
   means a stronger hit.
@@ -84,7 +87,7 @@ the installed binary is `~/.neocortex/bin/neocortex` (DB `~/.neocortex/neocortex
 | `recall` | `neocortex recall <query>` | retrieve |
 | `entity` | `neocortex entity <name\|eID>` | profile of one entity |
 | `invalidate` | `neocortex invalidate <mID\|rID> --at <date>` | end a fact |
-| `forget` | `neocortex forget <mID> [--hard]` | retire/delete |
+| `forget` | `neocortex forget <mID> [--hard]` | retire/delete (facts it alone stated are retracted) |
 | `merge_entities` | `neocortex merge <keep> <merge>` / `alias <entity> <alias>` | fix names |
 | `overview` | `neocortex overview [query]` | clusters of the graph |
 | `stats` | `neocortex stats` | counts and model status |

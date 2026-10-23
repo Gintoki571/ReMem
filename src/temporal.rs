@@ -83,6 +83,21 @@ pub fn parse_instant(s: &str, clock: &Clock) -> Option<i64> {
     if let Some(t) = iso_instant(&toks, clock.tz_offset_secs) {
         return Some(t);
     }
+    // "N weeks/months ago" is that exact day; a window start would lose it.
+    if let [k, what, "ago"] = toks.as_slice() {
+        let off = clock.tz_offset_secs;
+        let today = local_days(clock.now, off);
+        let (y, m, d) = civil_from_days(today);
+        match (num(k), unit(what)) {
+            (Some(k), Some(Unit::Week)) => return Some(day_start(today - 7 * k, off)),
+            (Some(k), Some(Unit::Month)) => {
+                let (py, pm) = add_months(y, m, -k);
+                let d = d.min(days_in_month(py, pm));
+                return Some(day_start(days_from_civil(py, pm, d), off));
+            }
+            _ => {}
+        }
+    }
     let window = parse_window(s, clock).map(|w| w.start);
     if window.is_some() {
         return window;
@@ -108,6 +123,43 @@ pub fn parse_window(s: &str, clock: &Clock) -> Option<Window> {
         end,
         matched: raw.to_string(),
     })
+}
+
+/// A "from X to Y" or "between X and Y" span as (start, exclusive end).
+pub fn parse_span(s: &str, clock: &Clock) -> Option<(i64, i64)> {
+    let expr = normalize(s);
+    if !(expr.starts_with("from ") || expr.starts_with("between ")) {
+        return None;
+    }
+    resolve_range(&expr, clock)
+}
+
+/// The single explicit date in free text ("March 5, 2025", "in 2019", "2027-06-15",
+/// "yesterday", "3 days ago") to use as a memory's start. None when the text has
+/// no such date, several windows, or only relative phrases like "next month".
+pub fn text_date(text: &str, clock: &Clock) -> Option<Window> {
+    fn explicit(matched: &str) -> bool {
+        let m = normalize(matched);
+        if m == "yesterday" || m.ends_with(" days ago") {
+            return true;
+        }
+        let ranged = ["since ", "before ", "after ", "until ", "between ", "from "]
+            .iter()
+            .any(|p| m.starts_with(p))
+            || m.contains(" to ")
+            || m.contains(" and ");
+        // A run of exactly four digits is a year ("2025", "2027-06-15", "03/04/2025").
+        let year = m
+            .split(|c: char| !c.is_ascii_digit())
+            .any(|run| run.len() == 4);
+        year && !ranged
+    }
+    let first = find_window(text, clock).filter(|w| explicit(&w.matched))?;
+    let rest = text.replacen(&first.matched, " ", 1);
+    if find_window(&rest, clock).is_some() {
+        return None;
+    }
+    Some(first)
 }
 
 /// First temporal expression found inside free text (a recall query).
@@ -644,6 +696,9 @@ fn resolve(expr: &str, clock: &Clock) -> Option<(i64, i64)> {
     }
 
     if n == 2 {
+        if toks[0] == "last" && month_index(toks[1]).is_some() {
+            return resolve(toks[1], clock);
+        }
         if let Some(target) = weekday_index(toks[1]) {
             let delta = match toks[0] {
                 "last" => {

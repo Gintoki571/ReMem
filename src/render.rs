@@ -65,6 +65,7 @@ fn fact_line(f: &FactHit, fmt: Fmt<'_>) -> String {
             None => format!("{} → {}, ended", fmt(f.valid_from), fmt(to)),
         },
         (Some(to), false) => format!("{} → {}", fmt(f.valid_from), fmt(to)),
+        (None, true) if f.retracted => format!("{}, retracted", fmt(f.valid_from)),
         (None, true) => format!("{}, ended", fmt(f.valid_from)),
         (None, false) => format!("since {}", fmt(f.valid_from)),
     };
@@ -108,6 +109,9 @@ pub fn render_remember(out: &RememberOutput) -> String {
     match out.duplicate_of {
         Some(id) => s.push_str(&format!("duplicate of m{id} — nothing new stored\n")),
         None => s.push_str(&format!("saved m{}\n", out.id)),
+    }
+    if let Some(text) = &out.when_inferred {
+        s.push_str(&format!("when: inferred from text '{text}'\n"));
     }
     if let Some((id, cos)) = out.near_duplicate {
         s.push_str(&format!(
@@ -185,6 +189,9 @@ pub fn render_recall(out: &RecallOutput, fmt: Fmt<'_>) -> String {
             fmt(*start),
             fmt(*end)
         ));
+    }
+    if out.window_empty {
+        s.push_str("no live memory overlaps this window; results are not filtered by it\n");
     }
     if out.memories.is_empty() {
         s.push_str(
@@ -357,6 +364,16 @@ mod tests {
         }
     }
 
+    #[test]
+    fn retracted_facts_are_not_called_ended() {
+        let mut f = fact(9, "Delhi", 50, None, true);
+        f.retracted = true;
+        let line = fact_line(&f, &fake);
+        assert!(line.ends_with("(D50, retracted)"), "{line}");
+        f.retracted = false;
+        assert!(fact_line(&f, &fake).ends_with("(D50, ended)"));
+    }
+
     fn fact(id: i64, target: &str, from: i64, to: Option<i64>, ended: bool) -> FactHit {
         FactHit {
             id,
@@ -367,6 +384,7 @@ mod tests {
             valid_from: from,
             valid_to: to,
             ended,
+            retracted: false,
             polarity: 1,
             current_values: None,
             replaced_by: None,
@@ -411,6 +429,8 @@ mod tests {
             tokens_used: 410,
             tokens_budget: 1200,
             omitted: 21,
+            window_empty: false,
+            over_budget: false,
         };
         assert_eq!(
             render_recall(&out, &fake),
@@ -435,6 +455,8 @@ mod tests {
             tokens_used: 0,
             tokens_budget: 1200,
             omitted: 0,
+            window_empty: false,
+            over_budget: false,
         };
         let text = render_recall(&out, &fake);
         assert!(
@@ -465,6 +487,8 @@ mod tests {
             tokens_used: 10,
             tokens_budget: 1200,
             omitted: 0,
+            window_empty: false,
+            over_budget: false,
         };
         assert!(render_recall(&out, &fake).contains("[superseded by m9]"));
     }
@@ -499,6 +523,7 @@ mod tests {
             conflicts: Vec::new(),
             related: Vec::new(),
             hints: vec!["content is long; atomic memories retrieve better".into()],
+            when_inferred: None,
         };
         assert_eq!(
             render_remember(&out),
@@ -525,6 +550,7 @@ mod tests {
             conflicts: Vec::new(),
             related: Vec::new(),
             hints: Vec::new(),
+            when_inferred: None,
         };
         assert_eq!(
             render_remember(&out),
