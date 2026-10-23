@@ -432,6 +432,28 @@ fn negation_question_returns_only_negative_memories() {
 }
 
 #[test]
+fn negation_question_keeps_negative_relations_without_a_cue_word() {
+    let e = engine(Arc::new(HashEmbedder));
+    remember(&e, "Priya likes jazz.", |i| {
+        i.relations = vec![relation("Priya", "likes", "jazz", "Priya likes jazz")];
+    });
+    let negative = remember(&e, "Bob refuses to listen to jazz.", |i| {
+        i.relations = vec![RelationIn {
+            negated: Some(true),
+            ..relation("Bob", "likes", "jazz", "")
+        }];
+    });
+    let out = e
+        .recall(&RecallInput {
+            query: "who does not like jazz".into(),
+            ..Default::default()
+        })
+        .unwrap();
+    assert_eq!(ids(&out), vec![negative], "{:?}", out.memories);
+    assert!(out.facts.iter().all(|f| f.polarity == 0), "{:?}", out.facts);
+}
+
+#[test]
 fn unrelated_question_abstains_instead_of_ranking_noise() {
     let e = engine(Arc::new(HashEmbedder));
     remember(&e, "The office coffee machine is in the kitchen.", |_| {});

@@ -208,6 +208,10 @@ fn prepare(clock: Clock, mut inp: RememberInput) -> Result<Prepared> {
         inp.entities = extracted.entities;
         inp.relations = extracted.relations;
     }
+    // A blank fact would embed as a zero vector, whose cosine distance is NULL.
+    for r in &mut inp.relations {
+        r.fact = r.fact.take().filter(|f| !f.trim().is_empty());
+    }
     let kind = inp.kind.unwrap_or_else(|| "note".into());
     if !crate::engine::KINDS.contains(&kind.as_str()) {
         return Err(crate::err!(

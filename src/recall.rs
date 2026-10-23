@@ -758,12 +758,23 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     }
     candidates.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
     // A question about what is *not* the case must not be answered with the
-    // positive facts: keep only memories that state a negative themselves.
+    // positive facts: keep only memories that state a negative themselves,
+    // in their wording or as evidence of a negative relation.
     if negated {
-        candidates.retain(|(id, _, _)| {
-            rows.get(id)
-                .is_some_and(|row| paths::has_negation_cue(&row.1))
-        });
+        let mut st = engine.db.sql().prepare_cached(
+            "SELECT 1 FROM relation_evidence e JOIN relations r ON r.id = e.relation_id
+             WHERE e.memory_id = ?1 AND r.polarity = 0 LIMIT 1",
+        )?;
+        let mut keep = Vec::with_capacity(candidates.len());
+        for c in candidates {
+            let cue = rows
+                .get(&c.0)
+                .is_some_and(|row| paths::has_negation_cue(&row.1));
+            if cue || st.exists([c.0])? {
+                keep.push(c);
+            }
+        }
+        candidates = keep;
     }
     // Abstention: no channel found anything to stand on, so say so instead of
     // returning the nearest unrelated memories. Dense similarity is the only
@@ -900,7 +911,7 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     let facts = if negated {
         facts
             .into_iter()
-            .filter(|fact| paths::has_negation_cue(&fact.fact))
+            .filter(|fact| fact.polarity == 0 || paths::has_negation_cue(&fact.fact))
             .collect()
     } else if path_hits.is_empty() {
         facts
