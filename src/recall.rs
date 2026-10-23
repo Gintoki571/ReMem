@@ -5,13 +5,19 @@ use crate::engine::{
     Community, EntityCard, EntityOutput, FactHit, MemoryHit, OverviewOutput, RecallInput,
     RecallOutput,
 };
-use crate::{extract, graph, kg, rank, temporal, text, Result};
+use crate::{extract, graph, kg, paths, rank, temporal, text, Result};
 use rusqlite::{params, params_from_iter, OptionalExtension};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 const MEMORY_COLUMNS: &str =
     "id,content,kind,tags,importance,scope,source,session,created_at,valid_from,valid_to,expired_at,superseded_by";
+
+/// Weight of the query-directed path channel in the RRF fusion.
+const PATH_WEIGHT: f64 = 2.5;
+/// Top dense-retrieval cosine below which a query with no lexical or entity
+/// support is treated as "nothing relevant is stored".
+const ABSTAIN_COSINE: f64 = 0.18;
 
 #[allow(clippy::chunks_exact_to_as_chunks)]
 fn blob_vec(blob: Vec<u8>) -> Vec<f32> {
@@ -342,10 +348,11 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
     let since = parse_bound(input.since.as_deref(), &clock)?;
     let until = parse_bound(input.until.as_deref(), &clock)?;
     let window = temporal::find_window(&input.query, &clock);
-    let history =
-        input.include_history || temporal::history_intent(&input.query) || as_of.is_some();
+    let history_query = temporal::history_intent(&input.query);
+    let history = input.include_history || history_query || as_of.is_some();
     let k = input.k.unwrap_or(8).clamp(1, 50);
     let budget = input.budget.unwrap_or(1200).min(20_000);
+    let negated = paths::negation_intent(&input.query);
     let query_text = input
         .query
         .split_whitespace()
@@ -545,6 +552,7 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
             fact_memory_seed: engine.cfg.fact_memory_seed,
         },
     )?;
+    let relation_support = !relation_entities.is_empty() || !relation_memories.is_empty();
     for (id, weight) in relation_entities {
         seed_entity(id, weight);
     }
@@ -629,6 +637,47 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         .take(depth)
         .collect();
 
+    // ------------------------------------------------------------ path
+    // Query-directed beam search over relations. This is what answers "where
+    // does the manager of X live": the destination memory shares no words with
+    // the question, so no lexical or vector channel can find it. Seeds are the
+    // exact query anchors only; fuzzy seeds would start paths elsewhere.
+    let mut path_starts: Vec<i64> = query_alias_entities.iter().copied().collect();
+    path_starts.sort_unstable();
+    path_starts.truncate(4);
+    // "What did X drink *before* Y" asks for the older state; a path from the
+    // query anchors lands on the current one and buries the answer.
+    let path_hits = if path_starts.is_empty() || negated || history_query {
+        Vec::new()
+    } else {
+        paths::search(
+            &engine.db,
+            &query_text,
+            &path_starts,
+            paths::Visibility {
+                now,
+                as_of,
+                history,
+            },
+        )?
+    };
+    let mut path_ids: Vec<i64> = if path_hits.is_empty() {
+        Vec::new()
+    } else {
+        paths::evidence(&engine.db, &path_hits)?
+    };
+    let missing: Vec<i64> = path_ids
+        .iter()
+        .copied()
+        .filter(|id| !rows.contains_key(id))
+        .collect();
+    rows.extend(fetch_rows(&engine.db, &missing)?);
+    path_ids.retain(|id| {
+        rows.get(id)
+            .is_some_and(|row| eligible(row, as_of, history, input, since, until))
+    });
+    path_ids.truncate(depth);
+
     let channels = [
         rank::Channel {
             name: "bm25",
@@ -649,6 +698,11 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
             name: "time",
             weight: engine.cfg.w_temporal,
             ids: &time_ids,
+        },
+        rank::Channel {
+            name: "path",
+            weight: PATH_WEIGHT,
+            ids: &path_ids,
         },
     ];
     let fused = rank::rrf(&channels, engine.cfg.rrf_k);
@@ -677,6 +731,38 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         candidates.push((f.id, score, f.ranks));
     }
     candidates.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+    // A question about what is *not* the case must not be answered with the
+    // positive facts: keep only memories that state a negative themselves.
+    if negated {
+        candidates.retain(|(id, _, _)| {
+            rows.get(id)
+                .is_some_and(|row| paths::has_negation_cue(&row.1))
+        });
+    }
+    // Abstention: no channel found anything to stand on, so say so instead of
+    // returning the nearest unrelated memories. Dense similarity is the only
+    // signal left, and on UltraBERT it barely separates "paraphrased but
+    // stored" (>= 0.185 on the holdout) from "not stored" (<= 0.180 on
+    // off-domain probes), so the threshold sits between them.
+    let best_vector = vec_ranked.first().map(|(_, cosine)| *cosine).unwrap_or(0.0);
+    let supported = !bm25.is_empty()
+        || !ent_seeds.is_empty()
+        || relation_support
+        || !path_ids.is_empty()
+        || window.is_some()
+        || best_vector >= ABSTAIN_COSINE;
+    if !supported || candidates.is_empty() {
+        return Ok(RecallOutput {
+            memories: Vec::new(),
+            facts: Vec::new(),
+            entities: Vec::new(),
+            window: window.map(|w| (w.start, w.end, w.matched)),
+            candidates: 0,
+            tokens_used: 0,
+            tokens_budget: budget,
+            omitted: 0,
+        });
+    }
     let mmr_ids: Vec<i64> = candidates.iter().map(|x| x.0).take(3 * k).collect();
     let vecs = fetch_vectors(&engine.db, &mmr_ids)?;
     let mmr_input: Vec<(i64, f64)> = candidates.iter().map(|x| (x.0, x.1)).take(3 * k).collect();
@@ -780,6 +866,27 @@ pub fn recall(engine: &Engine, input: &RecallInput) -> Result<RecallOutput> {
         Some(&ppr_score),
         Some(&query_vec),
     )?;
+    // The last hop of the best paths is often the only place the answer
+    // appears ("Liam Vijappa lives in Denver"), and that relation belongs to an
+    // entity the neighbourhood search never reached. Render it explicitly.
+    let facts = if negated {
+        facts
+            .into_iter()
+            .filter(|fact| paths::has_negation_cue(&fact.fact))
+            .collect()
+    } else if path_hits.is_empty() {
+        facts
+    } else {
+        let top = &path_hits[..path_hits.len().min(2)];
+        let mut merged = paths::facts(&engine.db, top, cutoff, 6)?;
+        for fact in facts {
+            if !merged.iter().any(|x| x.id == fact.id) {
+                merged.push(fact);
+            }
+        }
+        merged.truncate(8);
+        merged
+    };
     let entities = top_entities
         .iter()
         .take(3)
@@ -973,9 +1080,10 @@ fn facts_for(
     Ok(out.into_iter().take(limit).map(|(_, fact)| fact).collect())
 }
 
-pub fn entity(engine: &Engine, name: &str, limit: usize) -> Result<EntityOutput> {
-    let limit = limit.min(200);
-    let id = crate::engine::parse_id(name, 'e')
+/// Resolve `e<id>`, an exact alias, or (as a last resort) the nearest entity
+/// card. Shared with the graph tools so they resolve names like `entity` does.
+pub(crate) fn resolve_entity(engine: &Engine, name: &str) -> Result<i64> {
+    crate::engine::parse_id(name, 'e')
         .or_else(|| {
             let n = text::norm_name(name);
             engine
@@ -989,7 +1097,12 @@ pub fn entity(engine: &Engine, name: &str, limit: usize) -> Result<EntityOutput>
                 .ok()
         })
         .map(Ok)
-        .unwrap_or_else(|| lookup_entity_fuzzy(engine, name))?;
+        .unwrap_or_else(|| lookup_entity_fuzzy(engine, name))
+}
+
+pub fn entity(engine: &Engine, name: &str, limit: usize) -> Result<EntityOutput> {
+    let limit = limit.min(200);
+    let id = resolve_entity(engine, name)?;
     let now = engine.clock().now;
     let card = card(engine, id)?;
     let all = facts_for(

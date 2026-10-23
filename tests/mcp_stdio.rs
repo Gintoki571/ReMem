@@ -8,7 +8,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 const PROTOCOLS: [&str; 3] = ["2025-06-18", "2025-03-26", "2024-11-05"];
-const TOOLS: [&str; 8] = [
+const TOOLS: [&str; 10] = [
     "remember",
     "recall",
     "entity",
@@ -16,6 +16,8 @@ const TOOLS: [&str; 8] = [
     "forget",
     "merge_entities",
     "overview",
+    "follow",
+    "aggregate",
     "stats",
 ];
 
@@ -121,7 +123,7 @@ fn notifications_get_no_reply() {
 }
 
 #[test]
-fn tools_list_returns_the_eight_tools() {
+fn tools_list_returns_every_registered_tool() {
     let mut mcp = Mcp::start();
     mcp.initialize(PROTOCOLS[0]);
     let resp = mcp.call(json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}));

@@ -13,6 +13,7 @@ pub mod graph;
 pub mod import;
 pub mod kg;
 pub mod mcp;
+pub mod paths;
 pub mod rank;
 pub mod recall;
 pub mod remember;

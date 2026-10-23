@@ -2,6 +2,7 @@ use neocortex::embed::{Embedder, HashEmbedder, Mode, DIMS};
 use neocortex::engine::{
     Config, Engine, EntityIn, RecallInput, RecallOutput, RelationIn, RememberInput,
 };
+use neocortex::paths;
 use neocortex::temporal::{parse_instant, Clock};
 use neocortex::Result;
 use std::collections::HashMap;
@@ -321,6 +322,262 @@ fn multi_hop_reaches_memory_that_only_names_the_far_entity() {
         .unwrap();
     assert!(ids(&out).contains(&answer));
     assert!(has_reason(&out, answer, "graph#"));
+}
+
+#[test]
+fn two_hop_path_answers_with_the_manager_home_city() {
+    let e = engine(Arc::new(HashEmbedder));
+    remember(&e, "Noah Tansen's manager is Mira Shah.", |i| {
+        i.entities = vec![entity("Noah Tansen"), entity("Mira Shah")];
+        i.relations = vec![relation(
+            "Noah Tansen",
+            "manager",
+            "Mira Shah",
+            "Noah Tansen's manager is Mira Shah.",
+        )];
+    });
+    let answer = remember(&e, "Mira Shah lives in Oslo.", |i| {
+        i.entities = vec![entity("Mira Shah"), entity("Oslo")];
+        i.relations = vec![relation(
+            "Mira Shah",
+            "lives in",
+            "Oslo",
+            "Mira Shah lives in Oslo.",
+        )];
+    });
+    let out = e
+        .recall(&RecallInput {
+            query: "where does the manager of Noah Tansen live".into(),
+            k: Some(5),
+            ..Default::default()
+        })
+        .unwrap();
+    assert!(ids(&out).contains(&answer), "{:?}", out.memories);
+    assert!(
+        out.facts.iter().any(|f| f.target == "Oslo"),
+        "the last hop must render, got {:?}",
+        out.facts
+    );
+}
+
+#[test]
+fn three_hop_path_covers_sibling_manager_and_city() {
+    let e = engine(Arc::new(HashEmbedder));
+    remember(&e, "Elsa's sister is Maria.", |i| {
+        i.entities = vec![entity("Elsa"), entity("Maria")];
+        i.relations = vec![relation(
+            "Elsa",
+            "sibling of",
+            "Maria",
+            "Elsa's sister is Maria.",
+        )];
+    });
+    remember(&e, "Liam is Maria's manager.", |i| {
+        i.entities = vec![entity("Liam"), entity("Maria")];
+        i.relations = vec![relation(
+            "Liam",
+            "manager",
+            "Maria",
+            "Liam is Maria's manager.",
+        )];
+    });
+    let answer = remember(&e, "Liam's home is in Denver.", |i| {
+        i.entities = vec![entity("Liam"), entity("Denver")];
+        i.relations = vec![relation(
+            "Liam",
+            "lives in",
+            "Denver",
+            "Liam's home is in Denver.",
+        )];
+    });
+    let out = e
+        .recall(&RecallInput {
+            query: "what city is home to the manager of Elsa's sister".into(),
+            k: Some(5),
+            ..Default::default()
+        })
+        .unwrap();
+    assert!(ids(&out).contains(&answer), "{:?}", out.memories);
+    assert!(
+        out.facts.iter().any(|f| f.target == "Denver"),
+        "the last hop must render, got {:?}",
+        out.facts
+    );
+}
+
+#[test]
+fn negation_question_returns_only_negative_memories() {
+    let e = engine(Arc::new(HashEmbedder));
+    for name in ["Priya", "Anika"] {
+        remember(&e, &format!("{name} likes jazz."), |i| {
+            i.entities = vec![entity(name)];
+        });
+    }
+    let negative = remember(&e, "Bob does not like jazz.", |i| {
+        i.entities = vec![entity("Bob")];
+    });
+    let out = e
+        .recall(&RecallInput {
+            query: "who does not like jazz".into(),
+            ..Default::default()
+        })
+        .unwrap();
+    assert!(ids(&out).contains(&negative), "{:?}", out.memories);
+    assert!(
+        out.memories.iter().all(|m| m.content.contains("not")),
+        "positive facts leaked into a negation answer: {:?}",
+        out.memories.iter().map(|m| &m.content).collect::<Vec<_>>()
+    );
+    assert!(out.facts.iter().all(|f| f.fact.contains("not")));
+}
+
+#[test]
+fn unrelated_question_abstains_instead_of_ranking_noise() {
+    let e = engine(Arc::new(HashEmbedder));
+    remember(&e, "The office coffee machine is in the kitchen.", |_| {});
+    remember(&e, "Priya leads the platform team.", |i| {
+        i.entities = vec![entity("Priya")];
+    });
+    let out = e
+        .recall(&RecallInput {
+            query: "quantum chromodynamics lattice spacing".into(),
+            ..Default::default()
+        })
+        .unwrap();
+    assert!(out.memories.is_empty(), "{:?}", out.memories);
+    assert!(out.facts.is_empty());
+    assert_eq!(out.candidates, 0);
+}
+
+#[test]
+fn follow_walks_to_a_named_target() {
+    let e = engine(Arc::new(HashEmbedder));
+    remember(&e, "Noah Tansen's manager is Mira Shah.", |i| {
+        i.entities = vec![entity("Noah Tansen"), entity("Mira Shah")];
+        i.relations = vec![relation(
+            "Noah Tansen",
+            "manager",
+            "Mira Shah",
+            "Noah Tansen's manager is Mira Shah.",
+        )];
+    });
+    remember(&e, "Mira Shah lives in Oslo.", |i| {
+        i.entities = vec![entity("Mira Shah"), entity("Oslo")];
+        i.relations = vec![relation(
+            "Mira Shah",
+            "lives in",
+            "Oslo",
+            "Mira Shah lives in Oslo.",
+        )];
+    });
+    let out = paths::follow(
+        &e,
+        &paths::FollowInput {
+            from: "Noah Tansen".into(),
+            to: Some("Oslo".into()),
+            depth: Some(3),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(out.reached);
+    assert!(
+        out.facts.iter().any(|f| f.target == "Oslo"),
+        "{:?}",
+        out.facts
+    );
+    assert!(out.facts.iter().any(|f| f.target == "Mira Shah"));
+}
+
+#[test]
+fn follow_prefers_forward_edges_over_hub_noise() {
+    let e = engine(Arc::new(HashEmbedder));
+    remember(&e, "Nimbus Prism is a project.", |i| {
+        i.entities = vec![entity("Nimbus Prism")];
+    });
+    for name in ["Ada", "Bea", "Cleo", "Dora", "Eli"] {
+        remember(&e, &format!("{name} prefers Nimbus Prism."), |i| {
+            i.entities = vec![entity(name), entity("Nimbus Prism")];
+            i.relations = vec![relation(
+                name,
+                "prefer",
+                "Nimbus Prism",
+                &format!("{name} prefers Nimbus Prism."),
+            )];
+        });
+    }
+    remember(&e, "Yash leads Nimbus Prism.", |i| {
+        i.entities = vec![entity("Yash"), entity("Nimbus Prism")];
+        i.relations = vec![relation(
+            "Yash",
+            "lead",
+            "Nimbus Prism",
+            "Yash leads Nimbus Prism.",
+        )];
+    });
+    remember(&e, "Nimbus Prism uses Scala.", |i| {
+        i.entities = vec![entity("Nimbus Prism"), entity("Scala")];
+        i.relations = vec![relation(
+            "Nimbus Prism",
+            "use",
+            "Scala",
+            "Nimbus Prism uses Scala.",
+        )];
+    });
+    let out = paths::follow(
+        &e,
+        &paths::FollowInput {
+            from: "Yash".into(),
+            depth: Some(2),
+            k: Some(3),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(
+        out.facts.iter().any(|f| f.target == "Scala"),
+        "hub reverse edges crowded out the forward hop: {:?}",
+        out.facts.iter().map(|f| &f.fact).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn aggregate_counts_entities_and_separates_negatives() {
+    let e = engine(Arc::new(HashEmbedder));
+    for name in ["Priya", "Anika"] {
+        remember(&e, &format!("{name} works at the Solberg Lab."), |i| {
+            i.entities = vec![entity(name), entity("Solberg Lab")];
+            i.relations = vec![relation(
+                name,
+                "works at",
+                "Solberg Lab",
+                &format!("{name} works at the Solberg Lab."),
+            )];
+        });
+    }
+    remember(&e, "Dana does not work at the Solberg Lab.", |i| {
+        i.entities = vec![entity("Dana"), entity("Solberg Lab")];
+        i.relations = vec![relation(
+            "Dana",
+            "works at",
+            "Solberg Lab",
+            "Dana does not work at the Solberg Lab.",
+        )];
+    });
+    let out = paths::aggregate(
+        &e,
+        &paths::AggregateInput {
+            predicate: Some("works at".into()),
+            target: Some("Solberg Lab".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(out.count, 2, "{:?}", out.items);
+    assert!(out.items.iter().any(|item| item.name == "Priya"));
+    assert!(out.items.iter().any(|item| item.name == "Anika"));
+    assert_eq!(out.negative.len(), 1, "{:?}", out.negative);
+    assert_eq!(out.negative[0].name, "Dana");
 }
 
 struct MapEmbedder {

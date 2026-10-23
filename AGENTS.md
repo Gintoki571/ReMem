@@ -105,6 +105,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - One live memory per `content_hash` (unique partial index); a hash hit only counts as a duplicate when kind + folded text match. A memory's end (`--until`, `invalidate m`, supersede) ends the relations it alone still evidenced; soft forget retracts them (`expired_at`, no end date); hard forget and merge patch the graph projection incrementally, never `rebuild_all`.
 - Embedding-only similarity never merges entities; it only adds `similar` soft edges.
 - Ids shown to agents: `m<id>`, `e<id>`, `r<id>`; tools accept both forms.
+- `recall` adds a query-directed path channel (`paths::search`, beam 24, depth 3, `PATH_WEIGHT` 2.5) and renders the path facts; it is skipped on negation and history-intent questions, and an empty recall is returned when no lexical, entity, relation or path support exists and the best cosine is below `ABSTAIN_COSINE` (0.18).
 - The embedder sets `RAYON_NUM_THREADS` to candle's thread count at model load when unset (gemm and rayon pools must agree; 2x faster).
 - Env: `NEOCORTEX_EMBEDDER=hash` (tests only; a DB records its embedder and refuses another), `NEOCORTEX_DB` (default `~/.neocortex/neocortex.db`), `NEOCORTEX_MODEL_DIR` (default `~/.neocortex/models/UltraBERT-Embed-150M`), `NEOCORTEX_TZ` (`+HH:MM`, default system local offset), `NEOCORTEX_MAX_TOKENS` (default 1024), `NEOCORTEX_EXTRACTOR` (unset = off; `rules` = `src/extract_model.rs` relation/date tier, used only when a memory has no agent-supplied entities or relations).
 
@@ -119,15 +120,17 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - `src/graph.rs` - CSR + ACL push personalized PageRank. `src/rank.rs` - RRF, MMR, cosine, packing.
 - `src/remember.rs`, `src/resolve.rs`, `src/kg.rs` - write pipeline, entity/predicate resolution, and rebuildable graph projection. `remember` and `remember_batch` share `prepare` + `write_prepared`; a batch chunk of <= 256 inputs is one embed call and one transaction with a SAVEPOINT per item.
 - `src/recall.rs` - ranked multi-channel memory, fact, and entity retrieval; `src/eval.rs` - fixture-based retrieval evaluation and ablations.
+- `src/paths.rs` - LLM-free query-directed path search over relations (an RRF channel in recall), plus the agent tools `follow` (bounded traversal, `reached` flag) and `aggregate` (grouped counts with a `negative` bucket). Also owns negation cues (`has_negation_cue`, `negation_intent`).
 - `tests/fixtures/ultrabert_fixture.json` - authoritative embedding reference (sentence-transformers 6.2.0, fp32).
 - `src/engine.rs` - public API (Engine, input/output types = MCP tool schema), Config tunables.
-- `src/mcp.rs` - MCP stdio server (JSON-RPC 2.0, 8 tools, LazyEmbedder). `src/render.rs` - compact text output. `src/main.rs` - CLI. `src/import.rs` - one-shot ReMem v3 import.
+- `src/mcp.rs` - MCP stdio server (JSON-RPC 2.0, 10 tools, LazyEmbedder). `src/render.rs` - compact text output. `src/main.rs` - CLI. `src/import.rs` - one-shot ReMem v3 import.
 - `src/export.rs` - JSON Lines `export`/`import` (backup and embedder migration: re-ingest through remember). `src/bench.rs` - synthetic corpus + latency/size report (`neocortex bench --n N`). `src/eval.rs` - `neocortex eval` (ablation, failures, `--set`, `--sweep` on one ingestion).
 - `tests/temporal_fixes.rs` - regression tests for the temporal/invalidation hunt (until/invalidate/forget ends, interval overlap, `--when` spans, text-date inference, budget and duplicate flags).
 - `tests/ops.rs` - export/import round trip, concurrent writer processes. `tests/world.rs` - batch == sequential on a mixed workload (ids, whole outputs, tables) including a negation, a seeded single-valued change and a non-exclusive conflict, batch error isolation, and the committed world fixture's key/answer integrity.
 - `eval/fixtures.json` (tuning, 95 memories / 84 queries) + `eval/holdout.json` (independent check, 105 / 88) + `eval/world-300.json` (generated, 300 people / 3264 memories / 600 queries) + `eval/README.md` (format, scoring incl. acc@10, tuning protocol: defaults change only if both sets agree, world protocol).
 - `eval/extract/holdout.json` - independent held-out extraction set (150 memories, `content` + `entities` + `relations` + `valid_from`), scored by `examples/extract_eval.rs`; never tuned against, never read by extraction code.
-- `examples/gen_world.rs` - deterministic (`--seed`) synthetic year of agent memory + ground-truth queries; the only writer of `eval/world-*.json`. Generated worlds over 2 MB stay out of git.
+- `examples/gen_world.rs` - deterministic (`--seed`) synthetic year of agent memory + ground-truth queries; the only writer of `eval/world-*.json`. Generated worlds over 2 MB stay out of git. `examples/agent_sim.rs` - iterative agent simulation (recall -> follow -> recall-leaf) over a world fixture and an ingested DB, scoring exactly like eval acc@10.
+- `docs/research/multihop.md` - measured multi-hop/aggregation/negation/abstention results: path-channel ablations, fixtures/holdout gate, latency, agent simulation, recommendation.
 - `skills/neocortex/SKILL.md` - agent-facing usage protocol; `README.md` - user docs.
 
 ## Work Guidance
@@ -146,4 +149,5 @@ cargo build --release && ./target/release/neocortex eval eval/fixtures.json --ab
 NEOCORTEX_EMBEDDER=hash ./target/release/neocortex bench --n 10000 --db /tmp/b.db      # recall p50 <= 150 ms
 cargo run --release --example gen_world -- --people 300 --seed 7 --out eval/world-300.json   # must match the committed file byte for byte
 ./target/release/neocortex eval eval/world-300.json --save-db /tmp/world300.db              # per-category acc@10 / recall / MRR
+cargo run --release --example agent_sim -- eval/world-300.json target/w300.db              # iterative agent accuracy (recall -> follow -> recall-leaf)
 ```

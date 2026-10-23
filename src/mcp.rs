@@ -1,5 +1,5 @@
 //! MCP server over stdio: newline-delimited JSON-RPC 2.0, one response line
-//! per request, flushed immediately. Eight tools, all backed by one `Engine`.
+//! per request, flushed immediately. Ten tools, all backed by one `Engine`.
 //!
 //! The embedder is lazy: `initialize` and `tools/list` never touch the model
 //! (loading UltraBERT takes seconds and can fail); the first call that needs
@@ -8,6 +8,7 @@
 use crate::embed::{self, Embedder, Mode};
 use crate::engine::{self, Engine, RecallInput, RememberInput};
 use crate::error::{Error, Result};
+use crate::paths;
 use crate::render;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -376,12 +377,103 @@ fn run_tool(engine: &Engine, name: &str, args: &Value) -> std::result::Result<St
                 text
             })
         }
+        "follow" => {
+            require(args, &["from"])?;
+            let inp: paths::FollowInput = from_args(args)?;
+            let out = paths::follow(engine, &inp).map_err(engine_error)?;
+            emit(format, &out, || follow_text(&out, &engine.clock()))
+        }
+        "aggregate" => {
+            let inp: paths::AggregateInput = from_args(args)?;
+            let out = paths::aggregate(engine, &inp).map_err(engine_error)?;
+            emit(format, &out, || aggregate_text(&out))
+        }
         "stats" => {
             let out = engine.stats().map_err(engine_error)?;
             emit(format, &out, || render::render_stats(&out))
         }
         _ => Err(ToolError::Unknown),
     }
+}
+
+fn follow_text(out: &paths::FollowOutput, clock: &crate::temporal::Clock) -> String {
+    let date = |t: i64| crate::temporal::fmt_date(t, clock);
+    let mut s = match (&out.to, out.reached) {
+        (Some(to), true) => format!("{} → {to} (reached)\n", out.from),
+        (Some(to), false) => format!("{} → {to} (not reached)\n", out.from),
+        (None, _) => format!("{}\n", out.from),
+    };
+    for fact in &out.facts {
+        s.push_str(&format!(
+            "[{}] {} —{}→ {} (since {}, {} hop{}{})\n",
+            fact.relation,
+            fact.source,
+            fact.predicate,
+            fact.target,
+            date(fact.valid_from),
+            fact.hops,
+            if fact.hops == 1 { "" } else { "s" },
+            if fact.ended { ", ended" } else { "" },
+        ));
+    }
+    if out.total > out.facts.len() {
+        s.push_str(&format!(
+            "({} more not shown)\n",
+            out.total - out.facts.len()
+        ));
+    }
+    s
+}
+
+fn aggregate_text(out: &paths::AggregateOutput) -> String {
+    let mut scope = Vec::new();
+    if let Some(predicate) = &out.predicate {
+        scope.push(format!("predicate \"{predicate}\""));
+    }
+    if let Some(source) = &out.source {
+        scope.push(format!("source {source}"));
+    }
+    if let Some(target) = &out.target {
+        scope.push(format!("target {target}"));
+    }
+    let scope = if scope.is_empty() {
+        String::new()
+    } else {
+        format!(" ({})", scope.join(", "))
+    };
+    let mut s = format!("count: {}{scope}\n", out.count);
+    for item in &out.items {
+        let detail = if item.facts.is_empty() {
+            String::new()
+        } else {
+            format!(" — {}", item.facts.join("; "))
+        };
+        s.push_str(&format!("[e{}] {}{detail}\n", item.id, item.name));
+    }
+    if !out.negative.is_empty() {
+        s.push_str("negative:\n");
+        for item in &out.negative {
+            s.push_str(&format!(
+                "[e{}] {} — {}\n",
+                item.id,
+                item.name,
+                item.facts.join("; ")
+            ));
+        }
+    }
+    if !out.memories.is_empty() {
+        let ids = out
+            .memories
+            .iter()
+            .map(|id| format!("m{id}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        s.push_str(&format!("memories: {ids}\n"));
+    }
+    if out.truncated {
+        s.push_str("(truncated)\n");
+    }
+    s
 }
 
 fn validate_limits(name: &str, args: &Value) -> std::result::Result<(), ToolError> {
@@ -672,6 +764,39 @@ fn tool_defs() -> Vec<Value> {
             }
         }),
         json!({
+            "name": "follow",
+            "description": "Walk relations hop by hop from one entity (optionally toward another). Use it when recall names the neighbourhood but not the answer: follow \"Noah Tansen\" to \"Mira Shah\" to the city. Returns each relation with direction, hop count and the memories that evidence it.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "from": {"type": "string", "description": "Entity to start from (name, alias or e<id>)."},
+                    "to": {"type": "string", "description": "Optional destination entity; stops early once reached."},
+                    "predicate": {"type": "string", "description": "Only follow relations whose predicate or fact matches these words, e.g. \"manager\"."},
+                    "depth": {"type": "integer", "minimum": 1, "maximum": 3, "description": "Hops to walk (default 2)."},
+                    "k": {"type": "integer", "minimum": 1, "maximum": 50, "description": "Max facts to return (default 20)."},
+                    "as_of": {"type": "string", "description": "World-time snapshot for which facts were true."},
+                    "include_history": {"type": "boolean", "description": "Also follow ended relations (default false)."},
+                    "format": format_property()
+                },
+                "required": ["from"]
+            }
+        }),
+        json!({
+            "name": "aggregate",
+            "description": "Count and list the distinct entities one relation reaches: who works at a lab, where someone's reports live, how many pets someone has. Negated facts (\"does not like jazz\") are returned separately under `negative` instead of being counted. Use it for how-many, which-ones and list questions that ranked recall cannot answer.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "predicate": {"type": "string", "description": "Relation to count, e.g. \"works at\", \"pets\", \"lives in\"."},
+                    "source": {"type": "string", "description": "Only relations starting at this entity; counts the other end."},
+                    "target": {"type": "string", "description": "Only relations ending at this entity; counts the other end."},
+                    "include_history": {"type": "boolean", "description": "Count ended relations too (default false)."},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 200, "description": "Max entities per list (default 50)."},
+                    "format": format_property()
+                }
+            }
+        }),
+        json!({
             "name": "stats",
             "description": "Counts, database size and embedder status. Cheap; use it to confirm neocortex is reachable and to see how much memory exists.",
             "inputSchema": {
@@ -701,7 +826,7 @@ mod tests {
     #[test]
     fn every_tool_has_an_object_schema() {
         let tools = tool_defs();
-        assert_eq!(tools.len(), 8);
+        assert_eq!(tools.len(), 10);
         for tool in &tools {
             assert_eq!(tool["inputSchema"]["type"], "object", "{tool}");
             assert!(tool["description"].as_str().unwrap().len() > 20, "{tool}");
