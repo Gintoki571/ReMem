@@ -211,7 +211,7 @@ Agent skill doc `skills/neocortex/SKILL.md`: when to remember (decisions, prefer
 ## 11. Decisions I made (please check)
 
 - Agent-supplied JSON is the primary extraction path and the heuristic extractor is the fallback (user approved). GLiNER is deferred.
-- Clean rewrite as one crate on branch `neocortex` in the same repo/remote; old code at tag `remem-final`.
+- Clean rewrite as one crate in the same git history (repo renamed ReMem -> Gintoki571/neocortex, `main`); old code at tag `remem-final`.
 - Embedding-only similarity never merges entities; it only creates soft `similar` edges.
 - Relational tables are the source of truth; the graphqlite graph is a rebuildable projection used for Cypher (`cypher` command), paths and Louvain communities. The PPR adjacency snapshot is read from the relational tables (mentions, relations, similar), so as-of validity filtering is plain SQL and does not depend on graphqlite's internal table layout; it is cached per write generation.
 - Integer ids with prefixes.
