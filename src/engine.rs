@@ -97,7 +97,7 @@ impl Default for Config {
             history_boost: 1.5,
             fact_entity_boost: 1.0,
             fact_memory_seed: 0.0,
-            update_candidate: 0.82,
+            update_candidate: 0.75,
         }
     }
 }
@@ -343,8 +343,12 @@ pub struct FactHit {
     pub valid_to: Option<i64>,
     pub ended: bool,
     pub polarity: i64,
+    /// Set when >= 2 positive values of (source, predicate) are current.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub current_values: Option<usize>,
+    /// The newer relation that ended this one, as (id, fact).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replaced_by: Option<(i64, String)>,
 }
 
 #[derive(Clone, Debug, Serialize)]

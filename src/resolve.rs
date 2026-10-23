@@ -533,6 +533,19 @@ pub fn resolve_predicate(
             db.sql()
                 .execute("UPDATE predicates SET exclusive=1 WHERE id=?1", [id])?;
         }
+        // Seeded predicates start without a vector; the first use gives them
+        // one so paraphrases ("is employed at") can reach them by KNN.
+        let has_vec: bool = db.sql().query_row(
+            "SELECT EXISTS(SELECT 1 FROM predicates_vec WHERE rowid=?1)",
+            [id],
+            |r| r.get(0),
+        )?;
+        if !has_vec {
+            db.sql().execute(
+                "INSERT INTO predicates_vec(rowid,embedding) VALUES (?1,?2)",
+                params![id, vec_blob(embedding)],
+            )?;
+        }
         return predicate_row(db, id);
     }
     let nearest: Option<(i64, f32)> = db

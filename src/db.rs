@@ -146,7 +146,8 @@ impl Db {
         ] {
             let canonical = crate::text::norm_predicate(name);
             self.sql().execute(
-                "INSERT OR IGNORE INTO predicates(canonical,exclusive) VALUES (?1,1)",
+                "INSERT INTO predicates(canonical,exclusive) VALUES (?1,1)
+                 ON CONFLICT(canonical) DO UPDATE SET exclusive=1",
                 [&canonical],
             )?;
             let id: i64 = self.sql().query_row(

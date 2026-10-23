@@ -10,35 +10,46 @@ use crate::{
 use rusqlite::{params, OptionalExtension};
 use std::collections::{HashMap, HashSet};
 
-fn infer_negated(fact: &str, content: &str, predicate: &str) -> bool {
-    let text = fact.to_ascii_lowercase();
-    let source = if text.trim().is_empty() {
-        content.to_ascii_lowercase()
-    } else {
-        text
+/// Conservative negation cue for one relation: `text` must name the target,
+/// and a cue must sit within 4 words before the nearest predicate verb that
+/// precedes it ("Alice no longer likes jazz"). Anything else is positive.
+fn infer_negated(text: &str, predicate: &str, target: &str) -> bool {
+    let words: Vec<String> = text
+        .split_whitespace()
+        .map(|w| {
+            w.trim_matches(|c: char| !c.is_alphanumeric() && c != '\'')
+                .to_lowercase()
+        })
+        .collect();
+    let target: Vec<String> = target.split_whitespace().map(str::to_lowercase).collect();
+    let Some(verb) = predicate.split_whitespace().next() else {
+        return false;
     };
-    let words: Vec<&str> = source.split_whitespace().collect();
-    let pred_word = predicate.split_whitespace().next().unwrap_or("");
-    let pos = words
-        .iter()
-        .position(|w| w.trim_matches(|c: char| !c.is_alphanumeric()) == pred_word);
-    let end = pos.unwrap_or(words.len());
-    let before = end.saturating_sub(4);
-    let cues = [
-        "no", "not", "never", "stopped", "quit", "ceased", "doesn't", "didn't", "isn't", "wasn't",
-    ];
-    let mut found = words[before..end]
-        .iter()
-        .any(|w| cues.contains(&w.trim_matches(|c: char| !c.is_alphanumeric())));
-    if words.windows(2).any(|pair| pair == ["not", "only"]) {
-        found = false;
+    // "like" matches likes/liked, "live" lives/lived, "work" works/worked.
+    let stem = verb.trim_end_matches('e');
+    let Some(tpos) = (0..words.len()).find(|&i| words[i..].starts_with(&target)) else {
+        return false;
+    };
+    let Some(vpos) = (0..tpos).rev().find(|&i| words[i].starts_with(stem)) else {
+        return false;
+    };
+    let window = &words[vpos.saturating_sub(4)..vpos];
+    let has = |w: &str| window.iter().any(|x| x == w);
+    let pair = |a: &str, b: &str| window.windows(2).any(|p| p[0] == a && p[1] == b);
+    let mut cues = [
+        "not", "never", "stopped", "ceased", "doesn't", "didn't", "don't", "isn't", "wasn't",
+        "won't", "nor",
+    ]
+    .iter()
+    .any(|c| has(c))
+        || pair("no", "longer")
+        || pair("no", "more")
+        || pair("does", "not")
+        || pair("did", "not");
+    if pair("not", "only") || pair("never", "stopped") {
+        cues = false;
     }
-    if predicate.contains("work") {
-        found |= words[before..end]
-            .iter()
-            .any(|w| *w == "left" || *w == "quit");
-    }
-    found
+    cues
 }
 
 pub fn check_embedder(db: &Db, emb: &dyn Embedder) -> Result<()> {
@@ -379,10 +390,18 @@ pub fn remember(
             let polarity = if relation.negated.unwrap_or_else(|| {
                 infer_negated(
                     relation.fact.as_deref().unwrap_or(&content),
-                    &content,
                     &predicate,
+                    &relation.target,
                 )
-            }) { 0 } else { 1 };
+            }) {
+                0
+            } else {
+                1
+            };
+            // Relations this one ends; each gets ended_by = this relation.
+            let mut ended_here: Vec<i64> = Vec::new();
+            // The later relation this backfilled one is history up to.
+            let mut ended_by_later: Option<i64> = None;
             if new_valid_to.is_some_and(|to| to <= rf) {
                 return Err(crate::err!(
                     "relation '{fact}': valid_to must be after valid_from"
@@ -401,29 +420,34 @@ pub fn remember(
                         Ok((r.get(0)?, r.get(1)?, r.get(2)?))
                     })?
                     .collect::<rusqlite::Result<_>>()?;
-                let mut later: Option<i64> = None;
+                let mut later: Option<(i64, i64)> = None;
                 for (old, old_from, old_to) in olds {
                     if old_from == rf {
                         // Equal start: the newer write wins.
                         db.sql().execute(
-                            "UPDATE relations SET valid_to=?1, expired_at=?2, ended_by=NULL WHERE id=?3",
+                            "UPDATE relations SET valid_to=?1, expired_at=?2 WHERE id=?3",
                             params![rf, now, old],
                         )?;
-                        invalidated.push(old);
+                        ended_here.push(old);
                     } else if old_from < rf && old_to.is_none_or(|to| to > rf) {
                         // Older and still true at the new start: it ends there.
                         db.sql().execute(
-                            "UPDATE relations SET valid_to=?1, ended_by=NULL WHERE id=?2",
+                            "UPDATE relations SET valid_to=?1 WHERE id=?2",
                             params![rf, old],
                         )?;
-                        invalidated.push(old);
+                        ended_here.push(old);
                     } else if old_from > rf {
                         // Backfill: the new fact is history up to the later one.
-                        later = Some(later.map_or(old_from, |x| x.min(old_from)));
+                        if later.is_none_or(|(from, _)| old_from < from) {
+                            later = Some((old_from, old));
+                        }
                     }
                 }
-                if let Some(later) = later {
-                    new_valid_to = Some(new_valid_to.map_or(later, |to| to.min(later)));
+                if let Some((later, by)) = later {
+                    if new_valid_to.is_none_or(|to| to > later) {
+                        new_valid_to = Some(later);
+                        ended_by_later = Some(by);
+                    }
                 }
             }
             if relation.exclusive.is_none() && !predicate_exclusive && polarity == 1 {
@@ -459,7 +483,9 @@ pub fn remember(
                 db.sql().execute(
                     "UPDATE relations SET evidence_count=evidence_count+1,
                      weight=evidence_count+1, valid_from=MIN(valid_from,?1),
-                     valid_to=CASE WHEN valid_to IS NULL OR ?2 IS NULL THEN NULL ELSE MAX(valid_to,?2) END
+                     valid_to=CASE WHEN valid_to IS NULL THEN NULL
+                                   WHEN ?2 IS NULL THEN CASE WHEN ?1>=valid_to THEN NULL ELSE valid_to END
+                                   ELSE MAX(valid_to,?2) END
                      WHERE id=?3",
                     params![rf, new_valid_to, rid],
                 )?;
@@ -487,31 +513,39 @@ pub fn remember(
                     "INSERT INTO relations_vec(rowid,embedding) VALUES(?1,?2)",
                     params![rid, vec_blob(&vectors[fact_base + ri])],
                 )?;
-                if polarity == 0 {
-                    let positive: Vec<i64> = {
-                        let mut st = db.sql().prepare(
-                            "SELECT id FROM relations WHERE src=?1 AND dst=?2 AND predicate_id=?3
-                             AND polarity=1 AND id!=?5 AND expired_at IS NULL AND (valid_to IS NULL OR valid_to>?4)",
-                        )?;
-                        let rows = st.query_map(params![src, dst, pid, rf, rid], |r| r.get(0))?;
-                        rows.collect::<rusqlite::Result<_>>()?
-                    };
-                    for old in positive {
-                        db.sql().execute(
-                            "UPDATE relations SET valid_to=?1, ended_by=?2 WHERE id=?3",
-                            params![rf, rid, old],
-                        )?;
-                        invalidated.push(old);
-                    }
+                // Polarity flip: the same triple asserted with the opposite
+                // polarity ends the older live assertion (both stay history).
+                let opposite: Vec<i64> = {
+                    let mut st = db.sql().prepare(
+                        "SELECT id FROM relations WHERE src=?1 AND dst=?2 AND predicate_id=?3
+                         AND polarity=?4 AND valid_from<?5 AND expired_at IS NULL
+                         AND (valid_to IS NULL OR valid_to>?5)",
+                    )?;
+                    let rows = st.query_map(params![src, dst, pid, 1 - polarity, rf], |r| r.get(0))?;
+                    rows.collect::<rusqlite::Result<_>>()?
+                };
+                for old in opposite {
+                    db.sql().execute(
+                        "UPDATE relations SET valid_to=?1 WHERE id=?2",
+                        params![rf, old],
+                    )?;
+                    ended_here.push(old);
                 }
                 rid
             };
-            for old in &invalidated {
+            for old in &ended_here {
                 db.sql().execute(
-                    "UPDATE relations SET ended_by=?1 WHERE id=?2 AND valid_to=?3",
-                    params![rid, old, rf],
+                    "UPDATE relations SET ended_by=?1 WHERE id=?2",
+                    params![rid, old],
                 )?;
             }
+            if let Some(by) = ended_by_later {
+                db.sql().execute(
+                    "UPDATE relations SET ended_by=?1 WHERE id=?2 AND valid_to IS NOT NULL",
+                    params![by, rid],
+                )?;
+            }
+            invalidated.extend(ended_here);
             kg::project_relation(db, rid, src, dst, &predicate)?;
             rel_results.push(RelationResult {
                 id: rid,
@@ -731,4 +765,61 @@ fn knn_memory(db: &Db, v: &[f32], threshold: f32) -> Result<Option<(i64, f32)>> 
         )
         .optional()?;
     Ok(row.filter(|(_, s)| *s >= threshold))
+}
+
+#[cfg(test)]
+mod negation_tests {
+    use super::infer_negated;
+
+    #[test]
+    fn negation_cues_are_anchored_on_the_target() {
+        let cases = [
+            ("Alice no longer likes jazz.", "like", "jazz", true),
+            ("Alice doesn't like jazz", "like", "jazz", true),
+            ("Alice does not like jazz", "like", "jazz", true),
+            ("Bob never worked at Acme", "work at", "Acme", true),
+            (
+                "Bob stopped working at Acme in May",
+                "work at",
+                "Acme",
+                true,
+            ),
+            (
+                "Carol isn't living in Pune anymore",
+                "live in",
+                "Pune",
+                true,
+            ),
+            ("Alice likes jazz.", "like", "jazz", false),
+            ("Bob works at Acme, not Globex.", "work at", "Acme", false),
+            (
+                "Alice moved to Denver and no longer lives in Austin.",
+                "live in",
+                "Denver",
+                false,
+            ),
+            (
+                "Alice moved to Denver and no longer lives in Austin.",
+                "live in",
+                "Austin",
+                true,
+            ),
+            (
+                "Alice not only likes jazz but also blues",
+                "like",
+                "jazz",
+                false,
+            ),
+            ("Alice left for Paris", "live in", "Paris", false),
+            ("I have no doubt Alice likes jazz", "like", "jazz", false),
+            ("Jazz is great", "like", "jazz", false),
+        ];
+        for (text, predicate, target, want) in cases {
+            assert_eq!(
+                infer_negated(text, predicate, target),
+                want,
+                "{text} / {target}"
+            );
+        }
+    }
 }

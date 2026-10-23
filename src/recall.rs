@@ -852,7 +852,7 @@ fn facts_for(
     let marks = std::iter::repeat_n("?", ids.len())
         .collect::<Vec<_>>()
         .join(",");
-    let mut st = engine.db.sql().prepare(&format!("SELECT r.id,r.src,r.dst,p.canonical,r.fact,r.valid_from,r.valid_to,r.expired_at,e.name,d.name,r.polarity,r.predicate_id FROM relations r JOIN predicates p ON p.id=r.predicate_id JOIN entities e ON e.id=r.src JOIN entities d ON d.id=r.dst WHERE r.src IN ({marks}) OR r.dst IN ({marks})"))?;
+    let mut st = engine.db.sql().prepare(&format!("SELECT r.id,r.src,r.dst,p.canonical,r.fact,r.valid_from,r.valid_to,r.expired_at,e.name,d.name,r.polarity,r.predicate_id,r.ended_by,(SELECT nb.fact FROM relations nb WHERE nb.id=r.ended_by) FROM relations r JOIN predicates p ON p.id=r.predicate_id JOIN entities e ON e.id=r.src JOIN entities d ON d.id=r.dst WHERE r.src IN ({marks}) OR r.dst IN ({marks})"))?;
     let mut out = Vec::new();
     let mut sql_params: Vec<Box<dyn rusqlite::ToSql>> = ids
         .iter()
@@ -878,10 +878,27 @@ fn facts_for(
                 r.get::<_, String>(9)?,
                 r.get::<_, i64>(10)?,
                 r.get::<_, i64>(11)?,
+                r.get::<_, Option<i64>>(12)?,
+                r.get::<_, Option<String>>(13)?,
             ))
         },
     )? {
-        let (id, src, dst, pred, fact, vf, vt, expired, source, target, polarity, pid) = x?;
+        let (
+            id,
+            src,
+            dst,
+            pred,
+            fact,
+            vf,
+            vt,
+            expired,
+            source,
+            target,
+            polarity,
+            pid,
+            ended_by,
+            by_fact,
+        ) = x?;
         if vf > cutoff {
             continue;
         }
@@ -917,12 +934,18 @@ fn facts_for(
                 valid_to: vt,
                 ended: expired.is_some() || vt.is_some_and(|v| v <= cutoff),
                 polarity,
-                current_values: if polarity == 1 && expired.is_none() && vt.is_none() {
-                    Some(engine.db.sql().query_row(
-                        "SELECT count(*) FROM relations r WHERE r.src=?1 AND r.predicate_id=?2 AND r.polarity=1 AND r.expired_at IS NULL AND (r.valid_to IS NULL OR r.valid_to>?3)",
-                        params![src, pid, cutoff], |r| r.get::<_, i64>(0)
-                    )? as usize)
-                } else { None },
+                current_values: if polarity == 1 && expired.is_none() && vt.is_none_or(|v| v > cutoff) {
+                    let n: i64 = engine.db.sql().query_row(
+                        "SELECT count(*) FROM relations WHERE src=?1 AND predicate_id=?2 AND polarity=1
+                         AND expired_at IS NULL AND valid_from<=?3 AND (valid_to IS NULL OR valid_to>?3)",
+                        params![src, pid, cutoff],
+                        |r| r.get(0),
+                    )?;
+                    (n >= 2).then_some(n as usize)
+                } else {
+                    None
+                },
+                replaced_by: ended_by.zip(by_fact),
             },
         ));
     }

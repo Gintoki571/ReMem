@@ -56,7 +56,14 @@ fn timeline_memory_line(m: &MemoryHit, fmt: Fmt<'_>) -> String {
 /// `[r9] Mom —live in→ Pune (since 2026-09-14)`
 fn fact_line(f: &FactHit, fmt: Fmt<'_>) -> String {
     let span = match (f.valid_to, f.ended) {
-        (Some(to), true) => format!("{} → {}, ended", fmt(f.valid_from), fmt(to)),
+        (Some(to), true) => match &f.replaced_by {
+            Some((id, fact)) => format!(
+                "{} → {}, replaced by r{id}: {fact}",
+                fmt(f.valid_from),
+                fmt(to)
+            ),
+            None => format!("{} → {}, ended", fmt(f.valid_from), fmt(to)),
+        },
         (Some(to), false) => format!("{} → {}", fmt(f.valid_from), fmt(to)),
         (None, true) => format!("{}, ended", fmt(f.valid_from)),
         (None, false) => format!("since {}", fmt(f.valid_from)),
@@ -152,7 +159,9 @@ pub fn render_remember(out: &RememberOutput) -> String {
     for c in &out.conflicts {
         s.push_str(&format!(
             "conflict: r{} {} (since {})\n",
-            c.relation_id, c.fact, c.valid_from
+            c.relation_id,
+            c.fact,
+            crate::temporal::fmt_date(c.valid_from, &Clock::system())
         ));
     }
     for r in &out.related {
@@ -360,6 +369,7 @@ mod tests {
             ended,
             polarity: 1,
             current_values: None,
+            replaced_by: None,
         }
     }
 

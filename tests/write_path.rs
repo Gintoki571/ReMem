@@ -1801,3 +1801,45 @@ fn relation_endpoints_are_mentioned_by_their_memory() {
         .unwrap();
     assert_eq!(mentioned, 2);
 }
+
+#[test]
+fn a_v2_database_gains_polarity_and_seeded_predicates_on_open() {
+    let dir = temp_dir("migrate-v3");
+    let path = dir.join("mem.db");
+    {
+        let engine = engine_at(&path);
+        remember(
+            &engine,
+            "Bob works at Acme",
+            vec![],
+            vec![rel("Bob", "works at", "Acme")],
+        );
+    }
+    {
+        // Rewind to the v2 shape: no polarity/ended_by, no seeded exclusivity.
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute_batch(
+            "ALTER TABLE relations DROP COLUMN polarity;
+             ALTER TABLE relations DROP COLUMN ended_by;
+             UPDATE predicates SET exclusive=0;
+             UPDATE schema_meta SET version=2;",
+        )
+        .unwrap();
+    }
+    let engine = engine_at(&path);
+    assert_eq!(
+        count(
+            &engine,
+            "SELECT count(*) FROM relations WHERE polarity=1 AND ended_by IS NULL"
+        ),
+        1
+    );
+    assert_eq!(
+        count(
+            &engine,
+            "SELECT exclusive FROM predicates WHERE canonical='work at'"
+        ),
+        1
+    );
+    assert_eq!(count(&engine, "SELECT version FROM schema_meta"), 3);
+}
