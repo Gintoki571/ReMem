@@ -285,29 +285,45 @@ fn create_private(path: &Path) -> Result<std::fs::File> {
     Ok(file)
 }
 
-/// Replay a JSON Lines export through `Engine::remember`, in file order.
+/// Replay a JSON Lines export through `Engine::remember_batch`, in file order.
+///
+/// A record whose `supersedes` points at a row that is still pending in the
+/// current chunk cannot be translated yet, so the chunk is flushed first: the
+/// batch then sees exactly the ids the sequential replay would have seen.
 pub fn import(engine: &Engine, path: &Path) -> Result<ImportReport> {
     let records = read_jsonl(path)?;
     let mut report = ImportReport::default();
     // (new id, replayed into an existing live row) per old id.
     let mut ids: HashMap<i64, (i64, bool)> = HashMap::new();
+    let mut pending: Vec<(usize, Option<i64>, RememberInput)> = Vec::new();
     for (line, record) in &records {
         let old = record.id.as_deref().and_then(|s| parse_id(s, 'm'));
-        let supersedes: Vec<String> = record
+        let mut supersedes: Vec<String> = record
             .supersedes
             .iter()
             .filter_map(|s| parse_id(s, 'm'))
-            .filter_map(|old| ids.get(&old).map(|(new, _)| *new))
-            .map(|new| format!("m{new}"))
+            .filter_map(|old| ids.get(&old).map(|(new, _)| format!("m{new}")))
             .collect();
-        let out = engine
-            .remember(to_input(record, supersedes))
-            .map_err(|e| crate::err!("line {line}: {e}"))?;
-        if let Some(old) = old {
-            ids.insert(old, (out.id, out.duplicate_of.is_some()));
+        let unresolved = record
+            .supersedes
+            .iter()
+            .filter_map(|s| parse_id(s, 'm'))
+            .any(|old| !ids.contains_key(&old));
+        if unresolved && !pending.is_empty() {
+            flush(engine, &mut pending, &mut ids, &mut report)?;
+            supersedes = record
+                .supersedes
+                .iter()
+                .filter_map(|s| parse_id(s, 'm'))
+                .filter_map(|old| ids.get(&old).map(|(new, _)| format!("m{new}")))
+                .collect();
         }
-        report.imported += 1;
+        pending.push((*line, old, to_input(record, supersedes)));
+        if pending.len() >= crate::remember::BATCH_SIZE {
+            flush(engine, &mut pending, &mut ids, &mut report)?;
+        }
     }
+    flush(engine, &mut pending, &mut ids, &mut report)?;
     // Superseded rows come back as history through the replay above. Rows
     // that are still live but were marked expired were forgotten.
     for (_, record) in &records {
@@ -342,6 +358,27 @@ pub fn import(engine: &Engine, path: &Path) -> Result<ImportReport> {
         }
     }
     Ok(report)
+}
+
+fn flush(
+    engine: &Engine,
+    pending: &mut Vec<(usize, Option<i64>, RememberInput)>,
+    ids: &mut HashMap<i64, (i64, bool)>,
+    report: &mut ImportReport,
+) -> Result<()> {
+    if pending.is_empty() {
+        return Ok(());
+    }
+    let batch: Vec<(usize, Option<i64>)> = pending.iter().map(|(l, o, _)| (*l, *o)).collect();
+    let inputs: Vec<RememberInput> = pending.drain(..).map(|(_, _, input)| input).collect();
+    for ((line, old), result) in batch.into_iter().zip(engine.remember_batch(inputs)) {
+        let out = result.map_err(|e| crate::err!("line {line}: {e}"))?;
+        if let Some(old) = old {
+            ids.insert(old, (out.id, out.duplicate_of.is_some()));
+        }
+        report.imported += 1;
+    }
+    Ok(())
 }
 
 fn read_jsonl(path: &Path) -> Result<Vec<(usize, ExportRecord)>> {

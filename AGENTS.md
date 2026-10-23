@@ -116,14 +116,15 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - `src/temporal.rs` - civil dates, instant/window parsing, query windows, history intent.
 - `src/extract.rs` - heuristic entity candidates, n-grams for alias lookup.
 - `src/graph.rs` - CSR + ACL push personalized PageRank. `src/rank.rs` - RRF, MMR, cosine, packing.
-- `src/remember.rs`, `src/resolve.rs`, `src/kg.rs` - write pipeline, entity/predicate resolution, and rebuildable graph projection.
+- `src/remember.rs`, `src/resolve.rs`, `src/kg.rs` - write pipeline, entity/predicate resolution, and rebuildable graph projection. `remember` and `remember_batch` share `prepare` + `write_prepared`; a batch chunk of <= 256 inputs is one embed call and one transaction with a SAVEPOINT per item.
 - `src/recall.rs` - ranked multi-channel memory, fact, and entity retrieval; `src/eval.rs` - fixture-based retrieval evaluation and ablations.
 - `tests/fixtures/ultrabert_fixture.json` - authoritative embedding reference (sentence-transformers 6.2.0, fp32).
 - `src/engine.rs` - public API (Engine, input/output types = MCP tool schema), Config tunables.
 - `src/mcp.rs` - MCP stdio server (JSON-RPC 2.0, 8 tools, LazyEmbedder). `src/render.rs` - compact text output. `src/main.rs` - CLI. `src/import.rs` - one-shot ReMem v3 import.
 - `src/export.rs` - JSON Lines `export`/`import` (backup and embedder migration: re-ingest through remember). `src/bench.rs` - synthetic corpus + latency/size report (`neocortex bench --n N`). `src/eval.rs` - `neocortex eval` (ablation, failures, `--set`, `--sweep` on one ingestion).
-- `tests/ops.rs` - export/import round trip, concurrent writer processes.
-- `eval/fixtures.json` (tuning, 95 memories / 84 queries) + `eval/holdout.json` (independent check, 105 / 88) + `eval/README.md` (format, scoring, tuning protocol: defaults change only if both sets agree).
+- `tests/ops.rs` - export/import round trip, concurrent writer processes. `tests/world.rs` - batch == sequential on a mixed workload (ids, whole outputs, tables) including a negation, a seeded single-valued change and a non-exclusive conflict, batch error isolation, and the committed world fixture's key/answer integrity.
+- `eval/fixtures.json` (tuning, 95 memories / 84 queries) + `eval/holdout.json` (independent check, 105 / 88) + `eval/world-300.json` (generated, 300 people / 3264 memories / 600 queries) + `eval/README.md` (format, scoring incl. acc@10, tuning protocol: defaults change only if both sets agree, world protocol).
+- `examples/gen_world.rs` - deterministic (`--seed`) synthetic year of agent memory + ground-truth queries; the only writer of `eval/world-*.json`. Generated worlds over 2 MB stay out of git.
 - `skills/neocortex/SKILL.md` - agent-facing usage protocol; `README.md` - user docs.
 
 ## Work Guidance
@@ -140,4 +141,6 @@ cargo clippy --all-targets -- -D warnings
 cargo test            # model-dependent tests skip when the model dir is absent
 cargo build --release && ./target/release/neocortex eval eval/fixtures.json --ablation   # gate: fixtures recall >= 0.95 / MRR >= 0.89; holdout (eval/holdout.json) recall >= 0.92 / MRR >= 0.78
 NEOCORTEX_EMBEDDER=hash ./target/release/neocortex bench --n 10000 --db /tmp/b.db      # recall p50 <= 150 ms
+cargo run --release --example gen_world -- --people 300 --seed 7 --out eval/world-300.json   # must match the committed file byte for byte
+./target/release/neocortex eval eval/world-300.json --save-db /tmp/world300.db              # per-category acc@10 / recall / MRR
 ```

@@ -1,19 +1,29 @@
 use crate::embed::Embedder;
 use crate::engine::Engine;
-use crate::engine::{Config, RecallInput, RememberInput};
+use crate::engine::{Config, RecallInput, RecallOutput, RememberInput};
 use crate::error::Result;
 use crate::temporal::{self, Clock};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
+
+/// Accuracy is judged on the context an agent would actually read: the top
+/// `ACC_K` memories plus the fact sentences and entity cards returned with them.
+pub const ACC_K: usize = 10;
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct EvalReport {
     pub queries: usize,
     pub recall: f64,
     pub mrr: f64,
+    /// Fraction of answer-bearing queries whose every `answers` string appears
+    /// in the rendered top-`ACC_K` context. `None` when no query has answers.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub acc: Option<f64>,
+    #[serde(skip_serializing_if = "is_zero")]
+    pub answer_queries: usize,
     pub category: serde_json::Value,
     pub latency_mean_ms: f64,
     pub latency_p50_ms: f64,
@@ -25,6 +35,10 @@ pub struct EvalReport {
     pub failures: Vec<QueryFailure>,
 }
 
+fn is_zero(value: &usize) -> bool {
+    *value == 0
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct QueryFailure {
     pub query: String,
@@ -32,6 +46,9 @@ pub struct QueryFailure {
     pub expected: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub absent: Vec<String>,
+    /// Answer strings that did not appear in the rendered context.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub missing: Vec<String>,
     /// 1-based rank per expected key, in the same order (None = not returned).
     pub ranks: Vec<Option<usize>>,
     pub top: Vec<FailureHit>,
@@ -68,12 +85,51 @@ struct QueryFixture {
     expect: Vec<String>,
     #[serde(default)]
     expect_absent: Vec<String>,
+    /// Strings that must appear in the rendered top-`ACC_K` context.
+    #[serde(default)]
+    answers: Vec<String>,
     #[serde(default)]
     as_of: Option<String>,
     #[serde(default)]
     include_history: bool,
     #[serde(default)]
     k: Option<usize>,
+}
+
+/// Where the database for a run comes from and how much of the query set to use.
+#[derive(Clone, Debug, Default)]
+pub struct EvalOptions {
+    pub limit_queries: Option<usize>,
+    /// Keep the ingested database at this path (plus `<path>.keys.json`).
+    pub save_db: Option<PathBuf>,
+    /// Skip ingestion and evaluate against this database.
+    pub load_db: Option<PathBuf>,
+}
+
+fn keys_path(db: &Path) -> PathBuf {
+    PathBuf::from(format!("{}.keys.json", db.display()))
+}
+
+fn save_keys(db: &Path, ids: &HashMap<String, i64>) -> Result<()> {
+    let path = keys_path(db);
+    std::fs::write(&path, serde_json::to_vec(ids)?)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
+}
+
+fn load_keys(db: &Path) -> Result<Ids> {
+    let path = keys_path(db);
+    let text = std::fs::read_to_string(&path).map_err(|e| {
+        crate::err!(
+            "--load-db needs the key map written by --save-db at {}: {e}",
+            path.display()
+        )
+    })?;
+    Ok(serde_json::from_str(&text)?)
 }
 
 fn load(fixtures: &Path) -> Result<(Fixture, i64)> {
@@ -89,26 +145,51 @@ fn load(fixtures: &Path) -> Result<(Fixture, i64)> {
     Ok((data, now))
 }
 
-fn open(now: i64, emb: Arc<dyn Embedder>) -> Result<Engine> {
-    Ok(Engine::open_in_memory(emb)?.with_clock(Clock {
+fn open(now: i64, emb: Arc<dyn Embedder>, opts: &EvalOptions) -> Result<Engine> {
+    let clock = Clock {
         now,
         tz_offset_secs: 0,
-    }))
+    };
+    if let Some(path) = &opts.load_db {
+        if !path.exists() {
+            return Err(crate::err!("--load-db {} does not exist", path.display()));
+        }
+        return Ok(Engine::open(path, emb)?.with_clock(clock));
+    }
+    if let Some(path) = &opts.save_db {
+        // An eval database is an output path: start from an empty file.
+        for suffix in ["", "-wal", "-shm"] {
+            let _ = std::fs::remove_file(format!("{}{suffix}", path.display()));
+        }
+        if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
+            std::fs::create_dir_all(dir)?;
+        }
+        return Ok(Engine::open(path, emb)?.with_clock(clock));
+    }
+    Ok(Engine::open_in_memory(emb)?.with_clock(clock))
 }
 
 /// Fixture key -> memory id, and memory id -> fixture key.
 type Ids = HashMap<String, i64>;
 type Keys = HashMap<i64, String>;
 
-/// Store every fixture memory once. Returns key -> id, id -> key and the
-/// elapsed milliseconds.
+/// Store every fixture memory once, through `remember_batch` (one embed call
+/// and one transaction per chunk), reporting progress for large worlds.
+/// Returns key -> id, id -> key and the elapsed milliseconds.
 fn ingest(engine: &Engine, memories: Vec<MemoryFixture>) -> Result<(Ids, Keys, f64)> {
     let start = Instant::now();
-    let mut ids = HashMap::new();
-    let mut keys = HashMap::new();
+    let total = memories.len();
+    let mut ids: Ids = HashMap::new();
+    let mut keys: Keys = HashMap::new();
+    let mut pending: Vec<(String, RememberInput)> = Vec::new();
     for memory in memories {
         let mut input = memory.input;
-        let supersedes = input
+        let unresolved = input.supersedes.iter().any(|key| !ids.contains_key(key));
+        if unresolved && !pending.is_empty() {
+            // The target is in the pending chunk: flush so its id exists.
+            store(engine, &mut pending, &mut ids, &mut keys, total, start)?;
+        }
+        input.supersedes = input
             .supersedes
             .iter()
             .map(|key| {
@@ -118,12 +199,77 @@ fn ingest(engine: &Engine, memories: Vec<MemoryFixture>) -> Result<(Ids, Keys, f
                     .ok_or_else(|| crate::err!("unknown supersedes key '{key}'"))
             })
             .collect::<Result<Vec<_>>>()?;
-        input.supersedes = supersedes;
-        let out = engine.remember(input)?;
-        ids.insert(memory.key.clone(), out.id);
-        keys.insert(out.id, memory.key);
+        pending.push((memory.key, input));
+        if pending.len() >= crate::remember::BATCH_SIZE {
+            store(engine, &mut pending, &mut ids, &mut keys, total, start)?;
+        }
     }
+    store(engine, &mut pending, &mut ids, &mut keys, total, start)?;
     Ok((ids, keys, start.elapsed().as_secs_f64() * 1000.0))
+}
+
+fn store(
+    engine: &Engine,
+    pending: &mut Vec<(String, RememberInput)>,
+    ids: &mut Ids,
+    keys: &mut Keys,
+    total: usize,
+    start: Instant,
+) -> Result<()> {
+    if pending.is_empty() {
+        return Ok(());
+    }
+    let names: Vec<String> = pending.iter().map(|(key, _)| key.clone()).collect();
+    let inputs: Vec<RememberInput> = pending.drain(..).map(|(_, input)| input).collect();
+    for (key, result) in names.into_iter().zip(engine.remember_batch(inputs)) {
+        let out = result.map_err(|e| crate::err!("memory '{key}': {e}"))?;
+        ids.insert(key.clone(), out.id);
+        keys.insert(out.id, key);
+    }
+    let done = ids.len();
+    if total >= 1000 && (done % 1000 < crate::remember::BATCH_SIZE || done == total) {
+        eprintln!(
+            "ingested {done}/{total} memories ({:.0}s)",
+            start.elapsed().as_secs_f64()
+        );
+    }
+    Ok(())
+}
+
+/// The text an agent sees for a recall result: memory contents, fact sentences
+/// and entity cards, lowercased for case-insensitive answer matching.
+fn context_text(out: &RecallOutput, k: usize) -> String {
+    let mut text = String::new();
+    for memory in out.memories.iter().take(k) {
+        text.push_str(&memory.content);
+        text.push('\n');
+    }
+    for fact in &out.facts {
+        text.push_str(&fact.fact);
+        text.push('\n');
+        text.push_str(&fact.source);
+        text.push(' ');
+        text.push_str(&fact.target);
+        text.push('\n');
+    }
+    for entity in &out.entities {
+        text.push_str(&entity.name);
+        text.push(' ');
+        text.push_str(&entity.aliases.join(" "));
+        text.push(' ');
+        text.push_str(&entity.description);
+        text.push('\n');
+    }
+    text.to_lowercase()
+}
+
+#[derive(Default)]
+struct CategoryScore {
+    queries: usize,
+    recall: f64,
+    mrr: f64,
+    answer_queries: usize,
+    acc: f64,
 }
 
 fn evaluate(
@@ -140,24 +286,34 @@ fn evaluate(
     let mut latencies = Vec::new();
     let mut recall_sum = 0.0;
     let mut mrr_sum = 0.0;
+    let mut answer_queries = 0;
+    let mut acc_hits = 0;
     let mut failures = Vec::new();
-    let mut by_category: HashMap<String, (usize, f64, f64)> = HashMap::new();
+    let mut by_category: HashMap<String, CategoryScore> = HashMap::new();
     for query in queries {
         for key in query.expect.iter().chain(query.expect_absent.iter()) {
             if !ids.contains_key(key) {
                 return Err(crate::err!("unknown evaluation memory key '{key}'"));
             }
         }
+        // Answer queries look at one more context width than the recall cutoff,
+        // so `recall` keeps its exact meaning (the top-k prefix is stable).
+        let k = query.k.unwrap_or(8);
+        let requested = if query.answers.is_empty() {
+            query.k
+        } else {
+            Some(k.max(ACC_K))
+        };
         let started = Instant::now();
         let out = engine.recall(&RecallInput {
             query: query.q.clone(),
-            k: query.k,
+            k: requested,
             as_of: query.as_of.clone(),
             include_history: query.include_history,
             ..Default::default()
         })?;
         latencies.push(started.elapsed().as_secs_f64() * 1000.0);
-        let found: Vec<i64> = out.memories.iter().map(|m| m.id).collect();
+        let found: Vec<i64> = out.memories.iter().take(k).map(|m| m.id).collect();
         let expected: Vec<i64> = query
             .expect
             .iter()
@@ -190,18 +346,40 @@ fn evaluate(
         } else {
             first_expected.map(|x| 1.0 / x as f64).unwrap_or(0.0)
         };
+        // acc@ACC_K: every answer string present in the rendered context.
+        let mut missing: Vec<String> = Vec::new();
+        if !query.answers.is_empty() {
+            let context = context_text(&out, ACC_K);
+            missing = query
+                .answers
+                .iter()
+                .filter(|answer| !context.contains(&answer.to_lowercase()))
+                .cloned()
+                .collect();
+            answer_queries += 1;
+            if missing.is_empty() {
+                acc_hits += 1;
+            }
+        }
         recall_sum += hit;
         mrr_sum += rr;
         let entry = by_category.entry(query.category.clone()).or_default();
-        entry.0 += 1;
-        entry.1 += hit;
-        entry.2 += rr;
-        if violated || hit < 1.0 || rr < 1.0 {
+        entry.queries += 1;
+        entry.recall += hit;
+        entry.mrr += rr;
+        if !query.answers.is_empty() {
+            entry.answer_queries += 1;
+            if missing.is_empty() {
+                entry.acc += 1.0;
+            }
+        }
+        if violated || hit < 1.0 || rr < 1.0 || !missing.is_empty() {
             failures.push(QueryFailure {
                 query: query.q.clone(),
                 category: query.category.clone(),
                 expected: query.expect.clone(),
                 absent: query.expect_absent.clone(),
+                missing,
                 ranks,
                 top: out
                     .memories
@@ -223,14 +401,30 @@ fn evaluate(
     let n = latencies.len();
     let category = by_category
         .into_iter()
-        .map(|(name, (count, recall, mrr))| {
-            (name, serde_json::json!({"queries":count,"recall":recall/count.max(1) as f64,"mrr":mrr/count.max(1) as f64}))
+        .map(|(name, score)| {
+            let queries = score.queries.max(1) as f64;
+            let mut value = serde_json::json!({
+                "queries": score.queries,
+                "recall": score.recall / queries,
+                "mrr": score.mrr / queries,
+            });
+            if score.answer_queries > 0 {
+                value["answer_queries"] = serde_json::json!(score.answer_queries);
+                value["acc"] = serde_json::json!(score.acc / score.answer_queries as f64);
+            }
+            (name, value)
         })
         .collect::<serde_json::Map<_, _>>();
     Ok(EvalReport {
         queries: latencies.len(),
         recall: if n == 0 { 0.0 } else { recall_sum / n as f64 },
         mrr: if n == 0 { 0.0 } else { mrr_sum / n as f64 },
+        acc: if answer_queries == 0 {
+            None
+        } else {
+            Some(acc_hits as f64 / answer_queries as f64)
+        },
+        answer_queries,
         category: serde_json::Value::Object(category),
         latency_mean_ms: if n == 0 {
             0.0
@@ -248,12 +442,45 @@ fn evaluate(
     })
 }
 
-pub fn run_eval(fixtures: &Path, emb: Arc<dyn Embedder>, cfg: Config) -> Result<EvalReport> {
+/// Ingest (or load) once, then evaluate. `opts.save_db` keeps the database and
+/// its key map on disk so later runs can skip ingestion with `load_db`.
+pub fn run_eval(
+    fixtures: &Path,
+    emb: Arc<dyn Embedder>,
+    cfg: Config,
+    opts: &EvalOptions,
+) -> Result<EvalReport> {
     let (data, now) = load(fixtures)?;
-    let mut engine = open(now, emb)?;
+    let mut engine = open(now, emb, opts)?;
     engine.cfg = cfg;
-    let (ids, keys, ingestion_ms) = ingest(&engine, data.memories)?;
-    evaluate(&engine, &data.queries, &ids, &keys, ingestion_ms)
+    let queries = limited(data.queries, opts.limit_queries);
+    let (ids, keys, ingestion_ms) = match &opts.load_db {
+        Some(path) => {
+            let ids = load_keys(path)?;
+            let keys = ids.iter().map(|(key, id)| (*id, key.clone())).collect();
+            (ids, keys, 0.0)
+        }
+        None => {
+            let (ids, keys, ms) = ingest(&engine, data.memories)?;
+            if let Some(path) = &opts.save_db {
+                save_keys(path, &ids)?;
+                eprintln!(
+                    "database saved to {} ({} memories)",
+                    path.display(),
+                    keys.len()
+                );
+            }
+            (ids, keys, ms)
+        }
+    };
+    evaluate(&engine, &queries, &ids, &keys, ingestion_ms)
+}
+
+fn limited(mut queries: Vec<QueryFixture>, limit: Option<usize>) -> Vec<QueryFixture> {
+    if let Some(limit) = limit {
+        queries.truncate(limit);
+    }
+    queries
 }
 
 /// Ingest once, then evaluate every config against the same engine.
@@ -263,15 +490,39 @@ pub fn sweep(
     base: Config,
     variants: Vec<(String, Config)>,
 ) -> Result<Vec<(String, EvalReport)>> {
+    sweep_with(fixtures, emb, base, variants, &EvalOptions::default())
+}
+
+pub fn sweep_with(
+    fixtures: &Path,
+    emb: Arc<dyn Embedder>,
+    base: Config,
+    variants: Vec<(String, Config)>,
+    opts: &EvalOptions,
+) -> Result<Vec<(String, EvalReport)>> {
     let (data, now) = load(fixtures)?;
-    let mut engine = open(now, emb)?;
+    let mut engine = open(now, emb, opts)?;
     engine.cfg = base;
-    let (ids, keys, ingestion_ms) = ingest(&engine, data.memories)?;
+    let queries = limited(data.queries, opts.limit_queries);
+    let (ids, keys, ingestion_ms) = match &opts.load_db {
+        Some(path) => {
+            let ids = load_keys(path)?;
+            let keys = ids.iter().map(|(key, id)| (*id, key.clone())).collect();
+            (ids, keys, 0.0)
+        }
+        None => {
+            let (ids, keys, ms) = ingest(&engine, data.memories)?;
+            if let Some(path) = &opts.save_db {
+                save_keys(path, &ids)?;
+            }
+            (ids, keys, ms)
+        }
+    };
     let mut out = Vec::with_capacity(variants.len());
     for (name, cfg) in variants {
         engine.cfg = cfg;
         *engine.snapshot_cache.lock().unwrap() = None;
-        let report = evaluate(&engine, &data.queries, &ids, &keys, ingestion_ms)?;
+        let report = evaluate(&engine, &queries, &ids, &keys, ingestion_ms)?;
         out.push((name, report));
     }
     Ok(out)
@@ -335,17 +586,27 @@ pub fn set_config(cfg: &mut Config, key: &str, value: &str) -> Result<()> {
 
 pub fn render_report(report: &EvalReport, show_failures: bool) -> String {
     let mut out = format!(
-        "queries: {}\nrecall: {:.3}\nmrr: {:.3}\nlatency mean/p50/p95: {:.2}/{:.2}/{:.2} ms\ningestion: {:.2} ms ({} memories)\ncategories: {}\n",
-        report.queries,
-        report.recall,
-        report.mrr,
+        "queries: {}\nrecall: {:.3}\nmrr: {:.3}\n",
+        report.queries, report.recall, report.mrr
+    );
+    if let Some(acc) = report.acc {
+        out.push_str(&format!(
+            "acc@{ACC_K}: {acc:.3} ({} answer queries)\n",
+            report.answer_queries
+        ));
+    }
+    out.push_str(&format!(
+        "latency mean/p50/p95: {:.2}/{:.2}/{:.2} ms\ningestion: {:.2} ms ({} memories)\ncategories: {}\n",
         report.latency_mean_ms,
         report.latency_p50_ms,
         report.latency_p95_ms,
         report.ingestion_ms,
         report.ingested,
         serde_json::to_string(&report.category).unwrap_or_default()
-    );
+    ));
+    if report.answer_queries > 0 {
+        out.push_str(&category_table(report));
+    }
     if show_failures {
         out.push_str(&format!("failures: {}\n", report.failures.len()));
         for failure in &report.failures {
@@ -364,7 +625,7 @@ pub fn render_report(report: &EvalReport, show_failures: bool) -> String {
                 .map(|hit| format!("{}({})", hit.key, hit.reasons.join(",")))
                 .collect();
             out.push_str(&format!(
-                "  [{}] {}{} | expected {} | top {}\n",
+                "  [{}] {}{}{} | expected {} | top {}\n",
                 failure.category,
                 failure.query,
                 if failure.violated {
@@ -372,10 +633,45 @@ pub fn render_report(report: &EvalReport, show_failures: bool) -> String {
                 } else {
                     ""
                 },
+                if failure.missing.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (missing {:?})", failure.missing)
+                },
                 ranks.join(" "),
                 top.join(" ")
             ));
         }
+    }
+    out
+}
+
+/// Per-category acc@k / recall / MRR, one row per category, sorted by name.
+pub fn category_table(report: &EvalReport) -> String {
+    let Some(map) = report.category.as_object() else {
+        return String::new();
+    };
+    let mut out = format!(
+        "\n{:<22} {:>6} {:>8} {:>7} {:>7}\n",
+        "category", "q", "acc@10", "recall", "mrr"
+    );
+    let mut names: Vec<&String> = map.keys().collect();
+    names.sort();
+    for name in names {
+        let value = &map[name];
+        let number = |key: &str| value.get(key).and_then(|v| v.as_f64());
+        let acc = match number("acc") {
+            Some(acc) => format!("{acc:.3}"),
+            None => "-".into(),
+        };
+        out.push_str(&format!(
+            "{:<22} {:>6} {:>8} {:>7.3} {:>7.3}\n",
+            name,
+            value.get("queries").and_then(|v| v.as_u64()).unwrap_or(0),
+            acc,
+            number("recall").unwrap_or(0.0),
+            number("mrr").unwrap_or(0.0)
+        ));
     }
     out
 }

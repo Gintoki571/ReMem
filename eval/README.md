@@ -168,7 +168,22 @@ The benchmark driver (`neocortex eval`) generates summary tables:
 - **Per-Category**: Breakdown of total queries, Mean Recall@k, and MRR.
 - **Overall**: Aggregated Mean Recall@k and Mean MRR across the entire benchmark. Target: Overall Recall@5 $\ge 0.90$.
 
-### 5. Channel Ablation Protocol
+### 5. Answer accuracy (`acc@10`)
+Retrieval recall counts memory ids. An agent, however, reads the rendered context. A query may carry
+`"answers": ["Pune"]`: strings that must appear (case-insensitive) in the context of the returned
+top-10 memories plus the fact sentences and entity cards returned with them.
+
+$$\text{acc@10} = \frac{\#\{\text{queries whose every answer string appears in that context}\}}{\#\{\text{queries with answers}\}}$$
+
+`acc@10` is reported next to recall/MRR, overall and per category, and is omitted when no query has
+answers (the original fixtures and holdout are id-keyed only, so their numbers are unchanged).
+Recall/MRR keep their exact meaning: answer queries ask for a context of at least 10 memories, but
+recall is still scored on the top-k prefix (`k`, default 8), which greedy MMR makes a stable prefix.
+
+Answer strings are a looser test than ids: a wrong memory that happens to name the same city
+satisfies it. Read acc@10 with recall/MRR, not instead of them.
+
+### 6. Channel Ablation Protocol
 To measure the marginal contribution of each retrieval channel, the benchmark is executed across 5 configurations:
 1. **Full Fusion**: $w_{\text{bm25}} = 1.0, w_{\text{vec}} = 1.0, w_{\text{graph}} = 1.0, w_{\text{temporal}} = 1.0$.
 2. **Ablate BM25**: $w_{\text{bm25}} = 0.0$.
@@ -183,3 +198,52 @@ Each ablation run must demonstrate either an expected drop in performance for it
 - `fixtures.json` (95 memories / 84 queries, personal + engineering agent) and `holdout.json` (105 memories / 88 queries, research-lab agent, written independently) share this format.
 - Change defaults in `engine::Config` only when the change helps (or is neutral on) BOTH sets; report both. Sweep with one ingestion: `neocortex eval eval/holdout.json --sweep w_graph=1,1.5,2 --set rrf_k=5`.
 - Current defaults (2026-10-23): fixtures recall 0.953 / MRR 0.894; holdout recall 0.924 / MRR 0.789. Original design defaults on holdout: 0.869 / 0.622.
+
+## Running the eval
+
+```bash
+neocortex eval eval/fixtures.json                 # recall / MRR / acc@10 + category table
+neocortex eval eval/fixtures.json --failures      # per-query failures with channel ranks
+neocortex eval eval/fixtures.json --ablation      # full + one ablation per channel
+neocortex eval FILE --limit-queries 200           # first N queries (the world interleaves families)
+neocortex eval FILE --save-db /tmp/w.db           # keep the ingested DB + /tmp/w.db.keys.json
+neocortex eval FILE --load-db /tmp/w.db           # skip ingestion, reuse that DB
+```
+
+Ingestion goes through `Engine::remember_batch`: one embed call per chunk of up to 256 memories and
+one transaction per chunk (a SAVEPOINT per item, so a bad input fails alone). Ingestion prints a
+progress line every 1000 memories. `--load-db` needs the key map that `--save-db` writes next to the
+database; without it the fixture keys cannot be mapped back to ids.
+
+## Synthetic world benchmark
+
+`examples/gen_world.rs` builds a deterministic year of agent memory and the ground-truth queries for
+it, in this same JSON format:
+
+```bash
+cargo run --release --example gen_world -- --people 300 --seed 7 --out eval/world-300.json
+neocortex eval eval/world-300.json --save-db /tmp/world300.db
+```
+
+World (anchor `now = 2026-10-21T15:00:00Z`, one year back):
+
+- `--people N` people with unique full names from a shared pool of ~300 first names (so first-name
+  collisions are common) and ~2000 surnames; ~N/20 organisations; 200 cities; ~N/10 projects; tools,
+  pets, vehicles, conferences.
+- ~11 memories per person: two residences, two jobs, a manager (a second one for 40% of people), a
+  preferred tool (changing for 40%), the project they lead (10% of people, one lead per project),
+  one family fact, pets, a vehicle, a conference and a trip. About 40% of memories are structured
+  (entities + relations, exclusive flags on `lives in`, `works at`, `has manager`, `prefers`,
+  `leads`); the rest are plain text that names people in full (and sometimes by first name only
+  after a full mention in the same memory), so the heuristic extractor has to carry them.
+- The *current* value of every exclusive attribute is always a structured memory, and earlier
+  values carry `valid_to`, so both "now" and "as of" have a defined truth. Facts are never
+  contradicted by a later plain note.
+- 600 queries by default (`--queries Q`), interleaved across families: `current` (17%), `as-of`
+  (17%), `history` (13%), `two-hop` (20%), `three-hop` (13%), `temporal-window` (10%),
+  `aggregation` (10%). Each query carries `answers`, and `expect` is the key of the memory stating
+  each hop's fact (for two hops: the linking memory and the answer memory). `current` and `as-of`
+  queries also carry `expect_absent` with the displaced value.
+
+`eval/world-300.json` is the committed seed-7, 300-person world (< 1 MB); regenerate any size
+locally. The generator is deterministic: same `--seed` and `--people` give byte-identical output.

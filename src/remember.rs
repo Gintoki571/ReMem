@@ -1,7 +1,10 @@
 use crate::{
     db::{vec_blob, Db},
     embed::{Embedder, Mode},
-    engine::{Config, EntityIn, EntityResolution, RelationResult, RememberInput, RememberOutput},
+    engine::{
+        Config, EntityIn, EntityResolution, RelationIn, RelationResult, RememberInput,
+        RememberOutput,
+    },
     error::Result,
     extract, kg, resolve,
     temporal::{self, Clock},
@@ -67,6 +70,38 @@ pub fn check_embedder(db: &Db, emb: &dyn Embedder) -> Result<()> {
     Ok(())
 }
 
+/// Inputs per `remember_batch` chunk: one embed call and one transaction.
+pub const BATCH_SIZE: usize = 256;
+
+/// A validated input with its embedder texts laid out and its vectors filled
+/// in. One `Prepared` is exactly one memory: the single and the batch path
+/// share `prepare` + `write_prepared`, so they cannot drift apart.
+struct Prepared {
+    content: String,
+    kind: String,
+    tags: String,
+    importance: f32,
+    scope: String,
+    source: String,
+    session: String,
+    valid_from: i64,
+    valid_to: Option<i64>,
+    entities: Vec<EntityIn>,
+    relations: Vec<RelationIn>,
+    facts: Vec<String>,
+    extra_index: HashMap<String, usize>,
+    hash: String,
+    supersedes: Vec<i64>,
+    /// content, entity cards, fact sentences, relation endpoints not in entities
+    texts: Vec<String>,
+    vectors: Vec<Vec<f32>>,
+    fact_base: usize,
+    extra_base: usize,
+}
+
+/// The content vector is always index 0 and entity cards start at 1.
+const CARD_BASE: usize = 1;
+
 pub fn remember(
     db: &Db,
     emb: &dyn Embedder,
@@ -75,6 +110,89 @@ pub fn remember(
     inp: RememberInput,
 ) -> Result<RememberOutput> {
     check_embedder(db, emb)?;
+    let mut prepared = prepare(clock, inp)?;
+    embed_prepared(emb, std::slice::from_mut(&mut prepared))?;
+    db.write(|db| write_prepared(db, cfg, clock, emb.name(), prepared))
+}
+
+/// Store many memories with the semantics of calling `remember` in order.
+///
+/// All texts of a chunk (up to `BATCH_SIZE` inputs) go through one embed call
+/// in `Document` mode, then the chunk's writes run in one transaction with a
+/// SAVEPOINT per item: a failing input is reported in its slot and leaves no
+/// partial state, and the items after it still run.
+pub fn remember_batch(
+    db: &Db,
+    emb: &dyn Embedder,
+    cfg: &Config,
+    clock: Clock,
+    inputs: Vec<RememberInput>,
+) -> Vec<Result<RememberOutput>> {
+    let n = inputs.len();
+    let mut slots: Vec<Option<Result<RememberOutput>>> = (0..n).map(|_| None).collect();
+    if let Err(e) = check_embedder(db, emb) {
+        return (0..n).map(|_| Err(crate::err!("{e}"))).collect();
+    }
+    let mut base = 0;
+    for chunk in inputs.chunks(BATCH_SIZE) {
+        let mut prepared: Vec<(usize, Prepared)> = Vec::with_capacity(chunk.len());
+        for (offset, inp) in chunk.iter().enumerate() {
+            match prepare(clock, inp.clone()) {
+                Ok(item) => prepared.push((base + offset, item)),
+                Err(e) => slots[base + offset] = Some(Err(e)),
+            }
+        }
+        base += chunk.len();
+        if prepared.is_empty() {
+            continue;
+        }
+        let indices: Vec<usize> = prepared.iter().map(|(i, _)| *i).collect();
+        let mut items: Vec<Prepared> = prepared.into_iter().map(|(_, p)| p).collect();
+        if let Err(e) = embed_prepared(emb, &mut items) {
+            for i in indices {
+                slots[i] = Some(Err(crate::err!("{e}")));
+            }
+            continue;
+        }
+        let mut written: Vec<(usize, Result<RememberOutput>)> = Vec::with_capacity(items.len());
+        let transaction = db.write(|db| {
+            for (i, item) in indices.iter().zip(items) {
+                db.sql().execute_batch("SAVEPOINT remember_item")?;
+                match write_prepared(db, cfg, clock, emb.name(), item) {
+                    Ok(out) => {
+                        db.sql().execute_batch("RELEASE remember_item")?;
+                        written.push((*i, Ok(out)));
+                    }
+                    Err(e) => {
+                        db.sql()
+                            .execute_batch("ROLLBACK TO remember_item; RELEASE remember_item")?;
+                        written.push((*i, Err(e)));
+                    }
+                }
+            }
+            Ok(())
+        });
+        match transaction {
+            Ok(()) => {
+                for (i, result) in written {
+                    slots[i] = Some(result);
+                }
+            }
+            Err(e) => {
+                for i in indices {
+                    slots[i] = Some(Err(crate::err!("{e}")));
+                }
+            }
+        }
+    }
+    slots
+        .into_iter()
+        .map(|slot| slot.unwrap_or_else(|| Err(crate::err!("remember_batch lost an input"))))
+        .collect()
+}
+
+/// Validate one input and lay out the texts that must be embedded for it.
+fn prepare(clock: Clock, inp: RememberInput) -> Result<Prepared> {
     let content = inp.content.trim().to_string();
     if content.is_empty() {
         return Err(crate::err!("content must not be empty"));
@@ -178,37 +296,14 @@ pub fn remember(
             }
         }
     }
-    let mut embed_texts: Vec<&str> =
+    let mut texts: Vec<String> =
         Vec::with_capacity(1 + cards.len() + facts.len() + extra_names.len());
-    embed_texts.push(&content);
-    let card_base = 1;
-    embed_texts.extend(cards.iter().map(String::as_str));
-    let fact_base = card_base + cards.len();
-    embed_texts.extend(facts.iter().map(String::as_str));
+    texts.push(content.clone());
+    texts.extend(cards);
+    let fact_base = CARD_BASE + entities.len();
+    texts.extend(facts.iter().cloned());
     let extra_base = fact_base + facts.len();
-    embed_texts.extend(extra_names.iter().map(String::as_str));
-    let vectors = emb.embed(&embed_texts, Mode::Document)?;
-    if vectors.len() != embed_texts.len() {
-        return Err(crate::err!(
-            "embedder returned {} vectors for {} texts",
-            vectors.len(),
-            embed_texts.len()
-        ));
-    }
-    let endpoint_vector = |name: &str| -> &[f32] {
-        let norm = text::norm_name(name);
-        if let Some(pos) = entities
-            .iter()
-            .position(|e| text::norm_name(&e.name) == norm)
-        {
-            &vectors[card_base + pos]
-        } else {
-            let index = extra_index[&norm];
-            &vectors[extra_base + index]
-        }
-    };
-    let hash = text::content_hash(&kind, &content);
-    let near = knn_memory(db, &vectors[0], cfg.near_dup)?;
+    texts.extend(extra_names.iter().cloned());
     let supersedes: Vec<i64> = inp
         .supersedes
         .iter()
@@ -217,6 +312,96 @@ pub fn remember(
                 .ok_or_else(|| crate::err!("invalid supersedes id '{s}'"))
         })
         .collect::<Result<_>>()?;
+    Ok(Prepared {
+        hash: text::content_hash(&kind, &content),
+        content,
+        kind,
+        tags,
+        importance,
+        scope: inp.scope.unwrap_or_default(),
+        source: inp.source.unwrap_or_default(),
+        session: inp.session.unwrap_or_default(),
+        valid_from,
+        valid_to,
+        entities,
+        relations: inp.relations,
+        facts,
+        extra_index,
+        supersedes,
+        texts,
+        vectors: Vec::new(),
+        fact_base,
+        extra_base,
+    })
+}
+
+/// One embed call for every text of `items` (a chunk), in `Document` mode.
+fn embed_prepared(emb: &dyn Embedder, items: &mut [Prepared]) -> Result<()> {
+    let mut texts: Vec<&str> = Vec::new();
+    for item in items.iter() {
+        texts.extend(item.texts.iter().map(String::as_str));
+    }
+    let vectors = emb.embed(&texts, Mode::Document)?;
+    if vectors.len() != texts.len() {
+        return Err(crate::err!(
+            "embedder returned {} vectors for {} texts",
+            vectors.len(),
+            texts.len()
+        ));
+    }
+    let mut vectors = vectors.into_iter();
+    for item in items.iter_mut() {
+        item.vectors = item.texts.iter().map(|_| vectors.next().unwrap()).collect();
+    }
+    Ok(())
+}
+
+/// Write one prepared memory. The caller owns the transaction (the single path
+/// opens one, the batch path wraps each item in a SAVEPOINT), so a failure
+/// here can be rolled back to that savepoint without touching its neighbours.
+fn write_prepared(
+    db: &Db,
+    cfg: &Config,
+    clock: Clock,
+    embedder: &str,
+    p: Prepared,
+) -> Result<RememberOutput> {
+    let Prepared {
+        content,
+        kind,
+        tags,
+        importance,
+        scope,
+        source,
+        session,
+        valid_from,
+        valid_to,
+        entities,
+        relations,
+        facts,
+        extra_index,
+        hash,
+        supersedes,
+        texts: _,
+        vectors,
+        fact_base,
+        extra_base,
+    } = p;
+    let endpoint_vector = |name: &str| -> &[f32] {
+        let norm = text::norm_name(name);
+        if let Some(pos) = entities
+            .iter()
+            .position(|e| text::norm_name(&e.name) == norm)
+        {
+            &vectors[CARD_BASE + pos]
+        } else {
+            let index = extra_index[&norm];
+            &vectors[extra_base + index]
+        }
+    };
+    // Both checks read the database, so they belong after the earlier items of
+    // this chunk were written: a later input must see them.
+    let near = knn_memory(db, &vectors[0], cfg.near_dup)?;
     for id in &supersedes {
         let exists: bool = db.sql().query_row(
             "SELECT EXISTS(SELECT 1 FROM memories WHERE id=?1 AND expired_at IS NULL)",
@@ -230,373 +415,398 @@ pub fn remember(
             ));
         }
     }
-    db.write(|db| {
-        let now = clock.now;
-        // The duplicate decision is made under the write lock: a read outside
-        // it races with concurrent writers (the unique index is the backstop).
-        let mut duplicate_of = live_duplicate(db, &hash, &kind, &content)?;
-        let stored_hash = if duplicate_of.is_some() {
-            hash.clone()
-        } else {
-            // A live row with this hash but different text is a hash collision;
-            // salt the key so both memories can be stored.
-            free_hash(db, &hash)?
-        };
-        db.sql().execute(
-            "INSERT OR IGNORE INTO meta(key,value) VALUES('embedder',?1)",
-            [emb.name()],
-        )?;
-        let id = if let Some(id) = duplicate_of {
-            touch_memory(db, id, now)?;
-            id
-        } else {
-            let inserted = db.sql().execute("INSERT INTO memories(content,kind,tags,importance,scope,source,session,created_at,valid_from,valid_to,content_hash) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",params![content,kind,tags,importance,inp.scope.unwrap_or_default(),inp.source.unwrap_or_default(),inp.session.unwrap_or_default(),now,valid_from,valid_to,stored_hash]);
-            match inserted {
-                Ok(_) => {
-                    let id = db.sql().last_insert_rowid();
-                    db.sql().execute(
-                        "INSERT INTO memories_vec(rowid,embedding,live) VALUES (?1,?2,1)",
-                        params![id, vec_blob(&vectors[0])],
-                    )?;
-                    kg::project_memory(db, id, &kind)?;
-                    id
-                }
-                Err(e) if crate::db::is_unique_violation(&e) => {
-                    // An identical writer won the race; reuse its row.
-                    let id: i64 = db.sql().query_row(
-                        "SELECT id FROM memories WHERE content_hash=?1 AND expired_at IS NULL",
-                        [&stored_hash],
-                        |r| r.get(0),
-                    )?;
-                    touch_memory(db, id, now)?;
-                    duplicate_of = Some(id);
-                    id
-                }
-                Err(e) => return Err(e.into()),
+    let now = clock.now;
+    // The duplicate decision is made under the write lock: a read outside
+    // it races with concurrent writers (the unique index is the backstop).
+    let mut duplicate_of = live_duplicate(db, &hash, &kind, &content)?;
+    let stored_hash = if duplicate_of.is_some() {
+        hash.clone()
+    } else {
+        // A live row with this hash but different text is a hash collision;
+        // salt the key so both memories can be stored.
+        free_hash(db, &hash)?
+    };
+    db.sql().execute(
+        "INSERT OR IGNORE INTO meta(key,value) VALUES('embedder',?1)",
+        [embedder],
+    )?;
+    let id = if let Some(id) = duplicate_of {
+        touch_memory(db, id, now)?;
+        id
+    } else {
+        let inserted = db.sql().execute("INSERT INTO memories(content,kind,tags,importance,scope,source,session,created_at,valid_from,valid_to,content_hash) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",params![content,kind,tags,importance,scope,source,session,now,valid_from,valid_to,stored_hash]);
+        match inserted {
+            Ok(_) => {
+                let id = db.sql().last_insert_rowid();
+                db.sql().execute(
+                    "INSERT INTO memories_vec(rowid,embedding,live) VALUES (?1,?2,1)",
+                    params![id, vec_blob(&vectors[0])],
+                )?;
+                kg::project_memory(db, id, &kind)?;
+                id
             }
-        };
-        let mut resolutions = Vec::new();
-        let mut ids: HashMap<String, i64> = HashMap::new();
-        for (i, entity) in entities.iter().enumerate() {
-            let resolved = resolve::resolve_entity(db, entity, &vectors[card_base + i], now, cfg)?;
-            let eid = resolved.id;
-            ids.insert(text::norm_name(&entity.name), eid);
-            kg::project_entity_from_db(db, eid)?;
-            add_mention(db, id, eid, now)?;
-            for (other, _name, score) in &resolved.similar {
-                write_similar(db, eid, *other, *score)?;
-            }
-            resolutions.push(EntityResolution {
-                name: entity.name.clone(),
-                id: eid,
-                status: resolved.status,
-                similar: resolved.similar,
-            });
-        }
-        // Gazetteer: link known aliases that appear as whole-word n-grams in
-        // the content (never agent-supplied entities, which are already in).
-        let mut seen: HashSet<String> = HashSet::new();
-        for (norm, _, _) in extract::ngrams(&content, 4) {
-            if norm.chars().count() < 3 || !seen.insert(norm.clone()) {
-                continue;
-            }
-            let mut st = db
-                .sql()
-                .prepare("SELECT DISTINCT entity_id FROM entity_aliases WHERE alias_norm=?1")?;
-            let matches: Vec<i64> = st
-                .query_map([&norm], |r| r.get::<_, i64>(0))?
-                .collect::<rusqlite::Result<_>>()?;
-            if matches.len() == 1 {
-                let eid = matches[0];
-                kg::project_entity_from_db(db, eid)?;
-                add_mention(db, id, eid, now)?;
-            }
-        }
-        let mut rel_results = Vec::new();
-        let mut invalidated = Vec::new();
-        let mut conflicts = Vec::new();
-        let mut related = Vec::new();
-        if inp.relations.is_empty() && !ids.is_empty() {
-            let entity_ids: Vec<i64> = ids.values().copied().collect();
-            let mut st = db.sql().prepare(
-                "SELECT rowid,1-distance FROM memories_vec
-                 WHERE embedding MATCH ?1 AND k=10 AND live=1 ORDER BY distance",
-            )?;
-            for row in st.query_map([vec_blob(&vectors[0])], |r| {
-                Ok((r.get::<_, i64>(0)?, r.get::<_, f32>(1)?))
-            })? {
-                let (mid, cosine) = row?;
-                if cosine < cfg.update_candidate || cosine >= cfg.near_dup || mid == id {
-                    continue;
-                }
-                let shared: bool = db.sql().query_row(
-                    "SELECT EXISTS(SELECT 1 FROM mentions WHERE memory_id=?1 AND entity_id IN (SELECT value FROM json_each(?2)))",
-                    rusqlite::params![mid, serde_json::to_string(&entity_ids)?],
+            Err(e) if crate::db::is_unique_violation(&e) => {
+                // An identical writer won the race; reuse its row.
+                let id: i64 = db.sql().query_row(
+                    "SELECT id FROM memories WHERE content_hash=?1 AND expired_at IS NULL",
+                    [&stored_hash],
                     |r| r.get(0),
                 )?;
-                if shared {
-                    let snippet: String = db.sql().query_row(
-                        "SELECT content FROM memories WHERE id=?1", [mid], |r| r.get(0)
-                    )?;
-                    related.push(crate::engine::RelatedMemory { memory_id: mid, cosine, snippet });
-                    if related.len() == 3 { break; }
+                touch_memory(db, id, now)?;
+                duplicate_of = Some(id);
+                id
+            }
+            Err(e) => return Err(e.into()),
+        }
+    };
+    let mut resolutions = Vec::new();
+    let mut ids: HashMap<String, i64> = HashMap::new();
+    for (i, entity) in entities.iter().enumerate() {
+        let resolved = resolve::resolve_entity(db, entity, &vectors[CARD_BASE + i], now, cfg)?;
+        let eid = resolved.id;
+        ids.insert(text::norm_name(&entity.name), eid);
+        kg::project_entity_from_db(db, eid)?;
+        add_mention(db, id, eid, now)?;
+        for (other, _name, score) in &resolved.similar {
+            write_similar(db, eid, *other, *score)?;
+        }
+        resolutions.push(EntityResolution {
+            name: entity.name.clone(),
+            id: eid,
+            status: resolved.status,
+            similar: resolved.similar,
+        });
+    }
+    // Gazetteer: link known aliases that appear as whole-word n-grams in
+    // the content (never agent-supplied entities, which are already in).
+    let mut seen: HashSet<String> = HashSet::new();
+    for (norm, _, _) in extract::ngrams(&content, 4) {
+        if norm.chars().count() < 3 || !seen.insert(norm.clone()) {
+            continue;
+        }
+        let mut st = db
+            .sql()
+            .prepare("SELECT DISTINCT entity_id FROM entity_aliases WHERE alias_norm=?1")?;
+        let matches: Vec<i64> = st
+            .query_map([&norm], |r| r.get::<_, i64>(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        if matches.len() == 1 {
+            let eid = matches[0];
+            kg::project_entity_from_db(db, eid)?;
+            add_mention(db, id, eid, now)?;
+        }
+    }
+    let mut rel_results = Vec::new();
+    let mut invalidated = Vec::new();
+    let mut conflicts = Vec::new();
+    let mut related = Vec::new();
+    if relations.is_empty() && !ids.is_empty() {
+        let entity_ids: Vec<i64> = ids.values().copied().collect();
+        let mut st = db.sql().prepare(
+            "SELECT rowid,1-distance FROM memories_vec
+             WHERE embedding MATCH ?1 AND k=10 AND live=1 ORDER BY distance",
+        )?;
+        for row in st.query_map([vec_blob(&vectors[0])], |r| {
+            Ok((r.get::<_, i64>(0)?, r.get::<_, f32>(1)?))
+        })? {
+            let (mid, cosine) = row?;
+            if cosine < cfg.update_candidate || cosine >= cfg.near_dup || mid == id {
+                continue;
+            }
+            let shared: bool = db.sql().query_row(
+                "SELECT EXISTS(SELECT 1 FROM mentions WHERE memory_id=?1 AND entity_id IN (SELECT value FROM json_each(?2)))",
+                rusqlite::params![mid, serde_json::to_string(&entity_ids)?],
+                |r| r.get(0),
+            )?;
+            if shared {
+                let snippet: String =
+                    db.sql()
+                        .query_row("SELECT content FROM memories WHERE id=?1", [mid], |r| {
+                            r.get(0)
+                        })?;
+                related.push(crate::engine::RelatedMemory {
+                    memory_id: mid,
+                    cosine,
+                    snippet,
+                });
+                if related.len() == 3 {
+                    break;
                 }
             }
         }
-        for (ri, relation) in inp.relations.iter().enumerate() {
-            let src = resolve_endpoint(
-                db,
-                id,
-                &relation.source,
-                &mut ids,
-                now,
-                cfg,
-                endpoint_vector(&relation.source),
-            )?;
-            let dst = resolve_endpoint(
-                db,
-                id,
+    }
+    for (ri, relation) in relations.iter().enumerate() {
+        let src = resolve_endpoint(
+            db,
+            id,
+            &relation.source,
+            &mut ids,
+            now,
+            cfg,
+            endpoint_vector(&relation.source),
+        )?;
+        let dst = resolve_endpoint(
+            db,
+            id,
+            &relation.target,
+            &mut ids,
+            now,
+            cfg,
+            endpoint_vector(&relation.target),
+        )?;
+        let (pid, predicate, predicate_exclusive) = resolve::resolve_predicate(
+            db,
+            &relation.predicate,
+            &vectors[fact_base + ri],
+            relation.exclusive,
+            cfg,
+        )?;
+        let rf = relation
+            .valid_from
+            .as_deref()
+            .map(|s| {
+                temporal::parse_instant(s, &clock)
+                    .ok_or_else(|| crate::err!("invalid relation valid_from '{s}'"))
+            })
+            .transpose()?
+            .unwrap_or(valid_from);
+        let mut new_valid_to = relation
+            .valid_to
+            .as_deref()
+            .map(|x| {
+                temporal::parse_instant(x, &clock)
+                    .ok_or_else(|| crate::err!("invalid relation valid_to '{x}'"))
+            })
+            .transpose()?;
+        let mut fact = facts[ri].clone();
+        let polarity = if relation.negated.unwrap_or_else(|| {
+            infer_negated(
+                relation.fact.as_deref().unwrap_or(&content),
+                &predicate,
                 &relation.target,
-                &mut ids,
-                now,
-                cfg,
-                endpoint_vector(&relation.target),
-            )?;
-            let (pid, predicate, predicate_exclusive) = resolve::resolve_predicate(
-                db,
-                &relation.predicate,
-                &vectors[fact_base + ri],
-                relation.exclusive,
-                cfg,
-            )?;
-            let rf = relation
-                .valid_from
-                .as_deref()
-                .map(|s| {
-                    temporal::parse_instant(s, &clock)
-                        .ok_or_else(|| crate::err!("invalid relation valid_from '{s}'"))
-                })
-                .transpose()?
-                .unwrap_or(valid_from);
-            let mut new_valid_to = relation
-                .valid_to
-                .as_deref()
-                .map(|x| {
-                    temporal::parse_instant(x, &clock)
-                        .ok_or_else(|| crate::err!("invalid relation valid_to '{x}'"))
-                })
-                .transpose()?;
-            let mut fact = facts[ri].clone();
-            let polarity = if relation.negated.unwrap_or_else(|| {
-                infer_negated(
-                    relation.fact.as_deref().unwrap_or(&content),
-                    &predicate,
-                    &relation.target,
-                )
-            }) {
-                0
-            } else {
-                1
-            };
-            if polarity == 0 && relation.fact.is_none() {
-                fact = format!("{} NOT {} {}", relation.source, relation.predicate, relation.target);
-            }
-            // Relations this one ends; each gets ended_by = this relation.
-            let mut ended_here: Vec<i64> = Vec::new();
-            // The later relation this backfilled one is history up to.
-            let mut ended_by_later: Option<i64> = None;
-            if new_valid_to.is_some_and(|to| to <= rf) {
-                return Err(crate::err!(
-                    "relation '{fact}': valid_to must be after valid_from"
-                ));
-            }
-            if polarity == 1
-                && relation.exclusive != Some(false)
-                && (relation.exclusive == Some(true) || predicate_exclusive)
-            {
-                let mut st = db.sql().prepare(
-                    "SELECT id,valid_from,valid_to FROM relations
+            )
+        }) {
+            0
+        } else {
+            1
+        };
+        if polarity == 0 && relation.fact.is_none() {
+            fact = format!(
+                "{} NOT {} {}",
+                relation.source, relation.predicate, relation.target
+            );
+        }
+        // Relations this one ends; each gets ended_by = this relation.
+        let mut ended_here: Vec<i64> = Vec::new();
+        // The later relation this backfilled one is history up to.
+        let mut ended_by_later: Option<i64> = None;
+        if new_valid_to.is_some_and(|to| to <= rf) {
+            return Err(crate::err!(
+                "relation '{fact}': valid_to must be after valid_from"
+            ));
+        }
+        if polarity == 1
+            && relation.exclusive != Some(false)
+            && (relation.exclusive == Some(true) || predicate_exclusive)
+        {
+            let mut st = db.sql().prepare(
+                "SELECT id,valid_from,valid_to FROM relations
                      WHERE src=?1 AND predicate_id=?2 AND dst!=?3 AND polarity=1 AND expired_at IS NULL",
-                )?;
-                let olds: Vec<(i64, i64, Option<i64>)> = st
-                    .query_map(params![src, pid, dst], |r| {
-                        Ok((r.get(0)?, r.get(1)?, r.get(2)?))
-                    })?
-                    .collect::<rusqlite::Result<_>>()?;
-                let mut later: Option<(i64, i64)> = None;
-                for (old, old_from, old_to) in olds {
-                    if old_from == rf {
-                        // Equal start: the newer write wins.
-                        db.sql().execute(
-                            "UPDATE relations SET valid_to=?1, expired_at=?2 WHERE id=?3",
-                            params![rf, now, old],
-                        )?;
-                        ended_here.push(old);
-                    } else if old_from < rf && old_to.is_none_or(|to| to > rf) {
-                        // Older and still true at the new start: it ends there.
-                        db.sql().execute(
-                            "UPDATE relations SET valid_to=?1 WHERE id=?2",
-                            params![rf, old],
-                        )?;
-                        ended_here.push(old);
-                    } else if old_from > rf {
-                        // Backfill: the new fact is history up to the later one.
-                        if later.is_none_or(|(from, _)| old_from < from) {
-                            later = Some((old_from, old));
-                        }
-                    }
-                }
-                if let Some((later, by)) = later {
-                    if new_valid_to.is_none_or(|to| to > later) {
-                        new_valid_to = Some(later);
-                        ended_by_later = Some(by);
-                    }
-                }
-            }
-            if relation.exclusive.is_none() && !predicate_exclusive && polarity == 1 {
-                let mut st = db.sql().prepare(
-                    "SELECT r.id,r.fact,r.valid_from FROM relations r
-                     WHERE r.src=?1 AND r.predicate_id=?2 AND r.dst!=?3
-                       AND r.polarity=1 AND r.expired_at IS NULL
-                       AND (r.valid_to IS NULL OR r.valid_to>?4) LIMIT 5",
-                )?;
-                for row in st.query_map(params![src, pid, dst, rf], |r| {
-                    Ok(crate::engine::Conflict {
-                        relation_id: r.get(0)?,
-                        fact: r.get(1)?,
-                        valid_from: r.get(2)?,
-                    })
-                })? {
-                    conflicts.push(row?);
-                }
-            }
-            let existing: Option<(i64, i64, Option<i64>)> = db
-                .sql()
-                .query_row(
-                    "SELECT id,evidence_count,valid_to FROM relations
-                     WHERE src=?1 AND predicate_id=?2 AND dst=?3 AND polarity=?4
-                       AND expired_at IS NULL
-                       AND (valid_to IS NULL OR valid_to>=?5)
-                       AND valid_from<=COALESCE(?6,valid_from) LIMIT 1",
-                    params![src, pid, dst, polarity, rf, new_valid_to],
-                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-                )
-                .optional()?;
-            let rid = if let Some((rid, _count, _old_to)) = existing {
-                db.sql().execute(
-                    "UPDATE relations SET evidence_count=evidence_count+1,
-                     weight=evidence_count+1, valid_from=MIN(valid_from,?1),
-                     valid_to=CASE WHEN valid_to IS NULL THEN NULL
-                                   WHEN ?2 IS NULL THEN CASE WHEN ?1>=valid_to THEN NULL ELSE valid_to END
-                                   ELSE MAX(valid_to,?2) END
-                     WHERE id=?3",
-                    params![rf, new_valid_to, rid],
-                )?;
-                db.sql().execute(
-                    "INSERT OR IGNORE INTO relation_evidence(relation_id,memory_id) VALUES(?1,?2)",
-                    params![rid, id],
-                )?;
-                rid
-            } else {
-                db.sql().execute(
-                    "INSERT INTO relations(src,dst,predicate_id,fact,weight,evidence_count,valid_from,valid_to,created_at,polarity)
-                     VALUES (?1,?2,?3,?4,1,1,?5,?6,?7,?8)",
-                    params![src, dst, pid, fact, rf, new_valid_to, now, polarity],
-                )?;
-                let rid = db.sql().last_insert_rowid();
-                db.sql().execute(
-                    "INSERT INTO relation_evidence(relation_id,memory_id) VALUES(?1,?2)",
-                    params![rid, id],
-                )?;
-                db.sql().execute(
-                    "INSERT INTO relations_fts(rowid,fact,predicate) VALUES (?1,?2,?3)",
-                    params![rid, fact, predicate],
-                )?;
-                db.sql().execute(
-                    "INSERT INTO relations_vec(rowid,embedding) VALUES(?1,?2)",
-                    params![rid, vec_blob(&vectors[fact_base + ri])],
-                )?;
-                // Polarity flip: the same triple asserted with the opposite
-                // polarity ends the older live assertion (both stay history).
-                let opposite: Vec<i64> = {
-                    let mut st = db.sql().prepare(
-                        "SELECT id FROM relations WHERE src=?1 AND dst=?2 AND predicate_id=?3
-                         AND polarity=?4 AND valid_from<?5 AND expired_at IS NULL
-                         AND (valid_to IS NULL OR valid_to>?5)",
+            )?;
+            let olds: Vec<(i64, i64, Option<i64>)> = st
+                .query_map(params![src, pid, dst], |r| {
+                    Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+                })?
+                .collect::<rusqlite::Result<_>>()?;
+            let mut later: Option<(i64, i64)> = None;
+            for (old, old_from, old_to) in olds {
+                if old_from == rf {
+                    // Equal start: the newer write wins.
+                    db.sql().execute(
+                        "UPDATE relations SET valid_to=?1, expired_at=?2 WHERE id=?3",
+                        params![rf, now, old],
                     )?;
-                    let rows = st.query_map(params![src, dst, pid, 1 - polarity, rf], |r| r.get(0))?;
-                    rows.collect::<rusqlite::Result<_>>()?
-                };
-                for old in opposite {
+                    ended_here.push(old);
+                } else if old_from < rf && old_to.is_none_or(|to| to > rf) {
+                    // Older and still true at the new start: it ends there.
                     db.sql().execute(
                         "UPDATE relations SET valid_to=?1 WHERE id=?2",
                         params![rf, old],
                     )?;
                     ended_here.push(old);
+                } else if old_from > rf {
+                    // Backfill: the new fact is history up to the later one.
+                    if later.is_none_or(|(from, _)| old_from < from) {
+                        later = Some((old_from, old));
+                    }
                 }
-                rid
-            };
-            for old in &ended_here {
-                db.sql().execute(
-                    "UPDATE relations SET ended_by=?1 WHERE id=?2",
-                    params![rid, old],
-                )?;
             }
-            if let Some(by) = ended_by_later {
-                db.sql().execute(
-                    "UPDATE relations SET ended_by=?1 WHERE id=?2 AND valid_to IS NOT NULL",
-                    params![by, rid],
-                )?;
+            if let Some((later, by)) = later {
+                if new_valid_to.is_none_or(|to| to > later) {
+                    new_valid_to = Some(later);
+                    ended_by_later = Some(by);
+                }
             }
-            invalidated.extend(ended_here);
-            kg::project_relation(db, rid, src, dst, &predicate)?;
-            rel_results.push(RelationResult {
-                id: rid,
-                fact,
-                status: if existing.is_some() {
-                    "merged".into()
-                } else {
-                    "new".into()
-                },
-            });
         }
-
-        for target in &supersedes {
-            // Relations this memory was the only live evidence for were true
-            // until the new memory's world-time starts; they end there and stay
-            // true-in-the-past (expired_at stays NULL).
-            let ending = relations_losing_their_last_evidence(db, *target)?;
-            for rid in &ending {
-                db.sql().execute(
-                    "UPDATE relations SET valid_to=MIN(COALESCE(valid_to,?1),?1)
-                     WHERE id=?2 AND expired_at IS NULL",
-                    params![valid_from, rid],
-                )?;
-            }
-
-            db.sql().execute(
-                "UPDATE memories SET valid_to=COALESCE(valid_to,?1),expired_at=?2,superseded_by=?3 WHERE id=?4",
-                params![valid_from, now, id, target],
+        if relation.exclusive.is_none() && !predicate_exclusive && polarity == 1 {
+            let mut st = db.sql().prepare(
+                "SELECT r.id,r.fact,r.valid_from FROM relations r
+                     WHERE r.src=?1 AND r.predicate_id=?2 AND r.dst!=?3
+                       AND r.polarity=1 AND r.expired_at IS NULL
+                       AND (r.valid_to IS NULL OR r.valid_to>?4) LIMIT 5",
             )?;
-            db.sql()
-                .execute("UPDATE memories_vec SET live=0 WHERE rowid=?1", [target])?;
+            for row in st.query_map(params![src, pid, dst, rf], |r| {
+                Ok(crate::engine::Conflict {
+                    relation_id: r.get(0)?,
+                    fact: r.get(1)?,
+                    valid_from: r.get(2)?,
+                })
+            })? {
+                conflicts.push(row?);
+            }
         }
-        let touched: Vec<i64> = invalidated
-            .iter()
-            .copied()
-            .chain(rel_results.iter().map(|r| r.id))
-            .collect();
-        end_memories_of_ended_facts(db, &touched)?;
-        kg::bump_gen(db)?;
-        let mut hints = if content.len()>2000{vec!["long content: consider splitting into atomic memories".into()]}else{Vec::new()};
-        if !conflicts.is_empty() {
-            let c = &conflicts[0];
-            hints.push(format!("r{} ({}) is also current; if the new fact replaces it call invalidate r{}, or re-send with exclusive=true", c.relation_id, c.fact, c.relation_id));
+        let existing: Option<(i64, i64, Option<i64>)> = db
+            .sql()
+            .query_row(
+                "SELECT id,evidence_count,valid_to FROM relations
+                     WHERE src=?1 AND predicate_id=?2 AND dst=?3 AND polarity=?4
+                       AND expired_at IS NULL
+                       AND (valid_to IS NULL OR valid_to>=?5)
+                       AND valid_from<=COALESCE(?6,valid_from) LIMIT 1",
+                params![src, pid, dst, polarity, rf, new_valid_to],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .optional()?;
+        let rid = if let Some((rid, _count, _old_to)) = existing {
+            db.sql().execute(
+                "UPDATE relations SET evidence_count=evidence_count+1,
+                     weight=evidence_count+1, valid_from=MIN(valid_from,?1),
+                     valid_to=CASE WHEN valid_to IS NULL THEN NULL
+                                   WHEN ?2 IS NULL THEN CASE WHEN ?1>=valid_to THEN NULL ELSE valid_to END
+                                   ELSE MAX(valid_to,?2) END
+                     WHERE id=?3",
+                params![rf, new_valid_to, rid],
+            )?;
+            db.sql().execute(
+                "INSERT OR IGNORE INTO relation_evidence(relation_id,memory_id) VALUES(?1,?2)",
+                params![rid, id],
+            )?;
+            rid
+        } else {
+            db.sql().execute(
+                "INSERT INTO relations(src,dst,predicate_id,fact,weight,evidence_count,valid_from,valid_to,created_at,polarity)
+                     VALUES (?1,?2,?3,?4,1,1,?5,?6,?7,?8)",
+                params![src, dst, pid, fact, rf, new_valid_to, now, polarity],
+            )?;
+            let rid = db.sql().last_insert_rowid();
+            db.sql().execute(
+                "INSERT INTO relation_evidence(relation_id,memory_id) VALUES(?1,?2)",
+                params![rid, id],
+            )?;
+            db.sql().execute(
+                "INSERT INTO relations_fts(rowid,fact,predicate) VALUES (?1,?2,?3)",
+                params![rid, fact, predicate],
+            )?;
+            db.sql().execute(
+                "INSERT INTO relations_vec(rowid,embedding) VALUES(?1,?2)",
+                params![rid, vec_blob(&vectors[fact_base + ri])],
+            )?;
+            // Polarity flip: the same triple asserted with the opposite
+            // polarity ends the older live assertion (both stay history).
+            let opposite: Vec<i64> = {
+                let mut st = db.sql().prepare(
+                    "SELECT id FROM relations WHERE src=?1 AND dst=?2 AND predicate_id=?3
+                         AND polarity=?4 AND valid_from<?5 AND expired_at IS NULL
+                         AND (valid_to IS NULL OR valid_to>?5)",
+                )?;
+                let rows = st.query_map(params![src, dst, pid, 1 - polarity, rf], |r| r.get(0))?;
+                rows.collect::<rusqlite::Result<_>>()?
+            };
+            for old in opposite {
+                db.sql().execute(
+                    "UPDATE relations SET valid_to=?1 WHERE id=?2",
+                    params![rf, old],
+                )?;
+                ended_here.push(old);
+            }
+            rid
+        };
+        for old in &ended_here {
+            db.sql().execute(
+                "UPDATE relations SET ended_by=?1 WHERE id=?2",
+                params![rid, old],
+            )?;
         }
-        if !related.is_empty() {
-            hints.push(format!("if this updates m{}, pass supersedes=[m{}]", related[0].memory_id, related[0].memory_id));
+        if let Some(by) = ended_by_later {
+            db.sql().execute(
+                "UPDATE relations SET ended_by=?1 WHERE id=?2 AND valid_to IS NOT NULL",
+                params![by, rid],
+            )?;
         }
-        Ok(RememberOutput{id,duplicate_of,near_duplicate:near,entities:resolutions,relations:rel_results,invalidated_relations:invalidated,superseded_memories:supersedes,conflicts,related,hints})
+        invalidated.extend(ended_here);
+        kg::project_relation(db, rid, src, dst, &predicate)?;
+        rel_results.push(RelationResult {
+            id: rid,
+            fact,
+            status: if existing.is_some() {
+                "merged".into()
+            } else {
+                "new".into()
+            },
+        });
+    }
+    for target in &supersedes {
+        // Relations this memory was the only live evidence for were true
+        // until the new memory's world-time starts; they end there and stay
+        // true-in-the-past (expired_at stays NULL).
+        let ending = relations_losing_their_last_evidence(db, *target)?;
+        for rid in &ending {
+            db.sql().execute(
+                "UPDATE relations SET valid_to=MIN(COALESCE(valid_to,?1),?1)
+                     WHERE id=?2 AND expired_at IS NULL",
+                params![valid_from, rid],
+            )?;
+        }
+        db.sql().execute(
+            "UPDATE memories SET valid_to=COALESCE(valid_to,?1),expired_at=?2,superseded_by=?3 WHERE id=?4",
+            params![valid_from, now, id, target],
+        )?;
+        db.sql()
+            .execute("UPDATE memories_vec SET live=0 WHERE rowid=?1", [target])?;
+    }
+    let touched: Vec<i64> = invalidated
+        .iter()
+        .copied()
+        .chain(rel_results.iter().map(|r| r.id))
+        .collect();
+    end_memories_of_ended_facts(db, &touched)?;
+    kg::bump_gen(db)?;
+    let mut hints = if content.len() > 2000 {
+        vec!["long content: consider splitting into atomic memories".into()]
+    } else {
+        Vec::new()
+    };
+    if !conflicts.is_empty() {
+        let c = &conflicts[0];
+        hints.push(format!("r{} ({}) is also current; if the new fact replaces it call invalidate r{}, or re-send with exclusive=true", c.relation_id, c.fact, c.relation_id));
+    }
+    if !related.is_empty() {
+        hints.push(format!(
+            "if this updates m{}, pass supersedes=[m{}]",
+            related[0].memory_id, related[0].memory_id
+        ));
+    }
+    Ok(RememberOutput {
+        id,
+        duplicate_of,
+        near_duplicate: near,
+        entities: resolutions,
+        relations: rel_results,
+        invalidated_relations: invalidated,
+        superseded_memories: supersedes,
+        conflicts,
+        related,
+        hints,
     })
 }
 

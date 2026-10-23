@@ -434,6 +434,20 @@ impl Engine {
         crate::remember::remember(&self.db, self.emb.as_ref(), &self.cfg, self.clock(), _inp)
     }
 
+    /// Store many memories with exactly the semantics of calling `remember` in
+    /// order (later items see earlier ones), but one embed call and one
+    /// transaction per chunk of up to 256 inputs. A failing input is reported
+    /// in its own slot and does not abort the rest of the chunk.
+    pub fn remember_batch(&self, inputs: Vec<RememberInput>) -> Vec<Result<RememberOutput>> {
+        crate::remember::remember_batch(
+            &self.db,
+            self.emb.as_ref(),
+            &self.cfg,
+            self.clock(),
+            inputs,
+        )
+    }
+
     /// Retrieve (design §8).
     pub fn recall(&self, inp: &RecallInput) -> Result<RecallOutput> {
         crate::recall::recall(self, inp)

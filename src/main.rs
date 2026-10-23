@@ -683,6 +683,7 @@ fn cmd_eval(globals: &Globals, args: &[String]) -> CmdResult {
     let mut failures = false;
     let mut sets: Vec<String> = Vec::new();
     let mut sweep: Option<String> = None;
+    let mut opts = neocortex::eval::EvalOptions::default();
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -696,15 +697,44 @@ fn cmd_eval(globals: &Globals, args: &[String]) -> CmdResult {
                 let item = value(args, &mut i, "--sweep")?;
                 sweep = Some(item);
             }
+            "--limit-queries" => {
+                let item = value(args, &mut i, "--limit-queries")?;
+                opts.limit_queries =
+                    Some(item.parse().map_err(|_| {
+                        usage(format!("--limit-queries needs a number, got '{item}'"))
+                    })?);
+            }
+            "--save-db" => {
+                opts.save_db = Some(PathBuf::from(value(args, &mut i, "--save-db")?));
+            }
+            "--load-db" => {
+                opts.load_db = Some(PathBuf::from(value(args, &mut i, "--load-db")?));
+            }
             other if other.starts_with("--set=") => {
                 sets.push(other["--set=".len()..].to_string());
             }
             other if other.starts_with("--sweep=") => {
                 sweep = Some(other["--sweep=".len()..].to_string());
             }
+            other if other.starts_with("--limit-queries=") => {
+                let item = &other["--limit-queries=".len()..];
+                opts.limit_queries =
+                    Some(item.parse().map_err(|_| {
+                        usage(format!("--limit-queries needs a number, got '{item}'"))
+                    })?);
+            }
+            other if other.starts_with("--save-db=") => {
+                opts.save_db = Some(PathBuf::from(&other["--save-db=".len()..]));
+            }
+            other if other.starts_with("--load-db=") => {
+                opts.load_db = Some(PathBuf::from(&other["--load-db=".len()..]));
+            }
             other => return Err(usage(format!("unknown eval flag: {other}"))),
         }
         i += 1;
+    }
+    if opts.save_db.is_some() && opts.load_db.is_some() {
+        return Err(usage("--save-db and --load-db are mutually exclusive"));
     }
     let engine = open_engine(globals)?;
     let mut cfg = engine.cfg.clone();
@@ -729,7 +759,7 @@ fn cmd_eval(globals: &Globals, args: &[String]) -> CmdResult {
         if variants.is_empty() {
             return Err(usage("--sweep needs at least one value"));
         }
-        let rows = neocortex::eval::sweep(path, emb, cfg, variants).map_err(runtime)?;
+        let rows = neocortex::eval::sweep_with(path, emb, cfg, variants, &opts).map_err(runtime)?;
         if globals.json {
             let value: Vec<serde_json::Value> = rows
                 .iter()
@@ -747,7 +777,7 @@ fn cmd_eval(globals: &Globals, args: &[String]) -> CmdResult {
     if ablation {
         let mut variants = vec![("full".to_string(), cfg.clone())];
         variants.extend(neocortex::eval::ablation_variants(&cfg));
-        let rows = neocortex::eval::sweep(path, emb, cfg, variants).map_err(runtime)?;
+        let rows = neocortex::eval::sweep_with(path, emb, cfg, variants, &opts).map_err(runtime)?;
         if globals.json {
             let mut value =
                 serde_json::to_value(&rows[0].1).map_err(|e| Fail::Run(e.to_string()))?;
@@ -773,7 +803,7 @@ fn cmd_eval(globals: &Globals, args: &[String]) -> CmdResult {
         }
         return Ok(());
     }
-    let report = neocortex::eval::run_eval(path, emb, cfg).map_err(runtime)?;
+    let report = neocortex::eval::run_eval(path, emb, cfg, &opts).map_err(runtime)?;
     if globals.json {
         println!(
             "{}",
@@ -810,7 +840,8 @@ Commands:
   bench                    synthetic remember/recall latency report
                            (--n 10000 --queries 200 --db PATH)
   eval <fixtures.json>     evaluate retrieval quality (--ablation --failures
-                           --set key=value --sweep key=v1,v2)
+                           --set key=value --sweep key=v1,v2
+                           --limit-queries N --save-db PATH --load-db PATH)
   mcp                      run the MCP stdio server
   help                     this text
   --version                print the version
