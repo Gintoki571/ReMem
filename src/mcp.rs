@@ -351,8 +351,9 @@ fn run_tool(engine: &Engine, name: &str, args: &Value) -> std::result::Result<St
             let merge = args.get("merge").and_then(Value::as_str);
             let entity = args.get("entity").and_then(Value::as_str);
             let alias = args.get("alias").and_then(Value::as_str);
+            let force = args.get("force").and_then(Value::as_bool).unwrap_or(false);
             let out = match (keep, merge, entity, alias) {
-                (Some(keep), Some(merge), _, _) => engine.merge_entities(keep, merge),
+                (Some(keep), Some(merge), _, _) => engine.merge_entities(keep, merge, force),
                 (_, _, Some(entity), Some(alias)) => engine.add_alias(entity, alias),
                 _ => {
                     return Err(ToolError::Failed(
@@ -612,7 +613,8 @@ fn entity_schema() -> Value {
             "type": {"type": "string", "description": "person, place, project, org, tool, concept, ..."},
             "description": {"type": "string", "description": "One clause that disambiguates it, e.g. \"the user's mother\"."},
             "aliases": {"type": "array", "items": {"type": "string"}, "description": "Other names for the same thing, e.g. [\"mother\"]."},
-            "same_as": {"type": "string", "description": "Force a merge into this existing entity (name, alias or e<id>)."}
+            "same_as": {"type": "string", "description": "Force a merge into this existing entity (name, alias or e<id>)."},
+            "distinct_from": {"type": "array", "items": {"type": "string"}, "description": "Force a new, different entity (e<id>, name or alias). Use when remember reports status \"ambiguous\" for this name."}
         },
         "required": ["name"]
     })
@@ -741,6 +743,7 @@ fn tool_defs() -> Vec<Value> {
                 "properties": {
                     "keep": {"type": "string", "description": "Entity that survives (name, alias or e<id>)."},
                     "merge": {"type": "string", "description": "Entity that is absorbed and removed."},
+                    "force": {"type": "boolean", "description": "Merge even when the two entities have different non-empty types. Self-loops and exclusive conflicts are reported, relations are never deleted."},
                     "entity": {"type": "string", "description": "Entity to add an alias to."},
                     "alias": {"type": "string", "description": "New alias name."},
                     "format": format_property()

@@ -476,9 +476,28 @@ fn cmd_forget(globals: &Globals, args: &[String]) -> CmdResult {
 }
 
 fn cmd_merge(globals: &Globals, args: &[String]) -> CmdResult {
-    let (keep, merge) = two_names(args, "merge <keep> <merge>")?;
+    let it = args.iter();
+    let mut names: Vec<String> = Vec::new();
+    let mut force = false;
+    for arg in it {
+        if arg == "--force" {
+            force = true;
+            continue;
+        }
+        if let Some(rest) = arg.strip_prefix("--force=") {
+            force = rest.eq_ignore_ascii_case("true");
+            continue;
+        }
+        names.push(arg.clone());
+    }
+    if names.len() != 2 {
+        return Err(usage("usage: neocortex merge <keep> <merge> [--force]"));
+    }
+    let (keep, merge) = (names[0].clone(), names[1].clone());
     let engine = open_engine(globals)?;
-    let out = engine.merge_entities(&keep, &merge).map_err(runtime)?;
+    let out = engine
+        .merge_entities(&keep, &merge, force)
+        .map_err(runtime)?;
     emit(globals, &out, || render::render_change(&out))
 }
 
@@ -828,7 +847,8 @@ Commands:
   entity <name|eID>        profile and timeline of one entity (--limit N, default 20)
   invalidate <mID|rID>     end a memory or relation, keeping history (--at DATE, default now)
   forget <mID>             retire a memory (--hard deletes it)
-  merge <keep> <merge>     merge one entity into another
+  merge <keep> <merge> [--force]
+                           merge one entity into another [--force across types]
   alias <entity> <alias>   add a name to an entity
   overview [query...]      communities of the entity graph
   stats                    counts, database size and embedder

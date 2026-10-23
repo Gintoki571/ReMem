@@ -321,3 +321,30 @@ fn current_values_marker_only_for_several_current_values() {
     let text = neocortex::render::render_entity(&card, &|t| t.to_string());
     assert!(text.contains("[1 of 2 current]"), "{text}");
 }
+
+// rel.md ER-04: a same-day polarity flip (equal valid_from) must retire the
+// older assertion, like the exclusive equal-start rule.
+#[test]
+fn same_day_polarity_flip_retires_the_older_assertion() {
+    let e = engine();
+    let pos = e.remember(likes("Alice likes jazz.", T0, None)).unwrap();
+    let mut neg = likes("Alice no longer likes jazz.", T0, Some(true));
+    neg.valid_from = Some(T0.to_string());
+    let neg = e.remember(neg).unwrap();
+    assert_eq!(live(&e), vec![(neg.relations[0].id, 0)]);
+    // Flip back the same day: the negative assertion is retired instead.
+    let back = e.remember(likes("Alice likes jazz.", T0, None)).unwrap();
+    assert_eq!(live(&e), vec![(back.relations[0].id, 1)]);
+    // Both superseded rows stay as history.
+    assert_eq!(live(&e).len(), 1);
+    let rows: Vec<(i64, Option<i64>)> =
+        e.db.sql()
+            .prepare("SELECT polarity,expired_at IS NOT NULL FROM relations")
+            .unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .unwrap();
+    assert_eq!(rows.len(), 3, "history is kept: {rows:?}");
+    let _ = pos;
+}

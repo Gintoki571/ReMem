@@ -75,10 +75,10 @@ Ids are integers, shown to agents with a prefix (`m12`, `e7`, `r33`). Short ids 
   - World time: `valid_from` (defaults to created_at) and `valid_to` (NULL = still true or unknown). System time: `created_at` and `expired_at` (set by forget/supersede).
 - `memories_fts` FTS5 (content, tags), porter unicode61, external content + triggers.
 - `memories_vec` vec0 `embedding float[768] distance_metric=cosine`, plus a metadata column `live` (so KNN skips expired rows without oversampling); rowid = memory id.
-- `entities(id, name, norm UNIQUE, type, description, created_at, updated_at, mention_count)`; `entity_aliases(alias_norm, entity_id, source: agent|lexical|manual)`; `entities_fts(name, aliases, description)`; `entities_vec` (embedding of `"name (type): description"`).
+- `entities(id, name, norm, type, homonym, description, created_at, updated_at, mention_count)`; UNIQUE `(norm, type, homonym)` with the type lower-cased on write (casing folds). Same name + same type coexisting rows are homonyms (`homonym` ≥ 1). `entity_aliases(alias_norm, entity_id, origin: agent|lexical|manual)`; `entities_fts(name, aliases, description)`; `entities_vec` (embedding of `"name (type): description"`).
 - `mentions(memory_id, entity_id)` — the passage↔phrase bipartite edges (HippoRAG).
-- `predicates(id, canonical)`; `predicate_aliases(alias_norm, predicate_id)`.
-- `relations(id, src, dst, predicate_id, fact, weight, evidence_count, valid_from, valid_to, created_at, expired_at)`; `relation_evidence(relation_id, memory_id)`; `relations_fts(fact, predicate)`; `relations_vec` (embedding of the fact sentence; when the agent gives no sentence, `"src predicate dst"`).
+- `predicates(id, canonical, display, exclusive, group_id, inverse_of, symmetric, seeded)`: `display` is the agent-facing phrase (`married to` → `married to`, `live in` → `lives in`); `group_id` names the head predicate of the exclusivity/conflict family ("reside in"/"base in" share "live in"'s group; "work for"/"employ by" share "work at"'s; "report to" shares "manage"'s; a group head points at itself); `inverse_of` names the predicate that states the same fact from the other side ("manage" ↔ "report to", "parent of" ↔ "child of"); `symmetric` marks facts that read the same both ways ("married to", "friend with", "sibling of"); `seeded` marks the hand-written ontology (16 rows), whose `exclusive` policy an `exclusive: false` write may not clear. The smaller ontology was recalibrated: predicate matching now compares phrase vectors with `pred_alias = 0.80` plus a head/tail compatibility guard, and `negation_tests` records how the same predicate phrase asserts vs denies.
+- `relations(id, src, dst, predicate_id, predicate_text, subj, fact, polarity, weight, evidence_count, valid_from, valid_to, created_at, expired_at, ended_by)`; `predicate_text` keeps the agent's original phrase so recall can show it verbatim; `subj` is the semantic side exclusivity counts on (the stored src, the original source of an inverse write, or min(src,dst) when symmetric); `relation_evidence(relation_id, memory_id)`; `relations_fts(fact, predicate)`; `relations_vec` (embedding of the predicate phrase, so "is employed by" matches "works at"); `negation_tests` (same-predicate phrase pairs that flip polarity).
 - `similar(a, b, score)`: soft near-synonym links between entities (a < b).
 - `communities(entity_id, community, computed_at)` (Louvain, recomputed lazily).
 - graphqlite projection in the same file: nodes `e:<id>` (label Entity) and `m:<id>` (label Memory); edges `MENTIONS` (m→e), `SIMILAR` (e–e, score), and one edge per relation typed by sanitised predicate with `rid`. The projection is derived from the relational tables, which are the source of truth for attributes and time. `neocortex reindex` rebuilds it. `validate` reports drift.
@@ -101,22 +101,22 @@ Steps, in one `BEGIN IMMEDIATE` transaction (embeddings computed before the tran
 2. Exact duplicate (same content hash + kind + folded content, live): bump access/evidence, return the existing id with `duplicate_of`. The unique index enforces it under concurrency.
 3. Embed content (document mode). If the top live KNN neighbour has cosine ≥ `NEAR_DUP` (calibrated; starting value 0.97), report `near_duplicate: mN` and still store the new memory. Never silently drop.
 4. Entities = agent-supplied entities ∪ gazetteer matches (known aliases found as whole-word n-grams in the content) ∪ heuristic candidates. Heuristic candidates are used only when the agent supplied no entities: proper-noun spans, quoted spans, @handles, #tags, URLs, paths, identifiers. Resolve each one (§7), then insert `mentions`.
-5. Relations: resolve endpoints (unknown names create entities), canonicalise the predicate (§7), then upsert:
-   - same (src, predicate, dst) live: weight/evidence += 1, add evidence, keep the earliest valid_from;
-   - `exclusive: true` (or the predicate is marked exclusive by an earlier exclusive write): every other live relation with the same (src, predicate) and a different dst gets `valid_to = new.valid_from` and `expired_at = now`, and is reported as `invalidated`.
+5. Relations: resolve endpoints (unknown names create entities), canonicalise the predicate (§7), then upsert. An inverse write ("B reports to A") is stored in the canonical direction of the smaller predicate id ("A manages B") with the agent's phrase in `predicate_text`; a symmetric write ("married to") is stored once with `src < dst`, so a partner-side write merges into the same row and evidence accumulates. A same (src, dst, group, polarity) row accumulates evidence instead of forking.
+   - The conflict check keys on the predicate **group**, not the single predicate: "resides in" ends "lives in", "works for" ends "works at".
+   - A negated write (`negated: true` or inferred by `negation_tests`) stores `polarity = 0` and ends every live positive relation of the same `(src, dst, group)` — a same-day polarity flip retires the older assertion, and a negative assertion is permanent evidence.
 6. `supersedes`: each target memory gets `valid_to` (if unset) = new valid_from, `expired_at = now`, `superseded_by = new id`, and its vec `live = 0`. Relations the target alone still evidenced get `valid_to = new valid_from` and keep `expired_at` NULL (true until then). `forget` does the same with `now`, also setting `expired_at`; hard forget deletes relations it alone evidenced and clears `superseded_by` pointers at it.
 7. Update the graphqlite projection and bump the write generation.
-8. Return a compact result: id, how each entity resolved (`new` | `matched e7` | `alias-of e7` | `similar-to e9 (0.81)`), relations created/merged, invalidated ids, and duplicate notes.
+8. Return a compact result: id, how each entity resolved (`new` | `matched e7` | `ambiguous` with ranked candidates), relations created/merged, invalidated ids, and duplicate notes. An ambiguous exact-name pool never loses the memory: a typed mention of one `X` among several with no type is a normal match (§7), and a pool scored through `choose_exact` keeps status `ambiguous` with the context winner listed first.
 
 ### Temporal rules
 - Validity intervals are half-open `[valid_from, valid_to)`; NULL `valid_to` = open. "Valid at T" ⇔ `valid_from <= T AND (valid_to IS NULL OR T < valid_to)`. Live (system time) ⇔ `expired_at IS NULL`. An as-of query uses world time only; system time decides what is "current knowledge".
 - Relations carry polarity (`1` positive, `0` negative) and `ended_by`. A matching negative assertion ends a live positive interval at its world start and remains as its own evidence; explicit `invalidate` leaves `ended_by` NULL. Reasserting a past interval attaches evidence to the existing same-triple, same-polarity row when intervals overlap or touch.
-- `exclusive` is tri-state: `true` ends competing values, `false` never ends or reports them for that write, and omitted applies a seeded predicate policy or returns bounded conflict candidates. Non-exclusive predicates remain multi-valued by default; history is never deleted.
+- `exclusive` is tri-state: `true` ends competing values, `false` never ends or reports them for that write, and omitted applies a seeded predicate policy or returns bounded conflict candidates. `exclusive: false` may clear a sticky flag set by an earlier `exclusive: true` write on an agent-created predicate, never a seeded one. Non-exclusive predicates remain multi-valued by default; history is never deleted.
 - Text-only update candidates use `Config.update_candidate = 0.82`. A 10-pair UltraBERT-Embed-150M calibration measured update cosine min/max/mean `0.6974/0.9724/0.8802` versus related-but-not-update `0.3335/0.6588/0.4697`; this threshold favors high precision while returning hints only.
-- Exclusive invalidation compares world time:
+- Exclusive invalidation compares world time, keyed on `(src, group)`:
   - an older live relation (`old.valid_from < new.valid_from`) gets `valid_to = new.valid_from`;
   - a backfilled fact (`new.valid_from < old.valid_from`) is stored already ended: `new.valid_to = min(existing later valid_from)`, and it is history;
-  - equal valid_from: the newer write wins, and the old one gets `valid_to = valid_from` and `expired_at`.
+  - equal valid_from: the newer write wins, and the old one gets `valid_to = valid_from`, `expired_at` and `ended_by` naming the winning fact.
   Invalidated relations keep their rows; `expired_at` is set only when the new write makes the old fact wrong (equal start). An ended-but-true-in-the-past fact keeps `expired_at` NULL with a non-NULL `valid_to`.
 - A memory whose evidenced relations have ALL ended gets `valid_to` = the latest relation end (if still open), including an equal start (empty interval, shown `[ended]`): "Alex lives in Austin" becomes history once "lives in Denver" is written. A memory that still evidences a live fact stays open.
 - The reverse holds too: a memory with an end (`--until`, `invalidate m<id>`, or as the superseded one) ends the relations only it keeps current, at that time, never later than their current end. `validate` reports a live relation whose every evidence memory has ended.
@@ -124,23 +124,29 @@ Steps, in one `BEGIN IMMEDIATE` transaction (embeddings computed before the tran
 - `forget` (soft) retracts the relations only it evidenced: `expired_at = now`, `valid_to` untouched (no invented end date). Retracted facts render as `retracted`, not `ended`.
 - `--when "from X to Y"` / `"between X and Y"` sets `valid_from` and `valid_to` (exclusive end). `N weeks ago` / `N months ago` store that exact day; `last <month>` is the bare month, as in recall.
 - Without `--when`, the one explicit date in the content (`March 5, 2025`, `in 2019`, `2027-06-15`, `yesterday`, `3 days ago`) becomes `valid_from`, reported as `when: inferred from text '...'`. Several dates, or relative phrases (`next month`), infer nothing. No recurrence is invented.
-- Exclusivity is a property of the canonical predicate. It is global (entities are global across scopes) and applies per source entity: `(src, predicate)` has at most one valid object at any world time.
+- Exclusivity is a property of the predicate **group**. It is global (entities are global across scopes) and applies per semantic subject: `(subj, group)` has at most one valid object at any world time.
 
 ## 7. Entity and relation resolution
 
 Calibration on UltraBERT (bare names, document mode) showed embeddings alone cannot tell "same" from "related": same pairs scored 0.63–0.93 (house~home 0.775, bros~friends 0.70), related-but-different pairs 0.48–0.81 (London~Paris 0.807, mother~parent 0.808). So:
 
-Entity resolution for a mention `(name, type?, description?, aliases?)`:
+Entity resolution for a mention `(name, type?, description?, aliases?, distinct_from?)`:
 1. `norm(name)`: Unicode NFKC-lite fold (lowercase plus common accent stripping), trim punctuation, collapse whitespace, drop leading articles/possessives (`the`, `a`, `my`, `'s`), and singularise the last token with English rules (houses→house, bros→bro, but not `analysis`, `status`, `bus`).
-2. Exact: `norm` or any agent-supplied alias equals an existing alias. If the alias names exactly one entity whose type is compatible (equal, or one side unknown), match it. If it names several, pick by embedding cosine with the mention's description/context.
-3. Lexical merge (strong evidence only), against candidates from alias trigram blocking plus the top-10 entity KNN:
+2. Exact: `norm` or any agent-supplied alias equals an existing alias. If the alias names exactly one entity whose type is compatible (equal, or one side unknown), match it. If it names several (a homonym pool), score each candidate with `max(card cosine, 0.5 × memory-context cosine)` — the card vector is `"name (type): description"`, the memory-context term is the cosine against the up to 40 newest live memories mentioning the candidate — and:
+   - a typed mention (the kind is given) picks the top scorer but keeps status `ambiguous`: the candidate list arrives ranked with the winner first, so the agent can override with `distinct_from` when it disagrees;
+   - an untyped mention names one `X` among typed rows: it is a normal match of that single entity — never a forced join of a homonym pool;
+   - an untyped mention with a confident pick (best ≥ 0.75 and runner-up ≥ 0.10 behind) picks it with status `ambiguous`; otherwise the write keeps its memory on a fresh untyped bucket entity (status `ambiguous`) and the agent chooses later with type, `same_as`, or `distinct_from`.
+3. A conflicting description demotes the match: a same-name mention whose card vector has cosine < `entity_conflict = 0.73` with the stored entity (measured 2026-10-23 with UltraBERT — same-entity min 0.7404, different-entity max 0.7275 across 22 + 22 description pairs) keeps status `ambiguous` with the candidate and its score, and never pastes the new description into the existing card. Only a real embedder can judge this (a hash embedder reports nothing). Same name + a different type is a plain coexisting entity row (casing folds); `distinct_from` is the homonym forcing tool: it creates a new `(norm, type, homonym+1)` row (status `new`), the alias stays ambiguous afterwards.
+4. Agent override: `aliases` / `same_as` merge on demand.
+5. Lexical merge (strong evidence only), against candidates from alias trigram blocking plus the top-10 entity KNN:
    - Jaro-Winkler(norm) ≥ 0.93 and both norms ≥ 5 chars, with no differing digits and no differing content token (guards: `v1`/`v2`, `get_user`/`set_user`, `Paris TX`/`Paris`) → merge as alias (Postgres/PostgreSQL);
    - acronym match: initials of a multi-token name equal the other name (NYC/New York City) and embedding cosine ≥ 0.6 → merge as alias.
-4. Agent override: `aliases` / `same_as` in the payload, and the `merge_entities` tool, always merge.
-5. Otherwise create a new entity. If entity cosine ≥ `SIM_EDGE` (starting value 0.75, calibrated on the eval set), add a soft `similar(a, b, cos)` edge to at most the top 3. These edges carry graph activation (home→house, mother→parent) but never merge nodes.
-6. Never merge transitively: a mention merges into one existing canonical entity, and that entity's aliases do not chain-merge other entities.
+6. Otherwise create a new entity. If entity cosine ≥ `SIM_EDGE` (0.75, calibrated on the eval set), add a soft `similar(a, b, cos)` edge to at most the top 3. These edges carry graph activation (home→house, mother→parent) but never merge nodes.
+7. Never merge transitively: a mention merges into one existing canonical entity, and that entity's aliases do not chain-merge other entities.
 
-Predicate resolution: `norm_pred` = lowercase, words split on non-alphanumerics, auxiliaries dropped (is/are/was/has/have/been/currently), and each verb lemmatised by suffix rules (works/working/worked→work). The predicate canonical key is the joined lemma string (`lives in`, `live_in`, `lived in` → `live in`). The exact alias table goes first. A new predicate whose embedding cosine with an existing predicate is ≥ 0.90 becomes an alias of it. Exclusive-ness is a property of the canonical predicate.
+`merge_entities(keep, merge)` converges two entities the agent says are the same: mentions become mentions of the survivor, evidence and aliases carry over, similar edges survive with the highest score per pair. Relations re-point; ones that become self-loops are reported and kept as expired rows — never silently deleted (rel.md ER-06). Exclusive facts are reconciled without zero-length intervals: an unequal-start loser ends at the newer start, and an equal-start loser is system-retired (`expired_at = now`, `ended_by` naming the winner). Different non-empty types need `force=true`.
+
+Predicate resolution: `norm_pred` = lowercase, words split on non-alphanumerics, auxiliaries dropped (is/are/was/has/have/been/currently), and each verb lemmatised by suffix rules (works/working/worked→work). The predicate canonical key is the joined lemma string (`lives in`, `live_in`, `lived in` → `live in`). The exact alias table goes first; otherwise the phrase's vector (phrase-level embeddings, `pred_alias = 0.80`) matches a stored predicate with cosine ≥ that value, with a head/tail compat check on the sentence's roles. A new predicate whose cos ≥ 0.90 becomes an alias of it — measured on predicate phrases ⇒ precision 1.0 on 30 paraphrase / 30 non-paraphrase pairs — and the family joins the head's rule via `group_id`. Exclusivity is a property of the group head.
 
 ## 8. Recall
 
@@ -171,8 +177,9 @@ Input: `query`, `k` (default 8), `budget` tokens (default 1200, approx chars/4),
 5. Diversity: MMR (λ = 0.75) over the top 3k candidates using stored embeddings, which removes near-duplicate hits.
 6. Context assembly (graph RAG output):
    - the top memories;
-   - up to 8 facts: relations among the top-PPR entities, valid at as_of (or with validity shown), ranked by PPR(src)+PPR(dst) and fact relevance;
-   - up to 3 entity cards (name, type, aliases, description).
+   - up to 8 facts: relations among the top-PPR entities, valid at as_of (or with validity shown), ranked by PPR(src)+PPR(dst) and fact relevance; a group loaded with ≥ 2 valid values shows the count over its display predicate rather than implying completeness;
+   - up to 3 entity cards (name, type, aliases, description);
+   - per-side view: a card or profile renders its facts with the card's entity as subject — "Iris reports to Kofi" (stored as "Kofi manages Iris") reads "Iris —reports to→ Kofi" on Iris's card and "Kofi —manages→ Iris" on Kofi's; symmetric facts read the same both ways.
    - Everything is packed into the budget: whole items only; the top memory always fits (`over_budget` is set when it alone exceeds the budget); omissions are reported.
 7. Side effect: bump `access_count`/`last_access` of returned memories (recorded only; not used in ranking unless eval shows benefit).
 
@@ -198,7 +205,7 @@ MCP (stdio, JSON-RPC 2.0, newline-delimited; protocol version negotiated) tools,
 | `entity` | profile of one entity: aliases, description, current facts, past facts, similar entities, and a memory timeline (paged) |
 | `invalidate` | mark a memory or relation as no longer true from a time (`valid_to`), keeping it as history |
 | `forget` | retire a memory (soft, sets expired_at), or `hard: true` to delete it with its vectors/mentions/evidence |
-| `merge_entities` | fix resolution: merge b into a (aliases, mentions, relations move), or `alias` to add a name |
+| `merge_entities` | fix resolution: merge b into a (aliases, mentions, relations move; self-loops reported as expired), or `alias` to add a name |
 | `overview` | global view: top communities relevant to a query or overall, with key entities and facts |
 | `stats` | counts, db size, model status |
 
@@ -226,7 +233,7 @@ Agent skill doc `skills/neocortex/SKILL.md`: when to remember (decisions, prefer
 - Closed `kind` set.
 - No automatic deletion or decay of memories; time affects ranking only.
 - Times are stored as UTC unix seconds. Relative phrases and displayed dates use `NEOCORTEX_TZ` (±HH:MM) or, by default, the system's local UTC offset (read through SQLite's localtime, sampled once per process — a DST switch is seen after restart).
-- Thresholds (NEAR_DUP 0.97, SIM_EDGE 0.75, entity seed 0.55, predicate alias 0.90, RRF weights) are starting values, and the eval suite tunes them.
+- Thresholds (NEAR_DUP 0.97, SIM_EDGE 0.75, entity seed 0.55, predicate alias 0.90, RRF weights) are starting values, and the eval suite tunes them. Measured and tuned 2026-10-23: predicate phrase aliasing `pred_alias = 0.80` (precision 1.0 on 66 pairs), description conflict `entity_conflict = 0.73` (same min 0.7404 / different max 0.7275 on 44 pairs).
 
 ## 12. Left to the builder
 

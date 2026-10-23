@@ -304,6 +304,9 @@ impl Db {
                  ON CONFLICT(canonical) DO UPDATE SET
                    display=CASE WHEN predicates.display='' THEN excluded.display ELSE predicates.display END,
                    symmetric=MAX(predicates.symmetric,excluded.symmetric),
+                   -- Migration re-applies the hand-written policy; a seeded
+                   -- predicate's exclusivity is not a user-settable flag.
+                   exclusive=excluded.exclusive,
                    seeded=1",
                 rusqlite::params![
                     seed.canonical,
@@ -360,6 +363,10 @@ impl Db {
         Ok(())
     }
 
+    /// v2 -> v3: the baseline releases added polarity and ended_by to
+    /// relations. Predicate ontology (display/group_id/inverse_of/symmetric/"
+    /// seeded) belongs to v3 -> v4, which handles every pre-f2 predicate
+    /// shape.
     fn migrate_v2_to_v3(&self) -> Result<()> {
         self.write(|db| {
             if !db.column_exists("relations", "polarity")? {
@@ -371,7 +378,6 @@ impl Db {
                 db.sql()
                     .execute_batch("ALTER TABLE relations ADD COLUMN ended_by INTEGER;")?;
             }
-            db.seed_predicates()?;
             db.set_version(3)
         })
     }

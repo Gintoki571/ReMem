@@ -1008,13 +1008,53 @@ fn facts_for(
     ppr: Option<&HashMap<i64, f64>>,
     query_vec: Option<&[f32]>,
 ) -> Result<Vec<FactHit>> {
+    facts_for_view(
+        engine,
+        ids,
+        history,
+        cutoff,
+        (since, until),
+        limit,
+        ppr,
+        query_vec,
+        None,
+    )
+}
+
+/// Same as `facts_for` with a per-side view: `viewer` is the entity whose card
+/// or profile the facts are rendered for, so inverse relations ("A manages B"
+/// stored after "B reports to A") and symmetric relations (married to, stored
+/// once in (min,max) order) are rendered with the viewer as subject.
+#[allow(clippy::too_many_arguments)]
+fn facts_for_view(
+    engine: &Engine,
+    ids: &[i64],
+    history: bool,
+    cutoff: i64,
+    (since, until): (Option<i64>, Option<i64>),
+    limit: usize,
+    ppr: Option<&HashMap<i64, f64>>,
+    query_vec: Option<&[f32]>,
+    viewer: Option<i64>,
+) -> Result<Vec<FactHit>> {
     if ids.is_empty() {
         return Ok(Vec::new());
     }
     let marks = std::iter::repeat_n("?", ids.len())
         .collect::<Vec<_>>()
         .join(",");
-    let mut st = engine.db.sql().prepare(&format!("SELECT r.id,r.src,r.dst,p.canonical,r.fact,r.valid_from,r.valid_to,r.expired_at,e.name,d.name,r.polarity,r.predicate_id,r.ended_by,(SELECT nb.fact FROM relations nb WHERE nb.id=r.ended_by) FROM relations r JOIN predicates p ON p.id=r.predicate_id JOIN entities e ON e.id=r.src JOIN entities d ON d.id=r.dst WHERE r.src IN ({marks}) OR r.dst IN ({marks})"))?;
+    let mut st = engine.db.sql().prepare(&format!(
+        "SELECT r.id,r.src,r.dst,
+            COALESCE(NULLIF(r.predicate_text,''),NULLIF(p.display,''),p.canonical),
+            (SELECT COALESCE(NULLIF(ip.display,''),ip.canonical)
+             FROM predicates ip WHERE ip.id=p.inverse_of),
+            p.symmetric,r.fact,r.valid_from,r.valid_to,r.expired_at,e.name,d.name,
+            r.polarity,COALESCE(NULLIF(p.group_id,0),p.id),r.ended_by,r.subj,
+            (SELECT nb.fact FROM relations nb WHERE nb.id=r.ended_by)
+         FROM relations r JOIN predicates p ON p.id=r.predicate_id
+         JOIN entities e ON e.id=r.src JOIN entities d ON d.id=r.dst
+         WHERE r.src IN ({marks}) OR r.dst IN ({marks})"
+    ))?;
     let mut out = Vec::new();
     let mut sql_params: Vec<Box<dyn rusqlite::ToSql>> = ids
         .iter()
@@ -1032,16 +1072,19 @@ fn facts_for(
                 r.get::<_, i64>(1)?,
                 r.get::<_, i64>(2)?,
                 r.get::<_, String>(3)?,
-                r.get::<_, String>(4)?,
+                r.get::<_, Option<String>>(4)?,
                 r.get::<_, i64>(5)?,
-                r.get::<_, Option<i64>>(6)?,
-                r.get::<_, Option<i64>>(7)?,
-                r.get::<_, String>(8)?,
-                r.get::<_, String>(9)?,
-                r.get::<_, i64>(10)?,
-                r.get::<_, i64>(11)?,
-                r.get::<_, Option<i64>>(12)?,
-                r.get::<_, Option<String>>(13)?,
+                r.get::<_, String>(6)?,
+                r.get::<_, i64>(7)?,
+                r.get::<_, Option<i64>>(8)?,
+                r.get::<_, Option<i64>>(9)?,
+                r.get::<_, String>(10)?,
+                r.get::<_, String>(11)?,
+                r.get::<_, i64>(12)?,
+                r.get::<_, i64>(13)?,
+                r.get::<_, Option<i64>>(14)?,
+                r.get::<_, i64>(15)?,
+                r.get::<_, Option<String>>(16)?,
             ))
         },
     )? {
@@ -1050,6 +1093,8 @@ fn facts_for(
             src,
             dst,
             pred,
+            inverse_pred,
+            symmetric,
             fact,
             vf,
             vt,
@@ -1057,8 +1102,9 @@ fn facts_for(
             source,
             target,
             polarity,
-            pid,
+            group,
             ended_by,
+            subj,
             by_fact,
         ) = x?;
         if vf > cutoff {
@@ -1070,6 +1116,18 @@ fn facts_for(
         if until.is_some_and(|u| vf >= u) || since.is_some_and(|s| vt.is_some_and(|t| t <= s)) {
             continue;
         }
+        // From the other side of an inverse or symmetric relation the fact is
+        // rendered with the viewer as subject and the inverse phrase.
+        let other_side = viewer == Some(dst) && (inverse_pred.is_some() || symmetric != 0);
+        let (source, target, predicate) = if other_side {
+            (
+                target.clone(),
+                source.clone(),
+                inverse_pred.clone().unwrap_or(pred.clone()),
+            )
+        } else {
+            (source.clone(), target.clone(), pred.clone())
+        };
         let cosine = if let Some(query) = query_vec {
             engine
                 .db
@@ -1092,7 +1150,7 @@ fn facts_for(
             FactHit {
                 id,
                 source,
-                predicate: pred,
+                predicate,
                 target,
                 fact,
                 valid_from: vf,
@@ -1100,11 +1158,13 @@ fn facts_for(
                 ended: expired.is_some() || vt.is_some_and(|v| v <= cutoff),
                 retracted: expired.is_some() && vt.is_none(),
                 polarity,
-                current_values: if polarity == 1 && expired.is_none() && vt.is_none_or(|v| v > cutoff) {
+                current_values: if polarity == 1 && expired.is_none() && vt.is_none_or(|v| v > cutoff)
+                {
                     let n: i64 = engine.db.sql().query_row(
-                        "SELECT count(*) FROM relations WHERE src=?1 AND predicate_id=?2 AND polarity=1
+                        "SELECT count(*) FROM relations WHERE subj=?1 AND predicate_id IN
+                             (SELECT id FROM predicates WHERE group_id=?2) AND polarity=1
                          AND expired_at IS NULL AND valid_from<=?3 AND (valid_to IS NULL OR valid_to>?3)",
-                        params![src, pid, cutoff],
+                        params![if subj == 0 { src } else { subj }, group, cutoff],
                         |r| r.get(0),
                     )?;
                     (n >= 2).then_some(n as usize)
@@ -1144,7 +1204,7 @@ pub fn entity(engine: &Engine, name: &str, limit: usize) -> Result<EntityOutput>
     let id = resolve_entity(engine, name)?;
     let now = engine.clock().now;
     let card = card(engine, id)?;
-    let all = facts_for(
+    let all = facts_for_view(
         engine,
         &[id],
         true,
@@ -1153,6 +1213,7 @@ pub fn entity(engine: &Engine, name: &str, limit: usize) -> Result<EntityOutput>
         limit.min(200),
         None,
         None,
+        Some(id),
     )?;
     let current: Vec<_> = all.iter().filter(|f| !f.ended).cloned().collect();
     let past: Vec<_> = all

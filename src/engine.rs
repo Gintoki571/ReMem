@@ -660,11 +660,26 @@ impl Engine {
     }
 
     /// Merge entity `merge` into `keep` (aliases, mentions, relations move).
-    pub fn merge_entities(&self, _keep: &str, _merge: &str) -> Result<ChangeOutput> {
+    /// Merging entities with different non-empty types needs `force`.
+    pub fn merge_entities(&self, _keep: &str, _merge: &str, force: bool) -> Result<ChangeOutput> {
         let k = parse_entity(&self.db, _keep)?;
         let m = parse_entity(&self.db, _merge)?;
         if k == m {
             return Err(crate::err!("cannot merge an entity into itself"));
+        }
+        let kt: String =
+            self.db
+                .sql()
+                .query_row("SELECT type FROM entities WHERE id=?1", [k], |r| r.get(0))?;
+        let mt: String =
+            self.db
+                .sql()
+                .query_row("SELECT type FROM entities WHERE id=?1", [m], |r| r.get(0))?;
+        if !kt.is_empty() && !mt.is_empty() && kt != mt && !force {
+            return Err(crate::err!(
+                "e{} ({mt}) and e{} ({kt}) have different types; use force=true if this is the same thing",
+                m, k
+            ));
         }
         let now = self.clock().now;
         self.db.write(|db| {
@@ -707,7 +722,9 @@ impl Engine {
                 .execute("UPDATE relations SET src=?1 WHERE src=?2", [k, m])?;
             db.sql()
                 .execute("UPDATE relations SET dst=?1 WHERE dst=?2", [k, m])?;
-            // Self-loops created by the merge (or already present) are noise.
+            // Relations that become self-loops are kept as expired rows and
+            // reported: never a silent delete. Their PPR snapshot skips them
+            // automatically once expired.
             let loops: Vec<i64> = {
                 let mut st = db
                     .sql()
@@ -715,20 +732,16 @@ impl Engine {
                 let rows = st.query_map([k], |r| r.get::<_, i64>(0))?;
                 rows.collect::<rusqlite::Result<_>>()?
             };
+            let mut self_loop_report = Vec::new();
             for rid in &loops {
-                db.sql()
-                    .execute("DELETE FROM relations_fts WHERE rowid=?1", [rid])?;
-                db.sql()
-                    .execute("DELETE FROM relations_vec WHERE rowid=?1", [rid])?;
-                db.sql().execute("DELETE FROM relations WHERE id=?1", [rid])?;
-                crate::kg::remove_relation(db, *rid)?;
+                crate::remember::retract_relations(db, &[*rid], now)?;
+                self_loop_report.push(format!("r{rid} expired (self-loop of e{k})"));
             }
             // Two entities that described the same fact become one relation,
             // and an exclusive predicate keeps at most one live object.
             merge_duplicate_relations(db)?;
             let invalidated = reapply_exclusivity(db, now)?;
-            crate::remember::end_memories_of_ended_facts(db, &invalidated)?;
-            let merged_count: i64 = db.sql().query_row(
+            crate::remember::end_memories_of_ended_facts(db, &invalidated)?;            let merged_count: i64 = db.sql().query_row(
                 "SELECT mention_count FROM entities WHERE id=?1",
                 [m],
                 |r| r.get(0),
@@ -748,9 +761,16 @@ impl Engine {
             crate::kg::remove_entity(db, m)?;
             crate::kg::reproject_entity(db, k)?;
             crate::kg::bump_gen(db)?;
-            Ok(ChangeOutput {
-                changed: vec![format!("e{m} merged into e{k}")],
-            })
+            let mut changed = vec![format!("e{m} merged into e{k}")];
+            changed.extend(self_loop_report);
+            for rid in &invalidated {
+                let fact: String = db
+                    .sql()
+                    .query_row("SELECT fact FROM relations WHERE id=?1", [rid], |r| r.get(0))
+                    .unwrap_or_else(|_| format!("r{rid}"));
+                changed.push(format!("r{rid} ended: {fact}"));
+            }
+            Ok(ChangeOutput { changed })
         })
     }
 
@@ -1030,13 +1050,15 @@ fn reapply_exclusivity(db: &Db, now: i64) -> Result<Vec<i64>> {
             let rows = st.query_map(rusqlite::params![src, pid], |r| Ok((r.get(0)?, r.get(1)?)))?;
             rows.collect::<rusqlite::Result<_>>()?
         };
-        let (_, newest) = rows[0];
+        let (winner, newest) = rows[0];
         for (rid, from) in &rows[1..] {
             if *from == newest {
-                // Equal start: the newer write wins outright.
+                // Equal start: no world interval is fabricated (a zero-length
+                // [t,t) history tells nothing about "which was true when"),
+                // the loser is system-retired instead.
                 db.sql().execute(
-                    "UPDATE relations SET valid_to=?1, expired_at=?2 WHERE id=?3",
-                    rusqlite::params![newest, now, rid],
+                    "UPDATE relations SET expired_at=?1, ended_by=?2 WHERE id=?3",
+                    rusqlite::params![now, winner, rid],
                 )?;
             } else {
                 db.sql().execute(
@@ -1052,7 +1074,14 @@ fn reapply_exclusivity(db: &Db, now: i64) -> Result<Vec<i64>> {
 
 fn parse_entity(db: &Db, s: &str) -> Result<i64> {
     if let Some(id) = parse_id(s, 'e') {
-        return Ok(id);
+        let live: Option<i64> = db
+            .sql()
+            .query_row("SELECT id FROM entities WHERE id=?1", [id], |r| r.get(0))
+            .optional()?;
+        return match live {
+            Some(_) => Ok(id),
+            None => Err(crate::err!("unknown entity 'e{id}'")),
+        };
     };
     let n = crate::text::norm_name(s);
     db.sql()

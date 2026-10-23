@@ -103,9 +103,7 @@ fn infer_negated(text: &str, predicate: &str, group: &str, target: &str) -> bool
         })
         .unwrap_or(text);
     let words = words_of(clause);
-    let Some(target_pos) = (0..words.len())
-        .find(|&i| words[i..].starts_with(&target_words))
-    else {
+    let Some(target_pos) = (0..words.len()).find(|&i| words[i..].starts_with(&target_words)) else {
         return false;
     };
 
@@ -141,11 +139,7 @@ fn infer_negated(text: &str, predicate: &str, group: &str, target: &str) -> bool
                 .eq(phrase.iter().copied())
             {
                 let gap = &words[start + phrase.len()..target_pos];
-                if gap.len() <= 3
-                    && !gap
-                        .iter()
-                        .any(|w| RETRACTION_BREAKS.contains(&w.as_str()))
-                {
+                if gap.len() <= 3 && !gap.iter().any(|w| RETRACTION_BREAKS.contains(&w.as_str())) {
                     let end = start + phrase.len();
                     if best.is_none_or(|(seen, _)| end > seen) {
                         best = Some((end, retract_group));
@@ -474,8 +468,9 @@ fn prepare(clock: Clock, mut inp: RememberInput) -> Result<Prepared> {
                 "relation predicate cannot be empty; give a verb phrase such as \"works at\""
             ));
         }
-        if !pred_index.contains_key(&norm) {
-            pred_index.insert(norm, pred_texts.len());
+        let next = pred_texts.len();
+        if let std::collections::hash_map::Entry::Vacant(slot) = pred_index.entry(norm) {
+            slot.insert(next);
             pred_texts.push(relation.predicate.trim().to_string());
         }
     }
@@ -660,6 +655,7 @@ fn write_prepared(
             db,
             entity,
             &vectors[CARD_BASE + i],
+            &vectors[0],
             now,
             cfg,
             semantic,
@@ -770,6 +766,7 @@ fn write_prepared(
             now,
             cfg,
             endpoint_vector(src_name),
+            semantic,
         )?;
         let mut dst = resolve_endpoint(
             db,
@@ -779,6 +776,7 @@ fn write_prepared(
             now,
             cfg,
             endpoint_vector(dst_name),
+            semantic,
         )?;
         if pred.symmetric && src > dst {
             std::mem::swap(&mut src, &mut dst);
@@ -1122,6 +1120,7 @@ pub fn end_memories_of_ended_facts(db: &Db, relation_ids: &[i64]) -> Result<()> 
 }
 
 /// Resolve a relation endpoint and record that `memory` mentions it.
+#[allow(clippy::too_many_arguments)]
 fn resolve_endpoint(
     db: &Db,
     memory: i64,
@@ -1130,6 +1129,7 @@ fn resolve_endpoint(
     now: i64,
     cfg: &Config,
     embedding: &[f32],
+    semantic: bool,
 ) -> Result<i64> {
     let norm = text::norm_name(name);
     if let Some(id) = ids.get(&norm) {
@@ -1142,6 +1142,7 @@ fn resolve_endpoint(
             name: name.into(),
             ..Default::default()
         },
+        embedding,
         embedding,
         now,
         cfg,
@@ -1263,7 +1264,13 @@ mod negation_tests {
             ("Alice no longer likes jazz.", "like", "like", "jazz", true),
             ("Alice doesn't like jazz", "like", "like", "jazz", true),
             ("Alice does not like jazz", "like", "like", "jazz", true),
-            ("Bob never worked at Acme", "work at", "work at", "Acme", true),
+            (
+                "Bob never worked at Acme",
+                "work at",
+                "work at",
+                "Acme",
+                true,
+            ),
             (
                 "Bob stopped working at Acme in May",
                 "work at",

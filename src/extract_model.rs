@@ -185,6 +185,7 @@ fn add_entity(entities: &mut Vec<EntityIn>, name: &str, kind: Option<String>) {
         description: None,
         aliases: Vec::new(),
         same_as: None,
+        distinct_from: Default::default(),
     });
 }
 

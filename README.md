@@ -74,7 +74,7 @@ entities: [e1] Mom (person; aka mother) · [e2] Pune (place)
 | `entity <name\|eID>` | profile, current/past facts and timeline of one entity |
 | `invalidate <mID\|rID>` | end a memory or relation at a time, keeping it as history |
 | `forget <mID>` | retire a memory; its sole-evidence relations are retracted (`--hard` deletes it with vectors and mentions) |
-| `merge <keep> <merge>` | merge one entity into another |
+| `merge <keep> <merge>` | merge one entity into another (`--force` crosses types) |
 | `alias <entity> <alias>` | add another name to an entity |
 | `overview [query...]` | clusters of the entity graph |
 | `stats` | counts, database size, embedder |
@@ -207,15 +207,37 @@ becomes the start; several dates, or none, leave it at today.
 
 Relation writes use tri-state `exclusive`: `true` ends competing values,
 `false` keeps this write without conflict reporting, and omitted uses the
-predicate policy or returns candidates. Negative assertions are stored with
-polarity and end matching positive validity without deleting history.
+predicate policy or returns candidates. `false` can clear a sticky exclusive
+flag, but never on the seeded predicate ontology. Negative assertions are
+stored with polarity and end matching positive validity without deleting
+history.
+
+## How names and phrases resolve
+
+- Same name, different type: two entity rows (casing folds), one per type.
+- Same name + conflicting description: the match keeps `ambiguous` status with
+  a ranked candidate; neocortex never pastes one description over the other.
+- Same name among homonyms: a typed mention of a single match is a normal
+  match; an honest pool returns `ambiguous` with the likely candidate first
+  (scored by the entity card plus what the memory is about). Uncertain pools
+  keep the memory on a placeholder entity so nothing is lost. `distinct_from`
+  (entity tool, CLI `alias`-family) forces a homonym split; `merge <a> <b>`
+  converges them again.
+- Inverse and symmetric phrases: "X reports to Y" is stored once as "Y manages
+  X" (or, for "married to", with both ends in storage order) and every side
+  renders its own view: `entity` shows the phrase that starts with the profile.
+- Predicates live in families ("resides in" and "based in" count as "lives
+  in"): exclusivity and negative assertions are checked per family, and a
+  brand new phrase joins a family when its vector is close enough.
 
 ## Quality
 
-On 84 queries, recall is **0.951** and MRR is **0.868**. Ablation scores are
-**0.904** with graph retrieval off and **0.920** with vector retrieval off.
-Recall p50 is about **60 ms** with UltraBERT on a 12-core laptop CPU; the
-10k-memory benchmark reports **45 ms p50 / 146 ms p95** excluding embedding.
+On 84 queries, recall is **0.953** and MRR is **0.894**; on the independent
+holdout set (88 queries) **0.924 / 0.794** (measured 2026-10-23; the ablation
+numbers live in `neocortex eval <fixtures> --ablation`). Recall p50 with
+UltraBERT on a 12-core laptop CPU is about **160 ms**; the 10k-memory
+hash-embedder benchmark reports **~100 ms p50 / ~220-360 ms p95** including
+embedding.
 Retrieval uses four channels, then RRF (`k=5`), modifiers, MMR and graph
 context.
 

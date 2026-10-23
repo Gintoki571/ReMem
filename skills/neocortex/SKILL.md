@@ -44,17 +44,33 @@ Store something when it will still matter next week:
   is searchable text only and never joins the graph, multi-hop or conflict
   handling. One relation per stated fact: `{"source": "Bob", "predicate":
   "reports to", "target": "Alice"}`; split multi-fact sentences.
+- **One entity per real thing**: same name with a different type is fine (a
+  person and a project both called "Zephyr" become two cards). When the
+  `remember` result says `ambiguous` for an entity, the write was stored and
+  the candidate list is ranked with the likely match first — confirm it with
+  `same_as` (pick the candidate) or `distinct_from` (this mention is NOT that
+  entity; it splits off a new card). Real different people with the same name
+  and type are separate entities: do not `merge_entities` them without
+  checking the facts on both cards.
 - **Structured when known**: pass `entities` and `relations`. Mark single-valued
   relations (`lives in`, `works at`, `is married to`, `has phone number`)
   `exclusive: true` so the previous value is ended and kept as history.
   Use `exclusive: false` to keep competing values without a conflict hint;
   omit it to use predicate policy or return candidates. Exclusivity sticks to
   the predicate for future writes, so never mark multi-valued ones (`uses`,
-  `knows`, `likes`, `depends on`) exclusive.
-- Pass `negated: true` for retractions such as "no longer likes"; negative
-  relations render as `—NOT→` and end the matching positive interval. When
-  `remember` returns `conflicts` or `related`, decide whether to invalidate or
-  supersede the candidate; neocortex never guesses and never deletes history.
+  `knows`, `likes`, `depends on`) exclusive. Note: `exclusive: false` can
+  clear a sticky flag you set earlier, but never changes the built-in policy
+  of seeded predicates ("lives in", "works at", "reports to", ...).
+- Predicates come in families: "resides in" or "based in" automatically count
+  as "lives in"; "reports to" and "manage" both work and render from the
+  subject's side ("X reports to Y" shows as "X —reports to→ Y" on X's card and
+  "Y —manages→ X" on Y's). Use whichever phrase is natural.
+- Pass `negated: true` for retractions such as "no longer likes" or "X does not
+  support Y"; negative relations render as `—NOT→` and end the matching
+  positive interval of the same fact (reasserting the positive later is normal
+  history). When `remember` returns `conflicts` or `related`, decide whether
+  to invalidate or supersede the candidate; neocortex never guesses and never
+  deletes history.
 - **Correct, don't contradict**: use `supersedes: ["m12"]` for a newer memory
   that replaces an older one, or `invalidate m<id>` when a fact stopped being
   true (it also ends the facts that memory alone states).
@@ -94,7 +110,7 @@ the installed binary is `~/.neocortex/bin/neocortex` (DB `~/.neocortex/neocortex
 | `entity` | `neocortex entity <name\|eID>` | profile of one entity |
 | `invalidate` | `neocortex invalidate <mID\|rID> --at <date>` | end a fact |
 | `forget` | `neocortex forget <mID> [--hard]` | retire/delete (facts it alone stated are retracted) |
-| `merge_entities` | `neocortex merge <keep> <merge>` / `alias <entity> <alias>` | fix names |
+| `merge_entities` | `neocortex merge <keep> <merge> [--force]` / `alias <entity> <alias>` | fix names (+ `distinct_from` on the `remember` entities array to split a homonym) |
 | `overview` | `neocortex overview [query]` | clusters of the graph |
 | `stats` | `neocortex stats` | counts and model status |
 
