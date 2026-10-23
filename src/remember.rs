@@ -193,10 +193,20 @@ pub fn remember_batch(
 }
 
 /// Validate one input and lay out the texts that must be embedded for it.
-fn prepare(clock: Clock, inp: RememberInput) -> Result<Prepared> {
+fn prepare(clock: Clock, mut inp: RememberInput) -> Result<Prepared> {
     let content = inp.content.trim().to_string();
     if content.is_empty() {
         return Err(crate::err!("content must not be empty"));
+    }
+    // Opt-in rules extractor for memories that carry no structure; dates in
+    // the text are handled by the text-date inference below.
+    if std::env::var("NEOCORTEX_EXTRACTOR").as_deref() == Ok("rules")
+        && inp.entities.is_empty()
+        && inp.relations.is_empty()
+    {
+        let extracted = crate::extract_model::extract_text(&content, &clock);
+        inp.entities = extracted.entities;
+        inp.relations = extracted.relations;
     }
     let kind = inp.kind.unwrap_or_else(|| "note".into());
     if !crate::engine::KINDS.contains(&kind.as_str()) {

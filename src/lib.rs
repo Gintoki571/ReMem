@@ -8,6 +8,7 @@ pub mod error;
 pub mod eval;
 pub mod export;
 pub mod extract;
+pub mod extract_model;
 pub mod graph;
 pub mod import;
 pub mod kg;

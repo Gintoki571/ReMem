@@ -106,7 +106,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - Embedding-only similarity never merges entities; it only adds `similar` soft edges.
 - Ids shown to agents: `m<id>`, `e<id>`, `r<id>`; tools accept both forms.
 - The embedder sets `RAYON_NUM_THREADS` to candle's thread count at model load when unset (gemm and rayon pools must agree; 2x faster).
-- Env: `NEOCORTEX_EMBEDDER=hash` (tests only; a DB records its embedder and refuses another), `NEOCORTEX_DB` (default `~/.neocortex/neocortex.db`), `NEOCORTEX_MODEL_DIR` (default `~/.neocortex/models/UltraBERT-Embed-150M`), `NEOCORTEX_TZ` (`+HH:MM`, default system local offset), `NEOCORTEX_MAX_TOKENS` (default 1024).
+- Env: `NEOCORTEX_EMBEDDER=hash` (tests only; a DB records its embedder and refuses another), `NEOCORTEX_DB` (default `~/.neocortex/neocortex.db`), `NEOCORTEX_MODEL_DIR` (default `~/.neocortex/models/UltraBERT-Embed-150M`), `NEOCORTEX_TZ` (`+HH:MM`, default system local offset), `NEOCORTEX_MAX_TOKENS` (default 1024), `NEOCORTEX_EXTRACTOR` (unset = off; `rules` = `src/extract_model.rs` relation/date tier, used only when a memory has no agent-supplied entities or relations).
 
 ## Layout
 
@@ -115,6 +115,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 - `src/text.rs` - normalisation, singularise, Jaro-Winkler, trigrams, FTS query building, predicate keys, content hash.
 - `src/temporal.rs` - civil dates, instant/window parsing, query windows, history intent.
 - `src/extract.rs` - heuristic entity candidates, n-grams for alias lookup.
+- `src/extract_model.rs` - optional deterministic relation/date tier (off by default). Scored by `examples/extract_eval.rs` on `eval/extract/gold.json` (128 memories; `cargo run --release --example extract_eval [gold] [predictions.json] [name]`). Research and reference numbers: `docs/research/extraction.md`.
 - `src/graph.rs` - CSR + ACL push personalized PageRank. `src/rank.rs` - RRF, MMR, cosine, packing.
 - `src/remember.rs`, `src/resolve.rs`, `src/kg.rs` - write pipeline, entity/predicate resolution, and rebuildable graph projection. `remember` and `remember_batch` share `prepare` + `write_prepared`; a batch chunk of <= 256 inputs is one embed call and one transaction with a SAVEPOINT per item.
 - `src/recall.rs` - ranked multi-channel memory, fact, and entity retrieval; `src/eval.rs` - fixture-based retrieval evaluation and ablations.

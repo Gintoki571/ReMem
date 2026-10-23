@@ -1,0 +1,2617 @@
+{
+ "now": "2026-10-21T15:00:00Z",
+ "memories": [
+  {
+   "content": "Dr. Patel lives in Pune.",
+   "entities": [
+    {
+     "name": "Dr. Patel",
+     "type": "person"
+    },
+    {
+     "name": "Pune",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Dr. Patel",
+     "predicate": "lives in",
+     "target": "Pune",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Alicia lives in Jaipur.",
+   "entities": [
+    {
+     "name": "Alicia",
+     "type": "person"
+    },
+    {
+     "name": "Jaipur",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Alicia",
+     "predicate": "lives in",
+     "target": "Jaipur",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Owner: Maria maintains the Atlas project.",
+   "entities": [
+    {
+     "name": "Maria",
+     "type": "person"
+    },
+    {
+     "name": "Atlas",
+     "type": "project"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Maria",
+     "predicate": "maintains",
+     "target": "Atlas",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "I prefer dark mode in Neovim.",
+   "entities": [
+    {
+     "name": "I",
+     "type": "person"
+    },
+    {
+     "name": "Neovim",
+     "type": "tool"
+    }
+   ],
+   "relations": [
+    {
+     "source": "I",
+     "predicate": "prefer",
+     "target": "dark mode",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "The user works at Acme Corp.",
+   "entities": [
+    {
+     "name": "the user",
+     "type": "person"
+    },
+    {
+     "name": "Acme Corp",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "the user",
+     "predicate": "works at",
+     "target": "Acme Corp",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Ivan no longer works at Acme.",
+   "entities": [
+    {
+     "name": "Ivan",
+     "type": "person"
+    },
+    {
+     "name": "Acme",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ivan",
+     "predicate": "works at",
+     "target": "Acme",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "Carol got engaged on March 5, 2025.",
+   "entities": [
+    {
+     "name": "Carol",
+     "type": "person"
+    }
+   ],
+   "relations": [],
+   "valid_from": "2025-03-05"
+  },
+  {
+   "content": "Dan was promoted in 2024.",
+   "entities": [
+    {
+     "name": "Dan",
+     "type": "person"
+    }
+   ],
+   "relations": [],
+   "valid_from": "2024-01-01"
+  },
+  {
+   "content": "Eve starts the new role next month.",
+   "entities": [
+    {
+     "name": "Eve",
+     "type": "person"
+    }
+   ],
+   "relations": [],
+   "valid_from": "next month"
+  },
+  {
+   "content": "Phoenix team standup happens every Monday.",
+   "entities": [
+    {
+     "name": "Phoenix",
+     "type": "project"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Phoenix",
+     "predicate": "has schedule",
+     "target": "every Monday",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Nia was hired in January 2019.",
+   "entities": [
+    {
+     "name": "Nia",
+     "type": "person"
+    }
+   ],
+   "relations": [],
+   "valid_from": "2019-01-01"
+  },
+  {
+   "content": "東京のユーザーは東京サービスを使う。",
+   "entities": [
+    {
+     "name": "東京のユーザー",
+     "type": "person"
+    },
+    {
+     "name": "東京サービス",
+     "type": "service"
+    }
+   ],
+   "relations": [
+    {
+     "source": "東京のユーザー",
+     "predicate": "uses",
+     "target": "東京サービス",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Elena usa Kubernetes en Madrid.",
+   "entities": [
+    {
+     "name": "Elena",
+     "type": "person"
+    },
+    {
+     "name": "Kubernetes",
+     "type": "software"
+    },
+    {
+     "name": "Madrid",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Elena",
+     "predicate": "uses",
+     "target": "Kubernetes",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "The API uses Rust 1.82 and SQLite.",
+   "entities": [
+    {
+     "name": "API",
+     "type": "software"
+    },
+    {
+     "name": "Rust 1.82",
+     "type": "software"
+    },
+    {
+     "name": "SQLite",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "API",
+     "predicate": "uses",
+     "target": "Rust 1.82",
+     "negated": false
+    },
+    {
+     "source": "API",
+     "predicate": "uses",
+     "target": "SQLite",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Ravi reports to Dr. Singh in London.",
+   "entities": [
+    {
+     "name": "Ravi",
+     "type": "person"
+    },
+    {
+     "name": "Dr. Singh",
+     "type": "person"
+    },
+    {
+     "name": "London",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ravi",
+     "predicate": "reports to",
+     "target": "Dr. Singh",
+     "negated": false
+    },
+    {
+     "source": "Dr. Singh",
+     "predicate": "lives in",
+     "target": "London",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Mina joined Bright Labs as CTO.",
+   "entities": [
+    {
+     "name": "Mina",
+     "type": "person"
+    },
+    {
+     "name": "Bright Labs",
+     "type": "organization"
+    },
+    {
+     "name": "CTO",
+     "type": "role"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Mina",
+     "predicate": "joined",
+     "target": "Bright Labs",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Sam manages Project Orion.",
+   "entities": [
+    {
+     "name": "Sam",
+     "type": "person"
+    },
+    {
+     "name": "Project Orion",
+     "type": "project"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sam",
+     "predicate": "manages",
+     "target": "Project Orion",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Leah prefers tea over coffee.",
+   "entities": [
+    {
+     "name": "Leah",
+     "type": "person"
+    },
+    {
+     "name": "tea",
+     "type": "preference"
+    },
+    {
+     "name": "coffee",
+     "type": "preference"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Leah",
+     "predicate": "prefers",
+     "target": "tea",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Noah owns a Model X.",
+   "entities": [
+    {
+     "name": "Noah",
+     "type": "person"
+    },
+    {
+     "name": "Model X",
+     "type": "product"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Noah",
+     "predicate": "owns",
+     "target": "Model X",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Yuki moved to Osaka on 2026-07-14.",
+   "entities": [
+    {
+     "name": "Yuki",
+     "type": "person"
+    },
+    {
+     "name": "Osaka",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Yuki",
+     "predicate": "moved to",
+     "target": "Osaka",
+     "negated": false
+    }
+   ],
+   "valid_from": "2026-07-14"
+  },
+  {
+   "content": "The Redis 7.2 migration is planned for next spring.",
+   "entities": [
+    {
+     "name": "Redis 7.2",
+     "type": "software"
+    }
+   ],
+   "relations": [],
+   "valid_from": "next spring"
+  },
+  {
+   "content": "Every Monday Priya works at Data Forge.",
+   "entities": [
+    {
+     "name": "Priya",
+     "type": "person"
+    },
+    {
+     "name": "Data Forge",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Priya",
+     "predicate": "works at",
+     "target": "Data Forge",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Jamal does not like jazz.",
+   "entities": [
+    {
+     "name": "Jamal",
+     "type": "person"
+    },
+    {
+     "name": "jazz",
+     "type": "topic"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Jamal",
+     "predicate": "likes",
+     "target": "jazz",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "Sofia resides in Lisboa.",
+   "entities": [
+    {
+     "name": "Sofia",
+     "type": "person"
+    },
+    {
+     "name": "Lisboa",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sofia",
+     "predicate": "lives in",
+     "target": "Lisboa",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Alex lives in Austin on 2020-01-01.",
+   "entities": [
+    {
+     "name": "Alex",
+     "type": "person"
+    },
+    {
+     "name": "Austin",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Alex",
+     "predicate": "lives in",
+     "target": "Austin",
+     "negated": false
+    }
+   ],
+   "valid_from": "2020-01-01"
+  },
+  {
+   "content": "Bea works at Helsinki Systems.",
+   "entities": [
+    {
+     "name": "Bea",
+     "type": "person"
+    },
+    {
+     "name": "Helsinki Systems",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Bea",
+     "predicate": "works at",
+     "target": "Helsinki Systems",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Chen reports to Fatima.",
+   "entities": [
+    {
+     "name": "Chen",
+     "type": "person"
+    },
+    {
+     "name": "Fatima",
+     "type": "person"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Chen",
+     "predicate": "reports to",
+     "target": "Fatima",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Dina uses PostgreSQL 16.",
+   "entities": [
+    {
+     "name": "Dina",
+     "type": "person"
+    },
+    {
+     "name": "PostgreSQL 16",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Dina",
+     "predicate": "uses",
+     "target": "PostgreSQL 16",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Eli prefers tea.",
+   "entities": [
+    {
+     "name": "Eli",
+     "type": "person"
+    },
+    {
+     "name": "tea",
+     "type": "preference"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Eli",
+     "predicate": "prefers",
+     "target": "tea",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Fatima no longer works at Lima Labs.",
+   "entities": [
+    {
+     "name": "Fatima",
+     "type": "person"
+    },
+    {
+     "name": "Lima Labs",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Fatima",
+     "predicate": "works at",
+     "target": "Lima Labs",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "Gus lives in Seoul on 2026-07-07.",
+   "entities": [
+    {
+     "name": "Gus",
+     "type": "person"
+    },
+    {
+     "name": "Seoul",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Gus",
+     "predicate": "lives in",
+     "target": "Seoul",
+     "negated": false
+    }
+   ],
+   "valid_from": "2026-07-07"
+  },
+  {
+   "content": "Hana works at Berlin Systems.",
+   "entities": [
+    {
+     "name": "Hana",
+     "type": "person"
+    },
+    {
+     "name": "Berlin Systems",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Hana",
+     "predicate": "works at",
+     "target": "Berlin Systems",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Iris reports to Luis.",
+   "entities": [
+    {
+     "name": "Iris",
+     "type": "person"
+    },
+    {
+     "name": "Luis",
+     "type": "person"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Iris",
+     "predicate": "reports to",
+     "target": "Luis",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Jon uses PostgreSQL 16.",
+   "entities": [
+    {
+     "name": "Jon",
+     "type": "person"
+    },
+    {
+     "name": "PostgreSQL 16",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Jon",
+     "predicate": "uses",
+     "target": "PostgreSQL 16",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Kira prefers tea.",
+   "entities": [
+    {
+     "name": "Kira",
+     "type": "person"
+    },
+    {
+     "name": "tea",
+     "type": "preference"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Kira",
+     "predicate": "prefers",
+     "target": "tea",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Luis no longer works at Florence Labs.",
+   "entities": [
+    {
+     "name": "Luis",
+     "type": "person"
+    },
+    {
+     "name": "Florence Labs",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Luis",
+     "predicate": "works at",
+     "target": "Florence Labs",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "Maya lives in Mumbai on 2025-01-13.",
+   "entities": [
+    {
+     "name": "Maya",
+     "type": "person"
+    },
+    {
+     "name": "Mumbai",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Maya",
+     "predicate": "lives in",
+     "target": "Mumbai",
+     "negated": false
+    }
+   ],
+   "valid_from": "2025-01-13"
+  },
+  {
+   "content": "Nora works at Taipei Systems.",
+   "entities": [
+    {
+     "name": "Nora",
+     "type": "person"
+    },
+    {
+     "name": "Taipei Systems",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Nora",
+     "predicate": "works at",
+     "target": "Taipei Systems",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Omar reports to Rosa.",
+   "entities": [
+    {
+     "name": "Omar",
+     "type": "person"
+    },
+    {
+     "name": "Rosa",
+     "type": "person"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Omar",
+     "predicate": "reports to",
+     "target": "Rosa",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Pia uses PostgreSQL 16.",
+   "entities": [
+    {
+     "name": "Pia",
+     "type": "person"
+    },
+    {
+     "name": "PostgreSQL 16",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Pia",
+     "predicate": "uses",
+     "target": "PostgreSQL 16",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Quinn prefers tea.",
+   "entities": [
+    {
+     "name": "Quinn",
+     "type": "person"
+    },
+    {
+     "name": "tea",
+     "type": "preference"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Quinn",
+     "predicate": "prefers",
+     "target": "tea",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Rosa no longer works at Xian Labs.",
+   "entities": [
+    {
+     "name": "Rosa",
+     "type": "person"
+    },
+    {
+     "name": "Xian Labs",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rosa",
+     "predicate": "works at",
+     "target": "Xian Labs",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "Seth lives in Geneva on 2024-07-19.",
+   "entities": [
+    {
+     "name": "Seth",
+     "type": "person"
+    },
+    {
+     "name": "Geneva",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Seth",
+     "predicate": "lives in",
+     "target": "Geneva",
+     "negated": false
+    }
+   ],
+   "valid_from": "2024-07-19"
+  },
+  {
+   "content": "Tara works at Nairobi Systems.",
+   "entities": [
+    {
+     "name": "Tara",
+     "type": "person"
+    },
+    {
+     "name": "Nairobi Systems",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Tara",
+     "predicate": "works at",
+     "target": "Nairobi Systems",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Uma reports to Xena.",
+   "entities": [
+    {
+     "name": "Uma",
+     "type": "person"
+    },
+    {
+     "name": "Xena",
+     "type": "person"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Uma",
+     "predicate": "reports to",
+     "target": "Xena",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Vik uses PostgreSQL 16.",
+   "entities": [
+    {
+     "name": "Vik",
+     "type": "person"
+    },
+    {
+     "name": "PostgreSQL 16",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Vik",
+     "predicate": "uses",
+     "target": "PostgreSQL 16",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Wes prefers tea.",
+   "entities": [
+    {
+     "name": "Wes",
+     "type": "person"
+    },
+    {
+     "name": "tea",
+     "type": "preference"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Wes",
+     "predicate": "prefers",
+     "target": "tea",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Xena no longer works at Rome Labs.",
+   "entities": [
+    {
+     "name": "Xena",
+     "type": "person"
+    },
+    {
+     "name": "Rome Labs",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Xena",
+     "predicate": "works at",
+     "target": "Rome Labs",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "She moved to Lyon in 2022.",
+   "entities": [],
+   "relations": [],
+   "valid_from": "2022-01-01"
+  },
+  {
+   "content": "I work at Kestrel Bio as a data engineer.",
+   "entities": [
+    {
+     "name": "I",
+     "type": "person"
+    },
+    {
+     "name": "Kestrel Bio",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "I",
+     "predicate": "works at",
+     "target": "Kestrel Bio",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Team lead: Jonas Weber.",
+   "entities": [
+    {
+     "name": "Jonas Weber",
+     "type": "person"
+    }
+   ],
+   "relations": []
+  },
+  {
+   "content": "Tomas left Brightwater in May 2024.",
+   "entities": [
+    {
+     "name": "Tomas",
+     "type": "person"
+    },
+    {
+     "name": "Brightwater",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Tomas",
+     "predicate": "works at",
+     "target": "Brightwater",
+     "negated": true
+    }
+   ],
+   "valid_from": "2024-05-01"
+  },
+  {
+   "content": "Priya will join Nimbus Analytics in June 2026.",
+   "entities": [
+    {
+     "name": "Priya",
+     "type": "person"
+    },
+    {
+     "name": "Nimbus Analytics",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Priya",
+     "predicate": "works at",
+     "target": "Nimbus Analytics",
+     "negated": false
+    }
+   ],
+   "valid_from": "2026-06-01"
+  },
+  {
+   "content": "Lena reviews the Orion roadmap every Friday.",
+   "entities": [
+    {
+     "name": "Lena",
+     "type": "person"
+    },
+    {
+     "name": "Orion",
+     "type": "project"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Lena",
+     "predicate": "reviews",
+     "target": "Orion",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Project Atlas has 14 engineers.",
+   "entities": [
+    {
+     "name": "Project Atlas",
+     "type": "project"
+    }
+   ],
+   "relations": []
+  },
+  {
+   "content": "Node 20.11 is required for the build.",
+   "entities": [
+    {
+     "name": "Node 20.11",
+     "type": "software"
+    }
+   ],
+   "relations": []
+  },
+  {
+   "content": "Lukas wohnt in Berlin.",
+   "entities": [
+    {
+     "name": "Lukas",
+     "type": "person"
+    },
+    {
+     "name": "Berlin",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Lukas",
+     "predicate": "lives in",
+     "target": "Berlin",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Camille travaille chez Vertex Labs.",
+   "entities": [
+    {
+     "name": "Camille",
+     "type": "person"
+    },
+    {
+     "name": "Vertex Labs",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Camille",
+     "predicate": "works at",
+     "target": "Vertex Labs",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Hiroshi vive en Osaka.",
+   "entities": [
+    {
+     "name": "Hiroshi",
+     "type": "person"
+    },
+    {
+     "name": "Osaka",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Hiroshi",
+     "predicate": "lives in",
+     "target": "Osaka",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Marta ya no trabaja en Sigma.",
+   "entities": [
+    {
+     "name": "Marta",
+     "type": "person"
+    },
+    {
+     "name": "Sigma",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marta",
+     "predicate": "works at",
+     "target": "Sigma",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "The deploy freeze starts on Friday.",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "content": "Alex Kim joined Orbit Robotics in 2021.",
+   "entities": [
+    {
+     "name": "Alex Kim",
+     "type": "person"
+    },
+    {
+     "name": "Orbit Robotics",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Alex Kim",
+     "predicate": "joined",
+     "target": "Orbit Robotics",
+     "negated": false
+    }
+   ],
+   "valid_from": "2021-01-01"
+  },
+  {
+   "content": "Alex Kim lives in Toronto.",
+   "entities": [
+    {
+     "name": "Alex Kim",
+     "type": "person"
+    },
+    {
+     "name": "Toronto",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Alex Kim",
+     "predicate": "lives in",
+     "target": "Toronto",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Alex Ramirez lives in Madrid.",
+   "entities": [
+    {
+     "name": "Alex Ramirez",
+     "type": "person"
+    },
+    {
+     "name": "Madrid",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Alex Ramirez",
+     "predicate": "lives in",
+     "target": "Madrid",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Owner: Dana Okafor owns the billing service.",
+   "entities": [
+    {
+     "name": "Dana Okafor",
+     "type": "person"
+    },
+    {
+     "name": "billing service",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Dana Okafor",
+     "predicate": "owns",
+     "target": "billing service",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Sarah Chen joined Acme Corp as CTO and reports to Tom Lee.",
+   "entities": [
+    {
+     "name": "Sarah Chen",
+     "type": "person"
+    },
+    {
+     "name": "Acme Corp",
+     "type": "organization"
+    },
+    {
+     "name": "Tom Lee",
+     "type": "person"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sarah Chen",
+     "predicate": "joined",
+     "target": "Acme Corp",
+     "negated": false
+    },
+    {
+     "source": "Sarah Chen",
+     "predicate": "reports to",
+     "target": "Tom Lee",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Tom Lee, who lives in Austin, manages the platform team.",
+   "entities": [
+    {
+     "name": "Tom Lee",
+     "type": "person"
+    },
+    {
+     "name": "Austin",
+     "type": "place"
+    },
+    {
+     "name": "platform team",
+     "type": "team"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Tom Lee",
+     "predicate": "lives in",
+     "target": "Austin",
+     "negated": false
+    },
+    {
+     "source": "Tom Lee",
+     "predicate": "manages",
+     "target": "platform team",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Ana prefers Python over Go for scripts.",
+   "entities": [
+    {
+     "name": "Ana",
+     "type": "person"
+    },
+    {
+     "name": "Python",
+     "type": "software"
+    },
+    {
+     "name": "Go",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ana",
+     "predicate": "prefers",
+     "target": "Python",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Ben doesn't like cilantro.",
+   "entities": [
+    {
+     "name": "Ben",
+     "type": "person"
+    },
+    {
+     "name": "cilantro",
+     "type": "food"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ben",
+     "predicate": "likes",
+     "target": "cilantro",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "Chloe does not work at Vance Capital anymore.",
+   "entities": [
+    {
+     "name": "Chloe",
+     "type": "person"
+    },
+    {
+     "name": "Vance Capital",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Chloe",
+     "predicate": "works at",
+     "target": "Vance Capital",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "Diego reports to Priya Nair since 2025-02-03.",
+   "entities": [
+    {
+     "name": "Diego",
+     "type": "person"
+    },
+    {
+     "name": "Priya Nair",
+     "type": "person"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Diego",
+     "predicate": "reports to",
+     "target": "Priya Nair",
+     "negated": false
+    }
+   ],
+   "valid_from": "2025-02-03"
+  },
+  {
+   "content": "Ellen moved to Denver in March 2023.",
+   "entities": [
+    {
+     "name": "Ellen",
+     "type": "person"
+    },
+    {
+     "name": "Denver",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ellen",
+     "predicate": "moved to",
+     "target": "Denver",
+     "negated": false
+    }
+   ],
+   "valid_from": "2023-03-01"
+  },
+  {
+   "content": "Felix started at Quill Studio on 2024-09-16.",
+   "entities": [
+    {
+     "name": "Felix",
+     "type": "person"
+    },
+    {
+     "name": "Quill Studio",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Felix",
+     "predicate": "works at",
+     "target": "Quill Studio",
+     "negated": false
+    }
+   ],
+   "valid_from": "2024-09-16"
+  },
+  {
+   "content": "Grace lives in Portland.",
+   "entities": [
+    {
+     "name": "Grace",
+     "type": "person"
+    },
+    {
+     "name": "Portland",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Grace",
+     "predicate": "lives in",
+     "target": "Portland",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "The payments service uses Redis 7.2.",
+   "entities": [
+    {
+     "name": "payments service",
+     "type": "software"
+    },
+    {
+     "name": "Redis 7.2",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "payments service",
+     "predicate": "uses",
+     "target": "Redis 7.2",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Our CI runs on GitHub Actions.",
+   "entities": [
+    {
+     "name": "GitHub Actions",
+     "type": "software"
+    }
+   ],
+   "relations": []
+  },
+  {
+   "content": "Ravi maintains the parser repo.",
+   "entities": [
+    {
+     "name": "Ravi",
+     "type": "person"
+    },
+    {
+     "name": "parser repo",
+     "type": "project"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ravi",
+     "predicate": "maintains",
+     "target": "parser repo",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Use the staging database on port 5433.",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "content": "Mateo moved from Lima to Quito on 2025-06-01.",
+   "entities": [
+    {
+     "name": "Mateo",
+     "type": "person"
+    },
+    {
+     "name": "Lima",
+     "type": "place"
+    },
+    {
+     "name": "Quito",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Mateo",
+     "predicate": "moved to",
+     "target": "Quito",
+     "negated": false
+    }
+   ],
+   "valid_from": "2025-06-01"
+  },
+  {
+   "content": "Sakura joined Kyoto Bank in April 2020.",
+   "entities": [
+    {
+     "name": "Sakura",
+     "type": "person"
+    },
+    {
+     "name": "Kyoto Bank",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Sakura",
+     "predicate": "joined",
+     "target": "Kyoto Bank",
+     "negated": false
+    }
+   ],
+   "valid_from": "2020-04-01"
+  },
+  {
+   "content": "Ruth prefers window seats on flights.",
+   "entities": [
+    {
+     "name": "Ruth",
+     "type": "person"
+    },
+    {
+     "name": "window seats",
+     "type": "preference"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ruth",
+     "predicate": "prefers",
+     "target": "window seats",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Gareth no longer lives in Leeds; he now lives in York.",
+   "entities": [
+    {
+     "name": "Gareth",
+     "type": "person"
+    },
+    {
+     "name": "Leeds",
+     "type": "place"
+    },
+    {
+     "name": "York",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Gareth",
+     "predicate": "lives in",
+     "target": "Leeds",
+     "negated": true
+    },
+    {
+     "source": "Gareth",
+     "predicate": "lives in",
+     "target": "York",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Our Q3 OKR is to cut latency by 20%.",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "content": "Nikolai works for Helix Energy since 2019-09-01.",
+   "entities": [
+    {
+     "name": "Nikolai",
+     "type": "person"
+    },
+    {
+     "name": "Helix Energy",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Nikolai",
+     "predicate": "works for",
+     "target": "Helix Energy",
+     "negated": false
+    }
+   ],
+   "valid_from": "2019-09-01"
+  },
+  {
+   "content": "Ingrid owns a Tesla Model 3.",
+   "entities": [
+    {
+     "name": "Ingrid",
+     "type": "person"
+    },
+    {
+     "name": "Tesla Model 3",
+     "type": "product"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ingrid",
+     "predicate": "owns",
+     "target": "Tesla Model 3",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Kenji is employed at Ito Motors.",
+   "entities": [
+    {
+     "name": "Kenji",
+     "type": "person"
+    },
+    {
+     "name": "Ito Motors",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Kenji",
+     "predicate": "works at",
+     "target": "Ito Motors",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Priyanka lives in Bengaluru on 2023-11-20.",
+   "entities": [
+    {
+     "name": "Priyanka",
+     "type": "person"
+    },
+    {
+     "name": "Bengaluru",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Priyanka",
+     "predicate": "lives in",
+     "target": "Bengaluru",
+     "negated": false
+    }
+   ],
+   "valid_from": "2023-11-20"
+  },
+  {
+   "content": "The Phoenix migration is planned for next spring.",
+   "entities": [
+    {
+     "name": "Phoenix",
+     "type": "project"
+    }
+   ],
+   "relations": []
+  },
+  {
+   "content": "Oscar and Mina work at Lumen Health.",
+   "entities": [
+    {
+     "name": "Oscar",
+     "type": "person"
+    },
+    {
+     "name": "Mina",
+     "type": "person"
+    },
+    {
+     "name": "Lumen Health",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Oscar",
+     "predicate": "works at",
+     "target": "Lumen Health",
+     "negated": false
+    },
+    {
+     "source": "Mina",
+     "predicate": "works at",
+     "target": "Lumen Health",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "In 2021 Victor moved to Zurich.",
+   "entities": [
+    {
+     "name": "Victor",
+     "type": "person"
+    },
+    {
+     "name": "Zurich",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Victor",
+     "predicate": "moved to",
+     "target": "Zurich",
+     "negated": false
+    }
+   ],
+   "valid_from": "2021-01-01"
+  },
+  {
+   "content": "Team standup is every Monday at 9am.",
+   "entities": [],
+   "relations": []
+  },
+  {
+   "content": "Rhea uses Vim, not Emacs.",
+   "entities": [
+    {
+     "name": "Rhea",
+     "type": "person"
+    },
+    {
+     "name": "Vim",
+     "type": "software"
+    },
+    {
+     "name": "Emacs",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rhea",
+     "predicate": "uses",
+     "target": "Vim",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Bruno lives in Porto since 2022-05-10.",
+   "entities": [
+    {
+     "name": "Bruno",
+     "type": "person"
+    },
+    {
+     "name": "Porto",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Bruno",
+     "predicate": "lives in",
+     "target": "Porto",
+     "negated": false
+    }
+   ],
+   "valid_from": "2022-05-10"
+  },
+  {
+   "content": "Lina works at Orca Biotech as of 2026-01-05.",
+   "entities": [
+    {
+     "name": "Lina",
+     "type": "person"
+    },
+    {
+     "name": "Orca Biotech",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Lina",
+     "predicate": "works at",
+     "target": "Orca Biotech",
+     "negated": false
+    }
+   ],
+   "valid_from": "2026-01-05"
+  },
+  {
+   "content": "Mei Ling reports to Frank Ogunleye.",
+   "entities": [
+    {
+     "name": "Mei Ling",
+     "type": "person"
+    },
+    {
+     "name": "Frank Ogunleye",
+     "type": "person"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Mei Ling",
+     "predicate": "reports to",
+     "target": "Frank Ogunleye",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Frank Ogunleye manages Team Nova.",
+   "entities": [
+    {
+     "name": "Frank Ogunleye",
+     "type": "person"
+    },
+    {
+     "name": "Team Nova",
+     "type": "team"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Frank Ogunleye",
+     "predicate": "manages",
+     "target": "Team Nova",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Simone prefers async standups.",
+   "entities": [
+    {
+     "name": "Simone",
+     "type": "person"
+    },
+    {
+     "name": "async standups",
+     "type": "preference"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Simone",
+     "predicate": "prefers",
+     "target": "async standups",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Yusuf lives in Istanbul, and Yusuf works at Bloom Foods.",
+   "entities": [
+    {
+     "name": "Yusuf",
+     "type": "person"
+    },
+    {
+     "name": "Istanbul",
+     "type": "place"
+    },
+    {
+     "name": "Bloom Foods",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Yusuf",
+     "predicate": "lives in",
+     "target": "Istanbul",
+     "negated": false
+    },
+    {
+     "source": "Yusuf",
+     "predicate": "works at",
+     "target": "Bloom Foods",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Hector no longer manages Project Lighthouse.",
+   "entities": [
+    {
+     "name": "Hector",
+     "type": "person"
+    },
+    {
+     "name": "Project Lighthouse",
+     "type": "project"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Hector",
+     "predicate": "manages",
+     "target": "Project Lighthouse",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "Elif joined Nordwind in 2018.",
+   "entities": [
+    {
+     "name": "Elif",
+     "type": "person"
+    },
+    {
+     "name": "Nordwind",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Elif",
+     "predicate": "joined",
+     "target": "Nordwind",
+     "negated": false
+    }
+   ],
+   "valid_from": "2018-01-01"
+  },
+  {
+   "content": "Akira reports to Mei Ling.",
+   "entities": [
+    {
+     "name": "Akira",
+     "type": "person"
+    },
+    {
+     "name": "Mei Ling",
+     "type": "person"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Akira",
+     "predicate": "reports to",
+     "target": "Mei Ling",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Hannah was promoted to staff engineer in 2024.",
+   "entities": [
+    {
+     "name": "Hannah",
+     "type": "person"
+    }
+   ],
+   "relations": [],
+   "valid_from": "2024-01-01"
+  },
+  {
+   "content": "Ferdinand likes jazz.",
+   "entities": [
+    {
+     "name": "Ferdinand",
+     "type": "person"
+    },
+    {
+     "name": "jazz",
+     "type": "preference"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Ferdinand",
+     "predicate": "likes",
+     "target": "jazz",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Rita lives in Lisbon and works at Tidewater.",
+   "entities": [
+    {
+     "name": "Rita",
+     "type": "person"
+    },
+    {
+     "name": "Lisbon",
+     "type": "place"
+    },
+    {
+     "name": "Tidewater",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Rita",
+     "predicate": "lives in",
+     "target": "Lisbon",
+     "negated": false
+    },
+    {
+     "source": "Rita",
+     "predicate": "works at",
+     "target": "Tidewater",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "John Smith lives in Boston.",
+   "entities": [
+    {
+     "name": "John Smith",
+     "type": "person"
+    },
+    {
+     "name": "Boston",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "John Smith",
+     "predicate": "lives in",
+     "target": "Boston",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Jane Smith lives in Chicago.",
+   "entities": [
+    {
+     "name": "Jane Smith",
+     "type": "person"
+    },
+    {
+     "name": "Chicago",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Jane Smith",
+     "predicate": "lives in",
+     "target": "Chicago",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "The user prefers Neovim over VS Code.",
+   "entities": [
+    {
+     "name": "the user",
+     "type": "person"
+    },
+    {
+     "name": "Neovim",
+     "type": "software"
+    },
+    {
+     "name": "VS Code",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "the user",
+     "predicate": "prefers",
+     "target": "Neovim",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "I moved to Montreal in 2024.",
+   "entities": [
+    {
+     "name": "I",
+     "type": "person"
+    },
+    {
+     "name": "Montreal",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "I",
+     "predicate": "moved to",
+     "target": "Montreal",
+     "negated": false
+    }
+   ],
+   "valid_from": "2024-01-01"
+  },
+  {
+   "content": "I no longer work at Kestrel Bio.",
+   "entities": [
+    {
+     "name": "I",
+     "type": "person"
+    },
+    {
+     "name": "Kestrel Bio",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "I",
+     "predicate": "works at",
+     "target": "Kestrel Bio",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "Dr. Okonkwo works at Mercy General.",
+   "entities": [
+    {
+     "name": "Dr. Okonkwo",
+     "type": "person"
+    },
+    {
+     "name": "Mercy General",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Dr. Okonkwo",
+     "predicate": "works at",
+     "target": "Mercy General",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Prof. Ilse Brandt teaches at TU Delft.",
+   "entities": [
+    {
+     "name": "Prof. Ilse Brandt",
+     "type": "person"
+    },
+    {
+     "name": "TU Delft",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Prof. Ilse Brandt",
+     "predicate": "teaches at",
+     "target": "TU Delft",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Team Helios uses Postgres 16 for billing.",
+   "entities": [
+    {
+     "name": "Team Helios",
+     "type": "team"
+    },
+    {
+     "name": "Postgres 16",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Team Helios",
+     "predicate": "uses",
+     "target": "Postgres 16",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Iva lives in Sofia on 2021-07-07.",
+   "entities": [
+    {
+     "name": "Iva",
+     "type": "person"
+    },
+    {
+     "name": "Sofia",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Iva",
+     "predicate": "lives in",
+     "target": "Sofia",
+     "negated": false
+    }
+   ],
+   "valid_from": "2021-07-07"
+  },
+  {
+   "content": "Julian reports to Nadia since last March.",
+   "entities": [
+    {
+     "name": "Julian",
+     "type": "person"
+    },
+    {
+     "name": "Nadia",
+     "type": "person"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Julian",
+     "predicate": "reports to",
+     "target": "Nadia",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Omar left Solstice in 2023.",
+   "entities": [
+    {
+     "name": "Omar",
+     "type": "person"
+    },
+    {
+     "name": "Solstice",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Omar",
+     "predicate": "works at",
+     "target": "Solstice",
+     "negated": true
+    }
+   ],
+   "valid_from": "2023-01-01"
+  },
+  {
+   "content": "Peter Lang moved from Hamburg to Munich.",
+   "entities": [
+    {
+     "name": "Peter Lang",
+     "type": "person"
+    },
+    {
+     "name": "Hamburg",
+     "type": "place"
+    },
+    {
+     "name": "Munich",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Peter Lang",
+     "predicate": "moved to",
+     "target": "Munich",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Zeynep owns Kite Coffee.",
+   "entities": [
+    {
+     "name": "Zeynep",
+     "type": "person"
+    },
+    {
+     "name": "Kite Coffee",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Zeynep",
+     "predicate": "owns",
+     "target": "Kite Coffee",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Nadia manages Team Helios.",
+   "entities": [
+    {
+     "name": "Nadia",
+     "type": "person"
+    },
+    {
+     "name": "Team Helios",
+     "type": "team"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Nadia",
+     "predicate": "manages",
+     "target": "Team Helios",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Marcus lives in Dublin on 2026-03-03.",
+   "entities": [
+    {
+     "name": "Marcus",
+     "type": "person"
+    },
+    {
+     "name": "Dublin",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Marcus",
+     "predicate": "lives in",
+     "target": "Dublin",
+     "negated": false
+    }
+   ],
+   "valid_from": "2026-03-03"
+  },
+  {
+   "content": "Wei works for Lattice Robotics.",
+   "entities": [
+    {
+     "name": "Wei",
+     "type": "person"
+    },
+    {
+     "name": "Lattice Robotics",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Wei",
+     "predicate": "works for",
+     "target": "Lattice Robotics",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Our staging environment runs Kubernetes 1.30.",
+   "entities": [
+    {
+     "name": "Kubernetes 1.30",
+     "type": "software"
+    }
+   ],
+   "relations": []
+  },
+  {
+   "content": "Python 3.12 is the default interpreter on the build farm.",
+   "entities": [
+    {
+     "name": "Python 3.12",
+     "type": "software"
+    },
+    {
+     "name": "build farm",
+     "type": "software"
+    }
+   ],
+   "relations": []
+  },
+  {
+   "content": "Jorge está en Valencia desde 2024-08-01.",
+   "entities": [
+    {
+     "name": "Jorge",
+     "type": "person"
+    },
+    {
+     "name": "Valencia",
+     "type": "place"
+    }
+   ],
+   "relations": [],
+   "valid_from": "2024-08-01"
+  },
+  {
+   "content": "Eva vive en Sevilla.",
+   "entities": [
+    {
+     "name": "Eva",
+     "type": "person"
+    },
+    {
+     "name": "Sevilla",
+     "type": "place"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Eva",
+     "predicate": "lives in",
+     "target": "Sevilla",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "Kofi never worked at Vantage.",
+   "entities": [
+    {
+     "name": "Kofi",
+     "type": "person"
+    },
+    {
+     "name": "Vantage",
+     "type": "organization"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Kofi",
+     "predicate": "works at",
+     "target": "Vantage",
+     "negated": true
+    }
+   ]
+  },
+  {
+   "content": "Leonie joined Brightline on 2025-10-01 and reports to Felix Brandt.",
+   "entities": [
+    {
+     "name": "Leonie",
+     "type": "person"
+    },
+    {
+     "name": "Brightline",
+     "type": "organization"
+    },
+    {
+     "name": "Felix Brandt",
+     "type": "person"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Leonie",
+     "predicate": "joined",
+     "target": "Brightline",
+     "negated": false
+    },
+    {
+     "source": "Leonie",
+     "predicate": "reports to",
+     "target": "Felix Brandt",
+     "negated": false
+    }
+   ],
+   "valid_from": "2025-10-01"
+  },
+  {
+   "content": "Noor manages the infra team.",
+   "entities": [
+    {
+     "name": "Noor",
+     "type": "person"
+    },
+    {
+     "name": "infra team",
+     "type": "team"
+    }
+   ],
+   "relations": [
+    {
+     "source": "Noor",
+     "predicate": "manages",
+     "target": "infra team",
+     "negated": false
+    }
+   ]
+  },
+  {
+   "content": "The billing service uses Stripe.",
+   "entities": [
+    {
+     "name": "billing service",
+     "type": "software"
+    },
+    {
+     "name": "Stripe",
+     "type": "software"
+    }
+   ],
+   "relations": [
+    {
+     "source": "billing service",
+     "predicate": "uses",
+     "target": "Stripe",
+     "negated": false
+    }
+   ]
+  }
+ ]
+}
