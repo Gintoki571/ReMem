@@ -1844,3 +1844,30 @@ fn a_v2_database_gains_polarity_and_seeded_predicates_on_open() {
     );
     assert_eq!(count(&engine, "SELECT version FROM schema_meta"), 3);
 }
+
+#[test]
+fn text_with_several_entities_and_no_relations_asks_for_relations() {
+    let engine = engine();
+    let out = remember(
+        &engine,
+        "Sarah Chen joined Acme Corp in Austin.",
+        vec![named("Sarah Chen"), named("Acme Corp")],
+        vec![],
+    );
+    assert!(
+        out.hints.iter().any(|h| h.starts_with("no facts stored")),
+        "{:?}",
+        out.hints
+    );
+    let out = remember(
+        &engine,
+        "Sarah Chen works at Acme Corp.",
+        vec![],
+        vec![rel("Sarah Chen", "works at", "Acme Corp")],
+    );
+    assert!(
+        !out.hints.iter().any(|h| h.starts_with("no facts stored")),
+        "{:?}",
+        out.hints
+    );
+}

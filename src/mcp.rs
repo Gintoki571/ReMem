@@ -555,7 +555,7 @@ fn tool_defs() -> Vec<Value> {
     vec![
         json!({
             "name": "remember",
-            "description": "Store one durable memory. Use atomic facts, events, decisions, preferences, mistakes, procedures and outcomes. For relations, exclusive=true ends competing values, false keeps this write without conflict reporting, and omission returns candidates unless the predicate is seeded single-valued. Pass negated=true for a retraction. Act on conflicts/related with invalidate or supersedes; history is never deleted. Never store secrets, credentials or transient chatter.",
+            "description": "Store one durable memory. Use atomic facts, events, decisions, preferences, mistakes, procedures and outcomes. Pass every stated fact as a relation {source, predicate, target}: text alone never becomes a graph fact, so unstructured facts are invisible to multi-hop and conflict handling. For relations, exclusive=true ends competing values, false keeps this write without conflict reporting, and omission returns candidates unless the predicate is seeded single-valued. Pass negated=true for a retraction. Act on conflicts/related with invalidate or supersedes; history is never deleted. Never store secrets, credentials or transient chatter.",
             "inputSchema": {
                 "type": "object",
                 "properties": {

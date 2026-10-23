@@ -38,6 +38,12 @@ Store something when it will still matter next week:
   absolute dates ("2026-09-14", not "last week").
 - **Consistent names**: always "Mom", never "mother" in one memory and "Mom" in
   the next. Aliases belong in `entities`.
+- **Always pass relations for facts**: you are the extractor. neocortex cannot
+  reliably pull facts out of free text (measured: relation F1 0.07-0.20 for
+  rules and GLiNER on held-out text), so a fact you do not pass as a relation
+  is searchable text only and never joins the graph, multi-hop or conflict
+  handling. One relation per stated fact: `{"source": "Bob", "predicate":
+  "reports to", "target": "Alice"}`; split multi-fact sentences.
 - **Structured when known**: pass `entities` and `relations`. Mark single-valued
   relations (`lives in`, `works at`, `is married to`, `has phone number`)
   `exclusive: true` so the previous value is ended and kept as history.

@@ -819,6 +819,14 @@ fn write_prepared(
             related[0].memory_id, related[0].memory_id
         ));
     }
+    // Text alone yields no graph facts (no CPU-sized extractor is reliable
+    // here, see docs/research/extraction.md); the calling agent is the extractor.
+    if duplicate_of.is_none() && rel_results.is_empty() && resolutions.len() >= 2 {
+        hints.push(
+            "no facts stored: pass relations [{source, predicate, target}] so this memory joins the knowledge graph"
+                .into(),
+        );
+    }
     Ok(RememberOutput {
         id,
         duplicate_of,
