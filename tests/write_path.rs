@@ -1779,3 +1779,25 @@ fn a_v1_database_with_duplicate_live_hashes_migrates_to_v2() {
         .unwrap_err();
     assert!(neocortex::db::is_unique_violation(&err), "{err}");
 }
+
+#[test]
+fn relation_endpoints_are_mentioned_by_their_memory() {
+    let engine = engine();
+    // Neither endpoint exists yet, so the gazetteer cannot link them.
+    let out = remember(
+        &engine,
+        "Bob works at Acme.",
+        vec![],
+        vec![rel("Bob", "works at", "Acme")],
+    );
+    let mentioned: i64 = engine
+        .db
+        .sql()
+        .query_row(
+            "SELECT COUNT(*) FROM mentions WHERE memory_id=?1",
+            [out.id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(mentioned, 2);
+}

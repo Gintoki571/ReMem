@@ -275,6 +275,7 @@ pub fn remember(
         for (ri, relation) in inp.relations.iter().enumerate() {
             let src = resolve_endpoint(
                 db,
+                id,
                 &relation.source,
                 &mut ids,
                 now,
@@ -283,6 +284,7 @@ pub fn remember(
             )?;
             let dst = resolve_endpoint(
                 db,
+                id,
                 &relation.target,
                 &mut ids,
                 now,
@@ -490,8 +492,10 @@ pub fn end_memories_of_ended_facts(db: &Db, relation_ids: &[i64]) -> Result<()> 
     Ok(())
 }
 
+/// Resolve a relation endpoint and record that `memory` mentions it.
 fn resolve_endpoint(
     db: &Db,
+    memory: i64,
     name: &str,
     ids: &mut HashMap<String, i64>,
     now: i64,
@@ -500,6 +504,7 @@ fn resolve_endpoint(
 ) -> Result<i64> {
     let norm = text::norm_name(name);
     if let Some(id) = ids.get(&norm) {
+        add_mention(db, memory, *id, now)?;
         return Ok(*id);
     }
     let resolved = resolve::resolve_entity(
@@ -514,6 +519,7 @@ fn resolve_endpoint(
     )?;
     ids.insert(norm, resolved.id);
     kg::project_entity_from_db(db, resolved.id)?;
+    add_mention(db, memory, resolved.id, now)?;
     for (other, _name, score) in &resolved.similar {
         write_similar(db, resolved.id, *other, *score)?;
     }
