@@ -222,3 +222,31 @@ fn invalidate_forget_and_stats_from_the_cli() {
     assert!(o.status.success(), "{}", stderr(&o));
     assert!(stdout(&o).contains("memories"), "{}", stdout(&o));
 }
+
+#[test]
+fn json_after_the_command_and_unquoted_multi_word_entities_work() {
+    let db = temp_db();
+    let o = memory_cmd(
+        &db,
+        &[
+            "remember",
+            "Mom bakes bread.",
+            "--entities",
+            r#"[{"name":"Mom Smith"}]"#,
+        ],
+    );
+    assert!(o.status.success(), "{}", stderr(&o));
+    memory_cmd(
+        &db,
+        &[
+            "remember",
+            "Smith family dinner.",
+            "--entities",
+            r#"[{"name":"Smith"}]"#,
+        ],
+    );
+    let o = memory_cmd(&db, &["entity", "Mom", "Smith", "--json"]);
+    assert!(o.status.success(), "{}", stderr(&o));
+    let v: serde_json::Value = serde_json::from_str(&stdout(&o)).expect("json output");
+    assert_eq!(v["card"]["name"], "Mom Smith", "{v}");
+}

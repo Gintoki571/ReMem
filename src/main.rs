@@ -58,8 +58,17 @@ struct Globals {
 }
 
 fn dispatch(args: &[String]) -> CmdResult {
-    let (globals, start) = parse_globals(args)?;
-    let rest = &args[start..];
+    let (mut globals, start) = parse_globals(args)?;
+    // --json is accepted after the command too (`recall x --json`).
+    let rest: Vec<String> = args[start..]
+        .iter()
+        .filter(|a| {
+            let json = a.as_str() == "--json";
+            globals.json |= json;
+            !json
+        })
+        .cloned()
+        .collect();
     let Some(command) = rest.first() else {
         print_help();
         return Ok(());
@@ -409,7 +418,13 @@ fn cmd_entity(globals: &Globals, args: &[String]) -> CmdResult {
             other if other.starts_with('-') => {
                 return Err(usage(format!("unknown option {other}")));
             }
-            _ => name = Some(args[i].clone()),
+            // Unquoted multi-word names ("entity Mom Smith") are one name.
+            _ => {
+                name = Some(match name {
+                    Some(prev) => format!("{prev} {}", args[i]),
+                    None => args[i].clone(),
+                })
+            }
         }
         i += 1;
     }
@@ -777,10 +792,10 @@ fn print_help() {
 Usage: neocortex [--db PATH] [--json] <command> [args]
 
 Commands:
-  remember <content...>    store a memory; `remember -` reads a JSON object from stdin
+  remember <content...>    store a memory (max 32 KiB); `remember -` reads a JSON object from stdin
   recall <query...>        retrieve memories, facts and entities
-  entity <name|eID>        profile and timeline of one entity
-  invalidate <mID|rID>     end a memory or relation at a time, keeping history
+  entity <name|eID>        profile and timeline of one entity (--limit N, default 20)
+  invalidate <mID|rID>     end a memory or relation, keeping history (--at DATE, default now)
   forget <mID>             retire a memory (--hard deletes it)
   merge <keep> <merge>     merge one entity into another
   alias <entity> <alias>   add a name to an entity
@@ -800,7 +815,7 @@ Commands:
   help                     this text
   --version                print the version
 
-Common flags: --db PATH (default $NEOCORTEX_DB), --json (machine-readable output).
+Common flags: --db PATH (default $NEOCORTEX_DB, before the command), --json (machine-readable output, anywhere).
 remember flags: --kind --tags --importance --scope --source --session --when --until
                 --entities JSON --relations JSON --keywords --supersedes
 recall flags:   --k --budget --kinds --tags --scope --source --session --since --until
