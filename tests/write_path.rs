@@ -2657,3 +2657,46 @@ fn text_with_several_entities_and_no_relations_asks_for_relations() {
         out.hints
     );
 }
+
+#[test]
+fn a_shared_short_alias_never_merges_two_different_full_names() {
+    use neocortex::engine::EntityIn;
+    let e = engine();
+    let with_alias = |name: &str, alias: &str| EntityIn {
+        kind: Some("person".into()),
+        aliases: vec![alias.into()],
+        ..named(name)
+    };
+    let moura = remember(
+        &e,
+        "Teresa Moura leads regulatory affairs.",
+        vec![with_alias("Teresa Moura", "Teresa")],
+        vec![],
+    );
+    let mota = remember(
+        &e,
+        "Teresa Mota runs a pharmacy in Viseu.",
+        vec![with_alias("Teresa Mota", "Teresa")],
+        vec![],
+    );
+    assert_ne!(
+        mota.entities[0].id, moura.entities[0].id,
+        "{:?}",
+        mota.entities
+    );
+    // A full name given as an alias is still identity, and so is a short name.
+    let full = remember(
+        &e,
+        "Tess Moura approved the filing.",
+        vec![with_alias("Tess Moura", "Teresa Moura")],
+        vec![],
+    );
+    assert_eq!(full.entities[0].id, moura.entities[0].id);
+    let short = remember(
+        &e,
+        "Mota opened early.",
+        vec![with_alias("Mota", "Teresa Mota")],
+        vec![],
+    );
+    assert_eq!(short.entities[0].id, mota.entities[0].id);
+}

@@ -74,17 +74,47 @@ fn exact_ids(db: &Db, alias_norm: &str, kind: &str, exclude: &HashSet<i64>) -> R
 }
 
 /// First alias norm (name first, then agent aliases) that names an entity.
+/// A short alias the mention shares with an entity ("Teresa") is not identity
+/// when both full names say otherwise ("Teresa Mota" vs "Teresa Moura").
 fn exact_match(db: &Db, norms: &[String], kind: &str, exclude: &HashSet<i64>) -> Result<Vec<i64>> {
-    for norm in norms {
+    let mut canonical = db
+        .sql()
+        .prepare_cached("SELECT norm FROM entities WHERE id=?1")?;
+    for (i, norm) in norms.iter().enumerate() {
         if norm.is_empty() {
             continue;
         }
-        let ids = exact_ids(db, norm, kind, exclude)?;
+        let mut ids = exact_ids(db, norm, kind, exclude)?;
+        if i > 0 {
+            let mut kept = Vec::with_capacity(ids.len());
+            for id in ids {
+                let existing: String = canonical.query_row([id], |r| r.get(0))?;
+                if existing == *norm || !names_conflict(&norms[0], &existing) {
+                    kept.push(id);
+                }
+            }
+            ids = kept;
+        }
         if !ids.is_empty() {
             return Ok(ids);
         }
     }
     Ok(Vec::new())
+}
+
+/// Two multi-word names neither of which contains the other's words.
+// shortcut: words with digits are ignored, so "levothyroxine 75 micrograms"
+// and "... 100 micrograms" (a dose change) stay one entity; versioned
+// products ("iPhone 14"/"iPhone 15") merge too until types or distinct_from say otherwise.
+fn names_conflict(a: &str, b: &str) -> bool {
+    let words = |s: &str| -> HashSet<String> {
+        s.split_whitespace()
+            .filter(|w| !w.chars().any(|c| c.is_ascii_digit()))
+            .map(str::to_string)
+            .collect()
+    };
+    let (a, b) = (words(a), words(b));
+    a.len() >= 2 && b.len() >= 2 && !a.is_subset(&b) && !b.is_subset(&a)
 }
 
 #[derive(Clone)]
