@@ -221,9 +221,11 @@ fn prepare(clock: Clock, inp: RememberInput) -> Result<Prepared> {
                 (start, None, None)
             }
         },
+        // A future date in a decision/note is the subject's date, not when the
+        // memory became true; only events are dated in the future.
         None => match temporal::text_date(&content, &clock) {
-            Some(w) => (w.start, None, Some(w.matched)),
-            None => (clock.now, None, None),
+            Some(w) if w.start <= clock.now || kind == "event" => (w.start, None, Some(w.matched)),
+            _ => (clock.now, None, None),
         },
     };
     let valid_to = inp

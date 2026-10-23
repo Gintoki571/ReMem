@@ -399,10 +399,22 @@ fn tm01_text_date_becomes_valid_from() {
         sql_i64(&e, "SELECT valid_from FROM memories WHERE id=3"),
         Some(day(2026, 10, 22))
     );
-    memory(&e, "Phoenix ships on 2027-06-15.", None);
+    e.remember(RememberInput {
+        content: "Phoenix ships on 2027-06-15.".into(),
+        kind: Some("event".into()),
+        ..Default::default()
+    })
+    .unwrap();
     assert_eq!(
         sql_i64(&e, "SELECT valid_from FROM memories WHERE id=4"),
         Some(day(2027, 6, 15))
+    );
+    // A decision about a future date was made now, not on that date.
+    let out = memory(&e, "Phoenix deadline moved to 2027-03-01.", None);
+    assert!(out.when_inferred.is_none());
+    assert_eq!(
+        sql_i64(&e, "SELECT valid_from FROM memories WHERE id=5"),
+        Some(NOW)
     );
 }
 
