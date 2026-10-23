@@ -13,46 +13,181 @@ use crate::{
 use rusqlite::{params, OptionalExtension};
 use std::collections::{HashMap, HashSet};
 
-/// Conservative negation cue for one relation: `text` must name the target,
-/// and a cue must sit within 4 words before the nearest predicate verb that
-/// precedes it ("Alice no longer likes jazz"). Anything else is positive.
-fn infer_negated(text: &str, predicate: &str, target: &str) -> bool {
-    let words: Vec<String> = text
-        .split_whitespace()
+/// Words allowed between a negation cue and the predicate verb. Anything else
+/// ("Bob" in "Alice, not Bob, lives in Denver") makes the cue belong to another
+/// phrase, so the assertion stays positive.
+const NEGATION_FILLERS: &[&str] = &[
+    "does", "do", "did", "is", "was", "were", "has", "have", "had", "really", "even", "ever",
+    "actually", "longer", "more", "anymore", "be", "been", "being", "will", "would", "could",
+    "should", "can", "may", "might",
+];
+
+/// Multi-word cues (checked before single words).
+const NEGATION_CUES: &[&[&str]] = &[
+    &["no", "longer"],
+    &["no", "more"],
+    &["does", "not"],
+    &["did", "not"],
+    &["do", "not"],
+    &["is", "not"],
+    &["was", "not"],
+    &["were", "not"],
+    &["has", "not"],
+    &["have", "not"],
+    &["had", "not"],
+    &["will", "not"],
+    &["would", "not"],
+    &["could", "not"],
+    &["should", "not"],
+    &["can", "not"],
+    &["ya", "no"],
+];
+
+const NEGATION_WORDS: &[&str] = &[
+    "not", "never", "stopped", "ceased", "doesn't", "didn't", "don't", "isn't", "wasn't",
+    "weren't", "won't", "nor", "cannot", "can't", "quit", "left", "divorced", "sold",
+];
+
+/// Retraction phrasings, mapped to the predicate group they retract. An empty
+/// group is generic ("is no longer at Acme") and applies to any predicate.
+const RETRACTIONS: &[(&[&str], &str)] = &[
+    (&["resigned", "from"], "work at"),
+    (&["quit"], "work at"),
+    (&["left", "the", "job", "at"], "work at"),
+    (&["left"], "work at"),
+    (&["moved", "out", "of"], "live in"),
+    (&["broke", "up", "with"], "married to"),
+    (&["divorced"], "married to"),
+    (&["sold"], "own"),
+    (&["stopped", "using"], "use"),
+    (&["gave", "up"], "use"),
+    (&["is", "no", "longer"], ""),
+    (&["was", "no", "longer"], ""),
+    (&["no", "longer"], ""),
+    (&["ya", "no"], ""),
+];
+
+/// A clause boundary or a conjunction means the phrase and the target are not
+/// in the same retraction.
+const RETRACTION_BREAKS: &[&str] = &[
+    "and", "but", "because", "while", "although", "though", "who", "which", "that",
+];
+
+fn words_of(text: &str) -> Vec<String> {
+    text.split_whitespace()
         .map(|w| {
             w.trim_matches(|c: char| !c.is_alphanumeric() && c != '\'')
                 .to_lowercase()
         })
-        .collect();
-    let target: Vec<String> = target.split_whitespace().map(str::to_lowercase).collect();
-    let Some(verb) = predicate.split_whitespace().next() else {
+        .filter(|w| !w.is_empty())
+        .collect()
+}
+
+/// Conservative negation cue for one relation: `text` must name the target
+/// within 3 tokens after the predicate verb, and a cue may only be separated
+/// from that verb by an auxiliary/adverb. Retraction phrasings are matched
+/// separately and only for their predicate group.
+fn infer_negated(text: &str, predicate: &str, group: &str, target: &str) -> bool {
+    let target_words = words_of(target);
+    if target_words.is_empty() {
         return false;
-    };
-    // "like" matches likes/liked, "live" lives/lived, "work" works/worked.
-    let stem = verb.trim_end_matches('e');
-    let Some(tpos) = (0..words.len()).find(|&i| words[i..].starts_with(&target)) else {
-        return false;
-    };
-    let Some(vpos) = (0..tpos).rev().find(|&i| words[i].starts_with(stem)) else {
-        return false;
-    };
-    let window = &words[vpos.saturating_sub(4)..vpos];
-    let has = |w: &str| window.iter().any(|x| x == w);
-    let pair = |a: &str, b: &str| window.windows(2).any(|p| p[0] == a && p[1] == b);
-    let mut cues = [
-        "not", "never", "stopped", "ceased", "doesn't", "didn't", "don't", "isn't", "wasn't",
-        "won't", "nor",
-    ]
-    .iter()
-    .any(|c| has(c))
-        || pair("no", "longer")
-        || pair("no", "more")
-        || pair("does", "not")
-        || pair("did", "not");
-    if pair("not", "only") || pair("never", "stopped") {
-        cues = false;
     }
-    cues
+    // Split on sentence/clause punctuation; commas stay because "Alice, not
+    // Bob, lives" must see the cue and the intervening name.
+    let clause = text
+        .split(['.', ';', '!', '?', '\n'])
+        .find(|c| {
+            let w = words_of(c);
+            w.windows(target_words.len())
+                .any(|x| x == target_words.as_slice())
+        })
+        .unwrap_or(text);
+    let words = words_of(clause);
+    let Some(target_pos) = (0..words.len())
+        .find(|&i| words[i..].starts_with(&target_words))
+    else {
+        return false;
+    };
+
+    // (a)+(b): target within 3 tokens after the predicate verb, cue separated
+    // from the verb only by allowlisted words.
+    let verb = predicate.split_whitespace().next().unwrap_or("");
+    let stem = verb.trim_end_matches('e');
+    if !stem.is_empty() {
+        if let Some(verb_pos) = (0..target_pos).rev().find(|&i| words[i].starts_with(stem)) {
+            if target_pos.saturating_sub(verb_pos + 1) <= 3 {
+                if let Some(cue_end) = cue_before(&words, verb_pos) {
+                    if words[cue_end..verb_pos]
+                        .iter()
+                        .all(|w| NEGATION_FILLERS.contains(&w.as_str()))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    // (c): a retraction phrase immediately before the target, for its group.
+    let mut best: Option<(usize, &str)> = None;
+    for (phrase, retract_group) in RETRACTIONS {
+        for start in (0..target_pos).rev() {
+            if start + phrase.len() > target_pos {
+                continue;
+            }
+            if words[start..start + phrase.len()]
+                .iter()
+                .map(String::as_str)
+                .eq(phrase.iter().copied())
+            {
+                let gap = &words[start + phrase.len()..target_pos];
+                if gap.len() <= 3
+                    && !gap
+                        .iter()
+                        .any(|w| RETRACTION_BREAKS.contains(&w.as_str()))
+                {
+                    let end = start + phrase.len();
+                    if best.is_none_or(|(seen, _)| end > seen) {
+                        best = Some((end, retract_group));
+                    }
+                }
+                break;
+            }
+        }
+    }
+    if let Some((_, retract_group)) = best {
+        if retract_group.is_empty() || retract_group == group {
+            return true;
+        }
+    }
+    false
+}
+
+/// End index (exclusive) of the nearest cue that ends at or before `verb_pos`.
+fn cue_before(words: &[String], verb_pos: usize) -> Option<usize> {
+    for start in (0..verb_pos).rev() {
+        for cue in NEGATION_CUES {
+            if start + cue.len() <= verb_pos
+                && words[start..start + cue.len()]
+                    .iter()
+                    .map(String::as_str)
+                    .eq(cue.iter().copied())
+            {
+                return Some(start + cue.len());
+            }
+        }
+        if NEGATION_WORDS.contains(&words[start].as_str()) {
+            // "never stopped liking" is a double negative: still positive.
+            if matches!(words[start].as_str(), "stopped" | "ceased")
+                && start > 0
+                && matches!(words[start - 1].as_str(), "never" | "not")
+            {
+                continue;
+            }
+            return Some(start + 1);
+        }
+    }
+    None
 }
 
 pub fn check_embedder(db: &Db, emb: &dyn Embedder) -> Result<()> {
@@ -93,11 +228,14 @@ struct Prepared {
     extra_index: HashMap<String, usize>,
     hash: String,
     supersedes: Vec<i64>,
-    /// content, entity cards, fact sentences, relation endpoints not in entities
+    /// content, entity cards, fact sentences, relation endpoints not in
+    /// entities, one phrase per distinct predicate
     texts: Vec<String>,
     vectors: Vec<Vec<f32>>,
     fact_base: usize,
     extra_base: usize,
+    pred_base: usize,
+    pred_index: HashMap<String, usize>,
 }
 
 /// The content vector is always index 0 and entity cards start at 1.
@@ -288,6 +426,7 @@ fn prepare(clock: Clock, mut inp: RememberInput) -> Result<Prepared> {
                 description: None,
                 aliases: Vec::new(),
                 same_as: None,
+                distinct_from: Vec::new(),
             })
             .collect();
     }
@@ -326,14 +465,30 @@ fn prepare(clock: Clock, mut inp: RememberInput) -> Result<Prepared> {
             }
         }
     }
+    let mut pred_index: HashMap<String, usize> = HashMap::new();
+    let mut pred_texts: Vec<String> = Vec::new();
+    for relation in &inp.relations {
+        let norm = text::norm_predicate(&relation.predicate);
+        if norm.is_empty() {
+            return Err(crate::err!(
+                "relation predicate cannot be empty; give a verb phrase such as \"works at\""
+            ));
+        }
+        if !pred_index.contains_key(&norm) {
+            pred_index.insert(norm, pred_texts.len());
+            pred_texts.push(relation.predicate.trim().to_string());
+        }
+    }
     let mut texts: Vec<String> =
-        Vec::with_capacity(1 + cards.len() + facts.len() + extra_names.len());
+        Vec::with_capacity(1 + cards.len() + facts.len() + extra_names.len() + pred_texts.len());
     texts.push(content.clone());
     texts.extend(cards);
     let fact_base = CARD_BASE + entities.len();
     texts.extend(facts.iter().cloned());
     let extra_base = fact_base + facts.len();
     texts.extend(extra_names.iter().cloned());
+    let pred_base = extra_base + extra_names.len();
+    texts.extend(pred_texts);
     let supersedes: Vec<i64> = inp
         .supersedes
         .iter()
@@ -363,6 +518,8 @@ fn prepare(clock: Clock, mut inp: RememberInput) -> Result<Prepared> {
         vectors: Vec::new(),
         fact_base,
         extra_base,
+        pred_base,
+        pred_index,
     })
 }
 
@@ -397,6 +554,9 @@ fn write_prepared(
     embedder: &str,
     p: Prepared,
 ) -> Result<RememberOutput> {
+    // Only a semantic embedder can judge description conflicts; the hash
+    // embedder (tests) reports everything as unrelated.
+    let semantic = embedder != "hash";
     let Prepared {
         content,
         kind,
@@ -418,6 +578,8 @@ fn write_prepared(
         vectors,
         fact_base,
         extra_base,
+        pred_base,
+        pred_index,
     } = p;
     let endpoint_vector = |name: &str| -> &[f32] {
         let norm = text::norm_name(name);
@@ -494,7 +656,14 @@ fn write_prepared(
     let mut resolutions = Vec::new();
     let mut ids: HashMap<String, i64> = HashMap::new();
     for (i, entity) in entities.iter().enumerate() {
-        let resolved = resolve::resolve_entity(db, entity, &vectors[CARD_BASE + i], now, cfg)?;
+        let resolved = resolve::resolve_entity(
+            db,
+            entity,
+            &vectors[CARD_BASE + i],
+            now,
+            cfg,
+            semantic,
+        )?;
         let eid = resolved.id;
         ids.insert(text::norm_name(&entity.name), eid);
         kg::project_entity_from_db(db, eid)?;
@@ -507,6 +676,7 @@ fn write_prepared(
             id: eid,
             status: resolved.status,
             similar: resolved.similar,
+            candidates: resolved.candidates,
         });
     }
     // Gazetteer: link known aliases that appear as whole-word n-grams in
@@ -568,31 +738,61 @@ fn write_prepared(
         }
     }
     for (ri, relation) in relations.iter().enumerate() {
-        let src = resolve_endpoint(
-            db,
-            id,
-            &relation.source,
-            &mut ids,
-            now,
-            cfg,
-            endpoint_vector(&relation.source),
-        )?;
-        let dst = resolve_endpoint(
-            db,
-            id,
-            &relation.target,
-            &mut ids,
-            now,
-            cfg,
-            endpoint_vector(&relation.target),
-        )?;
-        let (pid, predicate, predicate_exclusive) = resolve::resolve_predicate(
+        let pred_norm = text::norm_predicate(&relation.predicate);
+        let phrase_vector = &vectors[pred_base + pred_index[&pred_norm]];
+        let resolved = resolve::resolve_predicate(
             db,
             &relation.predicate,
-            &vectors[fact_base + ri],
+            phrase_vector,
             relation.exclusive,
             cfg,
         )?;
+        // Inverse writes are stored in the canonical direction (lower id), so
+        // "B reports to A" lives as "A manages B" and is rendered both ways.
+        let mut pred = resolved.clone();
+        let swap = match resolved.inverse {
+            Some(inverse) if inverse < resolved.id => {
+                pred = resolve::predicate_row(db, inverse)?;
+                true
+            }
+            _ => false,
+        };
+        let (src_name, dst_name) = if swap {
+            (&relation.target, &relation.source)
+        } else {
+            (&relation.source, &relation.target)
+        };
+        let mut src = resolve_endpoint(
+            db,
+            id,
+            src_name,
+            &mut ids,
+            now,
+            cfg,
+            endpoint_vector(src_name),
+        )?;
+        let mut dst = resolve_endpoint(
+            db,
+            id,
+            dst_name,
+            &mut ids,
+            now,
+            cfg,
+            endpoint_vector(dst_name),
+        )?;
+        if pred.symmetric && src > dst {
+            std::mem::swap(&mut src, &mut dst);
+        }
+        // Exclusivity is per semantic subject: src normally, the original
+        // source for an inverse write (stored as dst), min(src,dst) when
+        // symmetric.
+        let subj = if swap { dst } else { src };
+        let group_id = pred.group_id;
+        let predicate_text = if swap {
+            pred.display.clone()
+        } else {
+            relation.predicate.trim().to_string()
+        };
         let rf = relation
             .valid_from
             .as_deref()
@@ -614,7 +814,8 @@ fn write_prepared(
         let polarity = if relation.negated.unwrap_or_else(|| {
             infer_negated(
                 relation.fact.as_deref().unwrap_or(&content),
-                &predicate,
+                &resolved.canonical,
+                &resolved.group,
                 &relation.target,
             )
         }) {
@@ -622,10 +823,13 @@ fn write_prepared(
         } else {
             1
         };
-        if polarity == 0 && relation.fact.is_none() {
+        if relation.fact.is_none() && (swap || polarity == 0) {
             fact = format!(
-                "{} NOT {} {}",
-                relation.source, relation.predicate, relation.target
+                "{}{} {} {}",
+                src_name,
+                if polarity == 0 { " NOT" } else { "" },
+                pred.display,
+                dst_name
             );
         }
         // Relations this one ends; each gets ended_by = this relation.
@@ -639,14 +843,16 @@ fn write_prepared(
         }
         if polarity == 1
             && relation.exclusive != Some(false)
-            && (relation.exclusive == Some(true) || predicate_exclusive)
+            && (relation.exclusive == Some(true) || resolved.exclusive)
         {
             let mut st = db.sql().prepare(
-                "SELECT id,valid_from,valid_to FROM relations
-                     WHERE src=?1 AND predicate_id=?2 AND dst!=?3 AND polarity=1 AND expired_at IS NULL",
+                "SELECT r.id,r.valid_from,r.valid_to FROM relations r
+                 JOIN predicates p ON p.id=r.predicate_id
+                 WHERE r.subj=?1 AND COALESCE(NULLIF(p.group_id,0),p.id)=?2
+                   AND r.dst!=?3 AND r.polarity=1 AND r.expired_at IS NULL",
             )?;
             let olds: Vec<(i64, i64, Option<i64>)> = st
-                .query_map(params![src, pid, dst], |r| {
+                .query_map(params![subj, group_id, dst], |r| {
                     Ok((r.get(0)?, r.get(1)?, r.get(2)?))
                 })?
                 .collect::<rusqlite::Result<_>>()?;
@@ -680,14 +886,15 @@ fn write_prepared(
                 }
             }
         }
-        if relation.exclusive.is_none() && !predicate_exclusive && polarity == 1 {
+        if relation.exclusive.is_none() && !resolved.exclusive && polarity == 1 {
             let mut st = db.sql().prepare(
                 "SELECT r.id,r.fact,r.valid_from FROM relations r
-                     WHERE r.src=?1 AND r.predicate_id=?2 AND r.dst!=?3
-                       AND r.polarity=1 AND r.expired_at IS NULL
-                       AND (r.valid_to IS NULL OR r.valid_to>?4) LIMIT 5",
+                 JOIN predicates p ON p.id=r.predicate_id
+                 WHERE r.subj=?1 AND COALESCE(NULLIF(p.group_id,0),p.id)=?2
+                   AND r.dst!=?3 AND r.polarity=1 AND r.expired_at IS NULL
+                   AND (r.valid_to IS NULL OR r.valid_to>?4) LIMIT 5",
             )?;
-            for row in st.query_map(params![src, pid, dst, rf], |r| {
+            for row in st.query_map(params![subj, group_id, dst, rf], |r| {
                 Ok(crate::engine::Conflict {
                     relation_id: r.get(0)?,
                     fact: r.get(1)?,
@@ -700,12 +907,14 @@ fn write_prepared(
         let existing: Option<(i64, i64, Option<i64>)> = db
             .sql()
             .query_row(
-                "SELECT id,evidence_count,valid_to FROM relations
-                     WHERE src=?1 AND predicate_id=?2 AND dst=?3 AND polarity=?4
-                       AND expired_at IS NULL
-                       AND (valid_to IS NULL OR valid_to>=?5)
-                       AND valid_from<=COALESCE(?6,valid_from) LIMIT 1",
-                params![src, pid, dst, polarity, rf, new_valid_to],
+                "SELECT r.id,r.evidence_count,r.valid_to FROM relations r
+                 JOIN predicates p ON p.id=r.predicate_id
+                 WHERE r.src=?1 AND r.dst=?2
+                   AND COALESCE(NULLIF(p.group_id,0),p.id)=?3 AND r.polarity=?4
+                   AND r.expired_at IS NULL
+                   AND (r.valid_to IS NULL OR r.valid_to>=?5)
+                   AND r.valid_from<=COALESCE(?6,r.valid_from) LIMIT 1",
+                params![src, dst, group_id, polarity, rf, new_valid_to],
                 |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
             )
             .optional()?;
@@ -726,9 +935,9 @@ fn write_prepared(
             rid
         } else {
             db.sql().execute(
-                "INSERT INTO relations(src,dst,predicate_id,fact,weight,evidence_count,valid_from,valid_to,created_at,polarity)
-                     VALUES (?1,?2,?3,?4,1,1,?5,?6,?7,?8)",
-                params![src, dst, pid, fact, rf, new_valid_to, now, polarity],
+                "INSERT INTO relations(src,dst,predicate_id,predicate_text,subj,fact,weight,evidence_count,valid_from,valid_to,created_at,polarity)
+                     VALUES (?1,?2,?3,?4,?5,?6,1,1,?7,?8,?9,?10)",
+                params![src, dst, pred.id, predicate_text, subj, fact, rf, new_valid_to, now, polarity],
             )?;
             let rid = db.sql().last_insert_rowid();
             db.sql().execute(
@@ -737,28 +946,41 @@ fn write_prepared(
             )?;
             db.sql().execute(
                 "INSERT INTO relations_fts(rowid,fact,predicate) VALUES (?1,?2,?3)",
-                params![rid, fact, predicate],
+                params![rid, fact, predicate_text],
             )?;
             db.sql().execute(
                 "INSERT INTO relations_vec(rowid,embedding) VALUES(?1,?2)",
                 params![rid, vec_blob(&vectors[fact_base + ri])],
             )?;
-            // Polarity flip: the same triple asserted with the opposite
-            // polarity ends the older live assertion (both stay history).
-            let opposite: Vec<i64> = {
+            // Polarity flip: the same stored triple asserted with the opposite
+            // polarity ends the older live assertion (both stay history). An
+            // equal start is a same-day correction: the older row is retired.
+            let opposite: Vec<(i64, i64)> = {
                 let mut st = db.sql().prepare(
-                    "SELECT id FROM relations WHERE src=?1 AND dst=?2 AND predicate_id=?3
-                         AND polarity=?4 AND valid_from<?5 AND expired_at IS NULL
-                         AND (valid_to IS NULL OR valid_to>?5)",
+                    "SELECT r.id,r.valid_from FROM relations r
+                     JOIN predicates p ON p.id=r.predicate_id
+                     WHERE r.src=?1 AND r.dst=?2
+                       AND COALESCE(NULLIF(p.group_id,0),p.id)=?3
+                       AND r.polarity=?4 AND r.expired_at IS NULL
+                       AND r.valid_from<=?5 AND (r.valid_to IS NULL OR r.valid_to>?5)",
                 )?;
-                let rows = st.query_map(params![src, dst, pid, 1 - polarity, rf], |r| r.get(0))?;
+                let rows = st.query_map(params![src, dst, group_id, 1 - polarity, rf], |r| {
+                    Ok((r.get(0)?, r.get(1)?))
+                })?;
                 rows.collect::<rusqlite::Result<_>>()?
             };
-            for old in opposite {
-                db.sql().execute(
-                    "UPDATE relations SET valid_to=?1 WHERE id=?2",
-                    params![rf, old],
-                )?;
+            for (old, old_from) in opposite {
+                if old_from == rf {
+                    db.sql().execute(
+                        "UPDATE relations SET valid_to=?1, expired_at=?2 WHERE id=?3",
+                        params![rf, now, old],
+                    )?;
+                } else {
+                    db.sql().execute(
+                        "UPDATE relations SET valid_to=?1 WHERE id=?2",
+                        params![rf, old],
+                    )?;
+                }
                 ended_here.push(old);
             }
             rid
@@ -776,7 +998,7 @@ fn write_prepared(
             )?;
         }
         invalidated.extend(ended_here);
-        kg::project_relation(db, rid, src, dst, &predicate)?;
+        kg::project_relation(db, rid, src, dst, &predicate_text)?;
         rel_results.push(RelationResult {
             id: rid,
             fact,
@@ -923,6 +1145,7 @@ fn resolve_endpoint(
         embedding,
         now,
         cfg,
+        semantic,
     )?;
     ids.insert(norm, resolved.id);
     kg::project_entity_from_db(db, resolved.id)?;
@@ -1035,13 +1258,15 @@ mod negation_tests {
 
     #[test]
     fn negation_cues_are_anchored_on_the_target() {
+        // (text, predicate canonical, predicate group, target, negated?)
         let cases = [
-            ("Alice no longer likes jazz.", "like", "jazz", true),
-            ("Alice doesn't like jazz", "like", "jazz", true),
-            ("Alice does not like jazz", "like", "jazz", true),
-            ("Bob never worked at Acme", "work at", "Acme", true),
+            ("Alice no longer likes jazz.", "like", "like", "jazz", true),
+            ("Alice doesn't like jazz", "like", "like", "jazz", true),
+            ("Alice does not like jazz", "like", "like", "jazz", true),
+            ("Bob never worked at Acme", "work at", "work at", "Acme", true),
             (
                 "Bob stopped working at Acme in May",
+                "work at",
                 "work at",
                 "Acme",
                 true,
@@ -1049,13 +1274,21 @@ mod negation_tests {
             (
                 "Carol isn't living in Pune anymore",
                 "live in",
+                "live in",
                 "Pune",
                 true,
             ),
-            ("Alice likes jazz.", "like", "jazz", false),
-            ("Bob works at Acme, not Globex.", "work at", "Acme", false),
+            ("Alice likes jazz.", "like", "like", "jazz", false),
+            (
+                "Bob works at Acme, not Globex.",
+                "work at",
+                "work at",
+                "Acme",
+                false,
+            ),
             (
                 "Alice moved to Denver and no longer lives in Austin.",
+                "live in",
                 "live in",
                 "Denver",
                 false,
@@ -1063,22 +1296,132 @@ mod negation_tests {
             (
                 "Alice moved to Denver and no longer lives in Austin.",
                 "live in",
+                "live in",
                 "Austin",
                 true,
             ),
             (
                 "Alice not only likes jazz but also blues",
                 "like",
+                "like",
                 "jazz",
                 false,
             ),
-            ("Alice left for Paris", "live in", "Paris", false),
-            ("I have no doubt Alice likes jazz", "like", "jazz", false),
-            ("Jazz is great", "like", "jazz", false),
+            ("Alice left for Paris", "live in", "live in", "Paris", false),
+            (
+                "I have no doubt Alice likes jazz",
+                "like",
+                "like",
+                "jazz",
+                false,
+            ),
+            ("Jazz is great", "like", "like", "jazz", false),
+            // ER-03 A: the cue belongs to the contrastive subject, not the verb.
+            (
+                "Alice, not Bob, lives in Denver.",
+                "live in",
+                "live in",
+                "Denver",
+                false,
+            ),
+            // ER-03 B: the negated clause is the earlier target; Denver stays
+            // positive, Austin is retracted.
+            (
+                "Alice no longer lives in Austin; she moved to Denver.",
+                "live in",
+                "live in",
+                "Denver",
+                false,
+            ),
+            (
+                "Alice no longer lives in Austin; she moved to Denver.",
+                "live in",
+                "live in",
+                "Austin",
+                true,
+            ),
+            // ER-07: retraction phrasings, matched per predicate group.
+            (
+                "Bob resigned from Acme in June.",
+                "work at",
+                "work at",
+                "Acme",
+                true,
+            ),
+            (
+                "Bob is no longer at Acme.",
+                "work at",
+                "work at",
+                "Acme",
+                true,
+            ),
+            ("Bob quit Acme.", "work at", "work at", "Acme", true),
+            (
+                "Bob left the job at Acme.",
+                "work at",
+                "work at",
+                "Acme",
+                true,
+            ),
+            (
+                "Alice moved out of the Austin flat.",
+                "live in",
+                "live in",
+                "Austin",
+                true,
+            ),
+            (
+                "Alice broke up with Bob.",
+                "married to",
+                "married to",
+                "Bob",
+                true,
+            ),
+            (
+                "Alice divorced Bob.",
+                "married to",
+                "married to",
+                "Bob",
+                true,
+            ),
+            ("Alice sold the boat.", "own", "own", "boat", true),
+            ("Bob stopped using Vim.", "use", "use", "Vim", true),
+            ("Bob gave up Vim.", "use", "use", "Vim", true),
+            // A retraction only retracts its own group.
+            (
+                "Bob resigned from Acme.",
+                "live in",
+                "live in",
+                "Acme",
+                false,
+            ),
+            (
+                "Alice moved out of Austin and Bob quit Acme.",
+                "work at",
+                "work at",
+                "Acme",
+                true,
+            ),
+            // ER-14: Spanish "ya no".
+            (
+                "Alicia ya no vive en Madrid.",
+                "vive en",
+                "vive en",
+                "Madrid",
+                true,
+            ),
+            // Double negatives stay positive.
+            (
+                "Alice never stopped liking jazz",
+                "like",
+                "like",
+                "jazz",
+                false,
+            ),
         ];
-        for (text, predicate, target, want) in cases {
+        for (text, predicate, group, target, want) in cases {
             assert_eq!(
-                infer_negated(text, predicate, target),
+                infer_negated(text, predicate, group, target),
                 want,
                 "{text} / {target}"
             );

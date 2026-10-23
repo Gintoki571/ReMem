@@ -296,6 +296,7 @@ fn entity(name: &str, kind: &str) -> EntityIn {
         description: Some(format!("synthetic {kind} used by the benchmark")),
         aliases: Vec::new(),
         same_as: None,
+        distinct_from: Vec::new(),
     }
 }
 

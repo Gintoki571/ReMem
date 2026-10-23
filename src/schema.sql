@@ -1,4 +1,4 @@
--- neocortex schema v3. Relational tables are the source of truth; the
+-- neocortex schema v4. Relational tables are the source of truth; the
 -- graphqlite tables (nodes/edges/...) are a rebuildable projection.
 -- Times are unix seconds (UTC). Validity is half-open [valid_from, valid_to).
 
@@ -46,13 +46,19 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memories_vec USING vec0(
 CREATE TABLE IF NOT EXISTS entities (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,                     -- display name (first seen / agent-chosen)
-  norm TEXT NOT NULL UNIQUE,              -- text::norm_name(name)
-  type TEXT NOT NULL DEFAULT '',
+  norm TEXT NOT NULL,                     -- text::norm_name(name)
+  type TEXT NOT NULL DEFAULT '',          -- lower-cased; '' = unknown
+  -- 0 is the canonical row for (norm, type); a deliberate homonym
+  -- (EntityIn::distinct_from) gets the next number so both can coexist.
+  homonym INTEGER NOT NULL DEFAULT 0,
   description TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   mention_count INTEGER NOT NULL DEFAULT 0
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_entities_norm_type
+  ON entities(norm, type, homonym);
+CREATE INDEX IF NOT EXISTS idx_entities_norm ON entities(norm);
 CREATE TABLE IF NOT EXISTS entity_aliases (
   alias_norm TEXT NOT NULL,
   entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
@@ -73,7 +79,14 @@ CREATE INDEX IF NOT EXISTS idx_mentions_entity ON mentions(entity_id);
 CREATE TABLE IF NOT EXISTS predicates (
   id INTEGER PRIMARY KEY,
   canonical TEXT NOT NULL UNIQUE,         -- text::norm_predicate
-  exclusive INTEGER NOT NULL DEFAULT 0
+  display TEXT NOT NULL DEFAULT '',       -- natural surface form ("employed by")
+  exclusive INTEGER NOT NULL DEFAULT 0,
+  -- Canonical predicate id of the family ("resides in" -> "lives in").
+  -- Exclusivity and conflict candidates key on this, not on the surface.
+  group_id INTEGER NOT NULL DEFAULT 0,
+  inverse_of INTEGER,                     -- "manages" <-> "reports to"
+  symmetric INTEGER NOT NULL DEFAULT 0,   -- married to, friends with, sibling of
+  seeded INTEGER NOT NULL DEFAULT 0       -- hand-written ontology row
 );
 CREATE TABLE IF NOT EXISTS predicate_aliases (
   alias_norm TEXT PRIMARY KEY,
@@ -86,6 +99,12 @@ CREATE TABLE IF NOT EXISTS relations (
   src INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
   dst INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
   predicate_id INTEGER NOT NULL REFERENCES predicates(id),
+  -- The agent's original phrase ("resides in"), shown instead of the stemmed
+  -- canonical. Empty on pre-v4 rows, where display/canonical is used.
+  predicate_text TEXT NOT NULL DEFAULT '',
+  -- Semantic subject for exclusivity: src normally, the original source for
+  -- an inverse write stored in canonical direction, min(src,dst) when symmetric.
+  subj INTEGER NOT NULL DEFAULT 0,
   fact TEXT NOT NULL,                     -- natural-language statement
   weight REAL NOT NULL DEFAULT 1.0,
   evidence_count INTEGER NOT NULL DEFAULT 1,

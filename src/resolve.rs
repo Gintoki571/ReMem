@@ -6,7 +6,7 @@
 
 use crate::{
     db::{blob_to_vec, vec_blob, Db},
-    engine::{Config, EntityIn},
+    engine::{Config, EntityCandidate, EntityIn},
     error::Result,
     text,
 };
@@ -18,6 +18,12 @@ pub struct Resolved {
     pub id: i64,
     pub status: String,
     pub similar: Vec<(i64, String, f32)>,
+    pub candidates: Vec<EntityCandidate>,
+}
+
+/// Lower-cased, trimmed entity type. An empty string means "unknown".
+fn type_key(kind: Option<&str>) -> String {
+    kind.map(|k| k.trim().to_lowercase()).unwrap_or_default()
 }
 
 fn cosine(a: &[f32], b: &[f32]) -> f32 {
@@ -46,24 +52,15 @@ fn embeddings_for(db: &Db, ids: &[i64]) -> Result<HashMap<i64, Vec<f32>>> {
     Ok(out)
 }
 
-fn best_by_cosine(db: &Db, ids: &[i64], embedding: &[f32]) -> Result<Option<i64>> {
-    if ids.is_empty() {
-        return Ok(None);
-    }
-    let vectors = embeddings_for(db, ids)?;
-    let mut best: Option<(i64, f32)> = None;
-    for id in ids {
-        let score = vectors.get(id).map(|v| cosine(embedding, v)).unwrap_or(0.0);
-        if best.is_none_or(|(_, s)| score > s) {
-            best = Some((*id, score));
-        }
-    }
-    Ok(best.map(|(id, _)| id))
-}
-
 /// Ids whose alias is exactly `alias_norm` and whose type is compatible,
-/// most-mentioned first.
-fn exact_ids(db: &Db, alias_norm: &str, kind: &str) -> Result<Vec<i64>> {
+/// most-mentioned first. A typed mention may match an untyped entity; an
+/// untyped mention may match anything. `exclude` implements `distinct_from`.
+fn exact_ids(
+    db: &Db,
+    alias_norm: &str,
+    kind: &str,
+    exclude: &HashSet<i64>,
+) -> Result<Vec<i64>> {
     let mut st = db.sql().prepare(
         "SELECT DISTINCT e.id, e.mention_count FROM entity_aliases a
          JOIN entities e ON e.id=a.entity_id
@@ -71,21 +68,176 @@ fn exact_ids(db: &Db, alias_norm: &str, kind: &str) -> Result<Vec<i64>> {
          ORDER BY e.mention_count DESC, e.id",
     )?;
     let rows = st.query_map(params![alias_norm, kind], |r| r.get::<_, i64>(0))?;
-    Ok(rows.collect::<rusqlite::Result<_>>()?)
+    let mut out = Vec::new();
+    for row in rows {
+        let id = row?;
+        if !exclude.contains(&id) {
+            out.push(id);
+        }
+    }
+    Ok(out)
 }
 
 /// First alias norm (name first, then agent aliases) that names an entity.
-fn exact_match(db: &Db, norms: &[String], kind: &str, embedding: &[f32]) -> Result<Option<i64>> {
+fn exact_match(
+    db: &Db,
+    norms: &[String],
+    kind: &str,
+    exclude: &HashSet<i64>,
+) -> Result<Vec<i64>> {
     for norm in norms {
         if norm.is_empty() {
             continue;
         }
-        let ids = exact_ids(db, norm, kind)?;
-        if let Some(id) = best_by_cosine(db, &ids, embedding)? {
-            return Ok(Some(id));
+        let ids = exact_ids(db, norm, kind, exclude)?;
+        if !ids.is_empty() {
+            return Ok(ids);
         }
     }
-    Ok(None)
+    Ok(Vec::new())
+}
+
+#[derive(Clone)]
+struct Meta {
+    name: String,
+    kind: String,
+    description: String,
+}
+
+fn entity_meta(db: &Db, ids: &[i64]) -> Result<HashMap<i64, Meta>> {
+    let mut out = HashMap::new();
+    if ids.is_empty() {
+        return Ok(out);
+    }
+    let placeholders = vec!["?"; ids.len()].join(",");
+    let sql = format!("SELECT id,name,type,description FROM entities WHERE id IN ({placeholders})");
+    let mut st = db.sql().prepare(&sql)?;
+    let rows = st.query_map(params_from_iter(ids.iter()), |r| {
+        Ok((
+            r.get::<_, i64>(0)?,
+            Meta {
+                name: r.get(1)?,
+                kind: r.get(2)?,
+                description: r.get(3)?,
+            },
+        ))
+    })?;
+    for row in rows {
+        let (id, meta) = row?;
+        out.insert(id, meta);
+    }
+    Ok(out)
+}
+
+fn candidates_with_scores(
+    ids: &[i64],
+    meta: &HashMap<i64, Meta>,
+    scores: &HashMap<i64, f32>,
+) -> Vec<EntityCandidate> {
+    ids.iter()
+        .filter_map(|id| {
+            let m = meta.get(id)?;
+            Some(EntityCandidate {
+                id: *id,
+                name: m.name.clone(),
+                kind: m.kind.clone(),
+                description: m.description.clone(),
+                score: scores.get(id).copied(),
+            })
+        })
+        .collect()
+}
+
+fn score_against(db: &Db, ids: &[i64], embedding: &[f32]) -> Result<HashMap<i64, f32>> {
+    let vectors = embeddings_for(db, ids)?;
+    Ok(ids
+        .iter()
+        .map(|id| {
+            (
+                *id,
+                vectors
+                    .get(id)
+                    .map(|v| cosine(embedding, v))
+                    .unwrap_or(0.0),
+            )
+        })
+        .collect())
+}
+
+/// Pick one entity for an exact alias that names several. Returns
+/// `(id, ambiguous, candidates)`; `id < 0` means "no confident pick, create an
+/// untyped bucket". An untyped mention of a typed-only name never silently
+/// joins one homonym.
+fn choose_exact(
+    db: &Db,
+    ids: &[i64],
+    kind: &str,
+    embedding: &[f32],
+) -> Result<(i64, bool, Vec<EntityCandidate>)> {
+    if ids.len() == 1 {
+        return Ok((ids[0], false, Vec::new()));
+    }
+    let meta = entity_meta(db, ids)?;
+    let scores = score_against(db, ids, embedding)?;
+    if !kind.is_empty() {
+        // Prefer an exact type over an untyped row; a single survivor is a
+        // normal match (the alias named one thing of this type).
+        let typed: Vec<i64> = ids
+            .iter()
+            .copied()
+            .filter(|id| meta.get(id).is_some_and(|m| m.kind == kind))
+            .collect();
+        let pool = if typed.is_empty() { ids.to_vec() } else { typed };
+        if pool.len() == 1 {
+            return Ok((pool[0], false, Vec::new()));
+        }
+        let best = pool
+            .iter()
+            .copied()
+            .max_by(|a, b| {
+                scores
+                    .get(a)
+                    .copied()
+                    .unwrap_or(0.0)
+                    .total_cmp(&scores.get(b).copied().unwrap_or(0.0))
+            })
+            .unwrap_or(pool[0]);
+        return Ok((best, true, candidates_with_scores(ids, &meta, &scores)));
+    }
+    // No type given: an untyped row is the explicit "unknown" bucket.
+    let untyped: Vec<i64> = ids
+        .iter()
+        .copied()
+        .filter(|id| meta.get(id).is_some_and(|m| m.kind.is_empty()))
+        .collect();
+    if !untyped.is_empty() {
+        let best = untyped
+            .iter()
+            .copied()
+            .max_by(|a, b| {
+                scores
+                    .get(a)
+                    .copied()
+                    .unwrap_or(0.0)
+                    .total_cmp(&scores.get(b).copied().unwrap_or(0.0))
+            })
+            .unwrap_or(untyped[0]);
+        return Ok((best, true, candidates_with_scores(ids, &meta, &scores)));
+    }
+    let mut ranked = ids.to_vec();
+    ranked.sort_by(|a, b| {
+        scores
+            .get(b)
+            .copied()
+            .unwrap_or(0.0)
+            .total_cmp(&scores.get(a).copied().unwrap_or(0.0))
+    });
+    let best = scores.get(&ranked[0]).copied().unwrap_or(0.0);
+    let second = scores.get(&ranked[1]).copied().unwrap_or(0.0);
+    if best >= 0.75 && best - second >= 0.10 {
+        return Ok((ranked[0], true, candidates_with_scores(ids, &meta, &scores)));
+    }
+    Ok((-1, true, candidates_with_scores(ids, &meta, &scores)))
 }
 
 fn next_prefix(prefix: &str) -> Option<String> {
@@ -191,12 +343,14 @@ pub fn resolve_entity(
     embedding: &[f32],
     now: i64,
     cfg: &Config,
+    semantic: bool,
 ) -> Result<Resolved> {
     let norm = text::norm_name(&item.name);
     if norm.is_empty() {
         return Err(crate::err!("entity name cannot be empty"));
     }
-    let kind = item.kind.as_deref().unwrap_or("");
+    let kind = type_key(item.kind.as_deref());
+    let exclude = resolve_distinct_from(db, &item.distinct_from)?;
 
     if let Some(forced) = item.same_as.as_deref() {
         let id = resolve_same_as(db, forced)?;
@@ -206,6 +360,7 @@ pub fn resolve_entity(
             id,
             status: "same_as".into(),
             similar: Vec::new(),
+            candidates: Vec::new(),
         });
     }
 
@@ -216,17 +371,46 @@ pub fn resolve_entity(
             norms.push(alias_norm);
         }
     }
-    if let Some(id) = exact_match(db, &norms, kind, embedding)? {
+    let exact = exact_match(db, &norms, &kind, &exclude)?;
+    if !exact.is_empty() {
+        let (chosen, ambiguous, mut candidates) = choose_exact(db, &exact, &kind, embedding)?;
+        if chosen < 0 {
+            // Several typed homonyms and no type: keep the memory on its own
+            // untyped node and let the agent pick with type or distinct_from.
+            let id = insert_entity(db, item, &norm, "", embedding, now)?;
+            return Ok(Resolved {
+                id,
+                status: "ambiguous".into(),
+                similar: Vec::new(),
+                candidates,
+            });
+        }
         let canonical: String =
             db.sql()
-                .query_row("SELECT norm FROM entities WHERE id=?1", [id], |r| r.get(0))?;
+                .query_row("SELECT norm FROM entities WHERE id=?1", [chosen], |r| r.get(0))?;
         let name_matched = canonical == norm;
-        add_aliases(db, id, item, "agent")?;
-        enrich(db, id, item, now)?;
+        add_aliases(db, chosen, item, "agent")?;
+        let conflict = description_conflict(db, chosen, item, embedding, cfg, semantic)?;
+        if ambiguous || conflict {
+            if conflict && candidates.is_empty() {
+                let meta = entity_meta(db, &[chosen])?;
+                let scores = score_against(db, &[chosen], embedding)?;
+                candidates = candidates_with_scores(&[chosen], &meta, &scores);
+            }
+            // Never mix a conflicting description into the existing card.
+            return Ok(Resolved {
+                id: chosen,
+                status: "ambiguous".into(),
+                similar: Vec::new(),
+                candidates,
+            });
+        }
+        enrich(db, chosen, item, now)?;
         return Ok(Resolved {
-            id,
+            id: chosen,
             status: if name_matched { "matched" } else { "alias" }.into(),
             similar: Vec::new(),
+            candidates: Vec::new(),
         });
     }
 
@@ -259,6 +443,9 @@ pub fn resolve_entity(
                 .unwrap_or(0.0);
             names.insert(id, name.clone());
             norms.insert(id, entity_norm.clone());
+            if exclude.contains(&id) {
+                continue;
+            }
             if !kind.is_empty() && !entity_type.is_empty() && entity_type != kind {
                 continue;
             }
@@ -292,30 +479,11 @@ pub fn resolve_entity(
             id,
             status: status.into(),
             similar: Vec::new(),
+            candidates: Vec::new(),
         });
     }
 
-    db.sql().execute("INSERT INTO entities(name,norm,type,description,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?5)", params![item.name,norm,kind,item.description.as_deref().unwrap_or(""),now])?;
-    let id = db.sql().last_insert_rowid();
-    db.sql().execute(
-        "INSERT OR IGNORE INTO entity_aliases(alias_norm,entity_id,origin) VALUES (?1,?2,'name')",
-        params![norm, id],
-    )?;
-    for alias in &item.aliases {
-        let alias_norm = text::norm_name(alias);
-        if alias_norm.is_empty() {
-            continue;
-        }
-        db.sql().execute(
-            "INSERT OR IGNORE INTO entity_aliases(alias_norm,entity_id,origin) VALUES (?1,?2,'agent')",
-            params![alias_norm, id],
-        )?;
-    }
-    refresh_entity_fts(db, id)?;
-    db.sql().execute(
-        "INSERT INTO entities_vec(rowid,embedding) VALUES (?1,?2)",
-        params![id, vec_blob(embedding)],
-    )?;
+    let id = insert_entity(db, item, &norm, &kind, embedding, now)?;
     // Only the KNN hits create soft edges; lexical/acronym candidates are
     // handled above and never reach this branch.
     // Do not create similar soft edges when either entity norm has fewer
@@ -348,7 +516,146 @@ pub fn resolve_entity(
         id,
         status: "new".into(),
         similar,
+        candidates: Vec::new(),
     })
+}
+
+/// `distinct_from` targets: e<id>, canonical name or alias. Unknown names are
+/// a domain error, never a silent new entity.
+fn resolve_distinct_from(db: &Db, targets: &[String]) -> Result<HashSet<i64>> {
+    let mut out = HashSet::new();
+    for target in targets {
+        if let Some(id) = crate::engine::parse_id(target, 'e') {
+            let exists: bool = db.sql().query_row(
+                "SELECT EXISTS(SELECT 1 FROM entities WHERE id=?1)",
+                [id],
+                |r| r.get(0),
+            )?;
+            if exists {
+                out.insert(id);
+                continue;
+            }
+            return Err(crate::err!("unknown entity '{target}' in distinct_from"));
+        }
+        let norm = text::norm_name(target);
+        let id: Option<i64> = db
+            .sql()
+            .query_row(
+                "SELECT entity_id FROM entity_aliases WHERE alias_norm=?1 ORDER BY entity_id LIMIT 1",
+                [&norm],
+                |r| r.get(0),
+            )
+            .optional()?;
+        match id {
+            Some(id) => {
+                out.insert(id);
+            }
+            None => {
+                return Err(crate::err!(
+                    "unknown entity '{target}' in distinct_from"
+                ))
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// True when an exact-name mention's description is clearly about something
+/// else than the stored card. Below `entity_conflict` the match is kept (never
+/// lose a memory) but reported as ambiguous.
+fn description_conflict(
+    db: &Db,
+    id: i64,
+    item: &EntityIn,
+    embedding: &[f32],
+    cfg: &Config,
+    semantic: bool,
+) -> Result<bool> {
+    if !semantic {
+        // A non-semantic (hash) embedder cannot judge description conflicts.
+        return Ok(false);
+    }
+    let new = item
+        .description
+        .as_deref()
+        .map(str::trim)
+        .filter(|d| !d.is_empty());
+    let Some(_new) = new else {
+        return Ok(false);
+    };
+    let existing: String = db.sql().query_row(
+        "SELECT description FROM entities WHERE id=?1",
+        [id],
+        |r| r.get(0),
+    )?;
+    if existing.trim().is_empty() {
+        return Ok(false);
+    }
+    let Some(stored) = embeddings_for(db, &[id])?.remove(&id) else {
+        return Ok(false);
+    };
+    Ok(cosine(embedding, &stored) < cfg.entity_conflict)
+}
+
+/// Insert a new entity row and its aliases/FTS/vector. `homonym` is 0 for the
+/// canonical (norm, type) row; `distinct_from` gets the next number.
+fn insert_entity(
+    db: &Db,
+    item: &EntityIn,
+    norm: &str,
+    kind: &str,
+    embedding: &[f32],
+    now: i64,
+) -> Result<i64> {
+    let homonym: i64 = db.sql().query_row(
+        "SELECT COALESCE(MAX(homonym),-1)+1 FROM entities WHERE norm=?1 AND type=?2",
+        params![norm, kind],
+        |r| r.get(0),
+    )?;
+    let inserted = db.sql().execute(
+        "INSERT INTO entities(name,norm,type,homonym,description,created_at,updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?6)",
+        params![
+            item.name,
+            norm,
+            kind,
+            homonym,
+            item.description.as_deref().unwrap_or(""),
+            now
+        ],
+    );
+    let id = match inserted {
+        Ok(_) => db.sql().last_insert_rowid(),
+        Err(e) if crate::db::is_unique_violation(&e) => {
+            // A concurrent writer created the canonical row first: use it.
+            db.sql().query_row(
+                "SELECT id FROM entities WHERE norm=?1 AND type=?2 ORDER BY homonym LIMIT 1",
+                params![norm, kind],
+                |r| r.get(0),
+            )?
+        }
+        Err(e) => return Err(e.into()),
+    };
+    db.sql().execute(
+        "INSERT OR IGNORE INTO entity_aliases(alias_norm,entity_id,origin) VALUES (?1,?2,'name')",
+        params![norm, id],
+    )?;
+    for alias in &item.aliases {
+        let alias_norm = text::norm_name(alias);
+        if alias_norm.is_empty() {
+            continue;
+        }
+        db.sql().execute(
+            "INSERT OR IGNORE INTO entity_aliases(alias_norm,entity_id,origin) VALUES (?1,?2,'agent')",
+            params![alias_norm, id],
+        )?;
+    }
+    refresh_entity_fts(db, id)?;
+    db.sql().execute(
+        "INSERT INTO entities_vec(rowid,embedding) VALUES (?1,?2)",
+        params![id, vec_blob(embedding)],
+    )?;
+    Ok(id)
 }
 
 fn resolve_same_as(db: &Db, target: &str) -> Result<i64> {
@@ -376,21 +683,31 @@ fn resolve_same_as(db: &Db, target: &str) -> Result<i64> {
 
 /// Fill empty type/description from the mention and append new detail.
 fn enrich(db: &Db, id: i64, item: &EntityIn, now: i64) -> Result<()> {
-    let (mut entity_type, mut description): (String, String) = db.sql().query_row(
-        "SELECT type,description FROM entities WHERE id=?1",
-        [id],
-        |r| Ok((r.get(0)?, r.get(1)?)),
-    )?;
+    let (mut entity_type, mut description, norm): (String, String, String) =
+        db.sql().query_row(
+            "SELECT type,description,norm FROM entities WHERE id=?1",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )?;
     let mut changed = false;
     if entity_type.is_empty() {
         if let Some(kind) = item
             .kind
             .as_deref()
             .map(str::trim)
+            .map(str::to_lowercase)
             .filter(|k| !k.is_empty())
         {
-            entity_type = kind.to_string();
-            changed = true;
+            // Never steal a (norm, type) slot another entity already owns.
+            let taken: bool = db.sql().query_row(
+                "SELECT EXISTS(SELECT 1 FROM entities WHERE norm=?1 AND type=?2 AND id<>?3)",
+                params![norm, kind, id],
+                |r| r.get(0),
+            )?;
+            if !taken {
+                entity_type = kind;
+                changed = true;
+            }
         }
     }
     if let Some(new) = item
@@ -516,25 +833,95 @@ fn different_tokens(a: &str, b: &str) -> bool {
     }))
 }
 
+#[derive(Clone, Debug)]
+pub struct ResolvedPredicate {
+    pub id: i64,
+    pub canonical: String,
+    pub display: String,
+    pub exclusive: bool,
+    pub group_id: i64,
+    pub group: String,
+    pub symmetric: bool,
+    pub inverse: Option<i64>,
+    pub inverse_display: Option<String>,
+    pub seeded: bool,
+}
+
+/// Role nouns must match exactly: "CEO of" and "CTO of" are different facts
+/// even though their phrases embed close together.
+fn is_role_noun(word: &str) -> bool {
+    matches!(
+        word,
+        "ceo" | "cto" | "cfo" | "coo" | "cio" | "president" | "founder" | "owner" | "manager"
+            | "director" | "head" | "lead" | "chief" | "chair" | "partner" | "principal"
+    )
+}
+
+/// Auto-alias guard for predicate phrases. Heads (the first canonical token)
+/// must be compatible and the tail tokens must be identical: this blocks
+/// "lives in"/"lives near", "CEO of"/"CTO of" and single-verb pairs such as
+/// "buys"/"sells", while still allowing "lives in"/"resides in" at the
+/// measured phrase cosine.
+fn head_tail_compatible(a: &str, b: &str) -> bool {
+    let ta: Vec<&str> = a.split_whitespace().collect();
+    let tb: Vec<&str> = b.split_whitespace().collect();
+    let (Some(head_a), Some(head_b)) = (ta.first().copied(), tb.first().copied()) else {
+        return false;
+    };
+    if is_role_noun(head_a) || is_role_noun(head_b) {
+        return head_a == head_b;
+    }
+    if ta[1..] != tb[1..] {
+        return false;
+    }
+    if head_a == head_b {
+        return true;
+    }
+    // Differing heads need a shared tail; otherwise the phrases are merely
+    // single verbs that happen to embed close.
+    !ta[1..].is_empty()
+}
+
+fn apply_exclusive(db: &Db, id: i64, exclusive: Option<bool>) -> Result<()> {
+    match exclusive {
+        Some(true) => {
+            db.sql()
+                .execute("UPDATE predicates SET exclusive=1 WHERE id=?1", [id])?;
+        }
+        // Only a predicate the agent created can have its sticky exclusivity
+        // cleared; seeded policy is not overridable by a single write.
+        Some(false) => {
+            db.sql().execute(
+                "UPDATE predicates SET exclusive=0 WHERE id=?1 AND seeded=0",
+                [id],
+            )?;
+        }
+        None => {}
+    }
+    Ok(())
+}
+
 pub fn resolve_predicate(
     db: &Db,
     name: &str,
     embedding: &[f32],
     exclusive: Option<bool>,
     cfg: &Config,
-) -> Result<(i64, String, bool)> {
+) -> Result<ResolvedPredicate> {
     let norm = text::norm_predicate(name);
+    if norm.is_empty() {
+        return Err(crate::err!(
+            "relation predicate cannot be empty; give a verb phrase such as \"works at\""
+        ));
+    }
     if let Ok(id) = db.sql().query_row(
         "SELECT predicate_id FROM predicate_aliases WHERE alias_norm=?1",
         [&norm],
         |r| r.get(0),
     ) {
-        if exclusive == Some(true) {
-            db.sql()
-                .execute("UPDATE predicates SET exclusive=1 WHERE id=?1", [id])?;
-        }
+        apply_exclusive(db, id, exclusive)?;
         // Seeded predicates start without a vector; the first use gives them
-        // one so paraphrases ("is employed at") can reach them by KNN.
+        // one so phrase paraphrases can reach them by KNN.
         let has_vec: bool = db.sql().query_row(
             "SELECT EXISTS(SELECT 1 FROM predicates_vec WHERE rowid=?1)",
             [id],
@@ -546,6 +933,10 @@ pub fn resolve_predicate(
                 params![id, vec_blob(embedding)],
             )?;
         }
+        db.sql().execute(
+            "UPDATE predicates SET display=?1 WHERE id=?2 AND display=''",
+            params![name.trim(), id],
+        )?;
         return predicate_row(db, id);
     }
     let nearest: Option<(i64, f32)> = db
@@ -557,40 +948,85 @@ pub fn resolve_predicate(
             |r| Ok((r.get::<_, i64>(0)?, r.get::<_, f32>(1)?)),
         )
         .optional()?;
-    if let Some((id, _)) = nearest.filter(|(_, s)| *s >= cfg.pred_alias) {
+    let nearest: Option<(i64, f32, String)> = match nearest {
+        Some((id, score)) => {
+            let canonical: String = db.sql().query_row(
+                "SELECT canonical FROM predicates WHERE id=?1",
+                [id],
+                |r| r.get(0),
+            )?;
+            Some((id, score, canonical))
+        }
+        None => None,
+    };
+    if let Some((id, _score, _other)) = nearest.filter(|(_, s, other)| {
+        *s >= cfg.pred_alias && head_tail_compatible(&norm, other)
+    }) {
         db.sql().execute(
             "INSERT OR IGNORE INTO predicate_aliases(alias_norm,predicate_id) VALUES (?1,?2)",
             params![norm, id],
         )?;
-        if exclusive == Some(true) {
-            db.sql()
-                .execute("UPDATE predicates SET exclusive=1 WHERE id=?1", [id])?;
-        }
+        apply_exclusive(db, id, exclusive)?;
         return predicate_row(db, id);
     }
     db.sql().execute(
-        "INSERT INTO predicates(canonical,exclusive) VALUES (?1,?2)",
-        params![norm, i64::from(exclusive == Some(true))],
+        "INSERT INTO predicates(canonical,display,exclusive,group_id,symmetric,seeded)
+         VALUES (?1,?2,?3,0,0,0)",
+        params![norm, name.trim(), i64::from(exclusive == Some(true))],
     )?;
     let id = db.sql().last_insert_rowid();
+    db.sql()
+        .execute("UPDATE predicates SET group_id=?1 WHERE id=?1", [id])?;
     db.sql().execute(
-        "INSERT INTO predicate_aliases(alias_norm,predicate_id) VALUES (?1,?2)",
+        "INSERT OR IGNORE INTO predicate_aliases(alias_norm,predicate_id) VALUES (?1,?2)",
         params![norm, id],
     )?;
     db.sql().execute(
         "INSERT INTO predicates_vec(rowid,embedding) VALUES (?1,?2)",
         params![id, vec_blob(embedding)],
     )?;
-    Ok((id, norm, exclusive == Some(true)))
+    predicate_row(db, id)
 }
 
-fn predicate_row(db: &Db, id: i64) -> Result<(i64, String, bool)> {
-    let (canonical, exclusive): (String, i64) = db.sql().query_row(
-        "SELECT canonical,exclusive FROM predicates WHERE id=?1",
-        [id],
-        |r| Ok((r.get(0)?, r.get(1)?)),
-    )?;
-    Ok((id, canonical, exclusive != 0))
+pub(crate) fn predicate_row(db: &Db, id: i64) -> Result<ResolvedPredicate> {
+    let (canonical, display, exclusive, group_id, symmetric, inverse, seeded, group, inverse_display):
+        (String, String, i64, i64, i64, Option<i64>, i64, Option<String>, Option<String>) =
+        db.sql().query_row(
+            "SELECT p.canonical,p.display,p.exclusive,p.group_id,p.symmetric,p.inverse_of,p.seeded,
+                    (SELECT canonical FROM predicates g WHERE g.id=p.group_id),
+                    (SELECT COALESCE(NULLIF(ip.display,''),ip.canonical) FROM predicates ip WHERE ip.id=p.inverse_of)
+             FROM predicates p WHERE p.id=?1",
+            [id],
+            |r| {
+                Ok((
+                    r.get(0)?,
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                    r.get(7)?,
+                    r.get(8)?,
+                ))
+            },
+        )?;
+    Ok(ResolvedPredicate {
+        id,
+        display: if display.is_empty() {
+            canonical.clone()
+        } else {
+            display
+        },
+        group: group.unwrap_or_else(|| canonical.clone()),
+        canonical,
+        exclusive: exclusive != 0,
+        group_id: if group_id == 0 { id } else { group_id },
+        symmetric: symmetric != 0,
+        inverse,
+        inverse_display,
+        seeded: seeded != 0,
+    })
 }
 
 #[cfg(test)]
@@ -625,10 +1061,12 @@ mod tests {
                 aliases: vec![],
                 description: None,
                 same_as: None,
+                distinct_from: vec![],
             },
             &axis(0),
             100,
             &cfg,
+            true,
         )
         .unwrap();
         assert_eq!(r1.similar.len(), 0);
@@ -641,10 +1079,12 @@ mod tests {
                 aliases: vec![],
                 description: None,
                 same_as: None,
+                distinct_from: vec![],
             },
             &at(0.95),
             100,
             &cfg,
+            true,
         )
         .unwrap();
         // Should NOT create a similar edge to "7"
@@ -664,10 +1104,12 @@ mod tests {
                 aliases: vec![],
                 description: None,
                 same_as: None,
+                distinct_from: vec![],
             },
             &at(0.95),
             100,
             &cfg,
+            true,
         )
         .unwrap();
         assert_eq!(
@@ -686,10 +1128,12 @@ mod tests {
                 aliases: vec![],
                 description: None,
                 same_as: None,
+                distinct_from: vec![],
             },
             &axis(2),
             100,
             &cfg,
+            true,
         )
         .unwrap();
         let r5 = resolve_entity(
@@ -700,6 +1144,7 @@ mod tests {
                 aliases: vec![],
                 description: None,
                 same_as: None,
+                distinct_from: vec![],
             },
             &{
                 let mut v = vec![0.0; DIMS];

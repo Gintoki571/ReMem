@@ -6,12 +6,13 @@ use rusqlite::OptionalExtension;
 use std::path::Path;
 use std::sync::Once;
 
-/// v3: relation polarity/provenance. Migrations are an explicit ladder below.
+/// v4: typed entities (norm,type,homonym), predicate groups/inverses and the
+/// agent's original predicate text. Migrations are an explicit ladder below.
 ///
 /// The version lives in `schema_meta`, not `PRAGMA user_version`: graphqlite
 /// owns that pragma (it stamps 1 for its own schema and its cypher executor
 /// refuses to start on any other value).
-pub const SCHEMA_VERSION: i64 = 3;
+pub const SCHEMA_VERSION: i64 = 4;
 
 /// One connection for everything (relational, FTS5, vec0, Cypher), so a
 /// write is one transaction.
@@ -111,6 +112,9 @@ impl Db {
         if v < 3 {
             db.migrate_v2_to_v3()?;
         }
+        if v < 4 {
+            db.migrate_v3_to_v4()?;
+        }
         Ok(db)
     }
 
@@ -130,35 +134,228 @@ impl Db {
         self.set_version(SCHEMA_VERSION)
     }
 
+    /// Hand-written predicate ontology. Small on purpose: a wrong seed merges
+    /// real predicates, so only measured or unambiguous families are here.
+    ///
+    /// `group` is the canonical predicate a row belongs to (exclusivity and
+    /// conflicts key on it); `inverse` names the predicate that states the same
+    /// relation from the other side. Seeded exclusivity is policy and is not
+    /// cleared by `exclusive: false` writes.
     fn seed_predicates(&self) -> Result<()> {
-        for name in [
-            "lives in",
-            "resides in",
-            "based in",
-            "work at",
-            "work for",
-            "employ by",
-            "married to",
-            "reports to",
-            "born in",
-            "born on",
-            "headquartered in",
-        ] {
-            let canonical = crate::text::norm_predicate(name);
+        struct Seed {
+            canonical: &'static str,
+            display: &'static str,
+            aliases: &'static [&'static str],
+            exclusive: bool,
+            symmetric: bool,
+            group: &'static str,
+            inverse: Option<&'static str>,
+        }
+        const SEEDS: &[Seed] = &[
+            Seed {
+                canonical: "live in",
+                display: "lives in",
+                aliases: &["lives in", "live in", "lived in", "living in"],
+                exclusive: true,
+                symmetric: false,
+                group: "live in",
+                inverse: None,
+            },
+            Seed {
+                canonical: "reside in",
+                display: "resides in",
+                aliases: &["resides in", "reside in", "resided in"],
+                exclusive: true,
+                symmetric: false,
+                group: "live in",
+                inverse: None,
+            },
+            Seed {
+                canonical: "base in",
+                display: "based in",
+                aliases: &["based in", "is based in", "base in"],
+                exclusive: true,
+                symmetric: false,
+                group: "live in",
+                inverse: None,
+            },
+            Seed {
+                canonical: "work at",
+                display: "works at",
+                aliases: &["works at", "work at", "worked at", "employed at"],
+                exclusive: true,
+                symmetric: false,
+                group: "work at",
+                inverse: None,
+            },
+            Seed {
+                canonical: "work for",
+                display: "works for",
+                aliases: &["works for", "work for", "worked for"],
+                exclusive: true,
+                symmetric: false,
+                group: "work at",
+                inverse: None,
+            },
+            Seed {
+                canonical: "employ by",
+                display: "employed by",
+                aliases: &["employed by", "is employed by", "employ by"],
+                exclusive: true,
+                symmetric: false,
+                group: "work at",
+                inverse: None,
+            },
+            Seed {
+                canonical: "married to",
+                display: "married to",
+                aliases: &["married to", "is married to", "marries"],
+                exclusive: true,
+                symmetric: true,
+                group: "married to",
+                inverse: None,
+            },
+            Seed {
+                canonical: "manage",
+                display: "manages",
+                aliases: &["manages", "manage", "managed", "managing"],
+                exclusive: false,
+                symmetric: false,
+                group: "manage",
+                inverse: Some("report to"),
+            },
+            Seed {
+                canonical: "report to",
+                display: "reports to",
+                aliases: &["reports to", "report to", "reported to"],
+                exclusive: true,
+                symmetric: false,
+                group: "manage",
+                inverse: Some("manage"),
+            },
+            Seed {
+                canonical: "parent of",
+                display: "parent of",
+                aliases: &["parent of", "is parent of"],
+                exclusive: false,
+                symmetric: false,
+                group: "parent of",
+                inverse: Some("child of"),
+            },
+            Seed {
+                canonical: "child of",
+                display: "child of",
+                aliases: &["child of", "is child of"],
+                exclusive: false,
+                symmetric: false,
+                group: "parent of",
+                inverse: Some("parent of"),
+            },
+            Seed {
+                canonical: "friend with",
+                display: "friends with",
+                aliases: &["friends with", "friend with", "is friends with"],
+                exclusive: false,
+                symmetric: true,
+                group: "friend with",
+                inverse: None,
+            },
+            Seed {
+                canonical: "sibling of",
+                display: "sibling of",
+                aliases: &["sibling of", "is sibling of"],
+                exclusive: false,
+                symmetric: true,
+                group: "sibling of",
+                inverse: None,
+            },
+            Seed {
+                canonical: "born in",
+                display: "born in",
+                aliases: &["born in", "was born in"],
+                exclusive: false,
+                symmetric: false,
+                group: "born in",
+                inverse: None,
+            },
+            Seed {
+                canonical: "born on",
+                display: "born on",
+                aliases: &["born on", "was born on"],
+                exclusive: false,
+                symmetric: false,
+                group: "born on",
+                inverse: None,
+            },
+            Seed {
+                canonical: "headquartered in",
+                display: "headquartered in",
+                aliases: &["headquartered in", "is headquartered in"],
+                exclusive: true,
+                symmetric: false,
+                group: "headquartered in",
+                inverse: None,
+            },
+        ];
+        for seed in SEEDS {
             self.sql().execute(
-                "INSERT INTO predicates(canonical,exclusive) VALUES (?1,1)
-                 ON CONFLICT(canonical) DO UPDATE SET exclusive=1",
-                [&canonical],
+                "INSERT INTO predicates(canonical,display,exclusive,symmetric,seeded)
+                 VALUES (?1,?2,?3,?4,1)
+                 ON CONFLICT(canonical) DO UPDATE SET
+                   display=CASE WHEN predicates.display='' THEN excluded.display ELSE predicates.display END,
+                   symmetric=MAX(predicates.symmetric,excluded.symmetric),
+                   seeded=1",
+                rusqlite::params![
+                    seed.canonical,
+                    seed.display,
+                    i64::from(seed.exclusive),
+                    i64::from(seed.symmetric)
+                ],
             )?;
             let id: i64 = self.sql().query_row(
                 "SELECT id FROM predicates WHERE canonical=?1",
-                [&canonical],
+                [seed.canonical],
                 |r| r.get(0),
             )?;
+            for alias in seed.aliases {
+                let norm = crate::text::norm_predicate(alias);
+                self.sql().execute(
+                    "INSERT OR IGNORE INTO predicate_aliases(alias_norm,predicate_id) VALUES (?1,?2)",
+                    rusqlite::params![norm, id],
+                )?;
+            }
+            // An alias whose canonical is different from the seed surface must
+            // still reach the seed row ("employed at" -> "work at").
+            let own_norm = crate::text::norm_predicate(seed.canonical);
             self.sql().execute(
                 "INSERT OR IGNORE INTO predicate_aliases(alias_norm,predicate_id) VALUES (?1,?2)",
-                rusqlite::params![canonical, id],
+                rusqlite::params![own_norm, id],
             )?;
+        }
+        for seed in SEEDS {
+            let id: i64 = self.sql().query_row(
+                "SELECT id FROM predicates WHERE canonical=?1",
+                [seed.canonical],
+                |r| r.get(0),
+            )?;
+            let group: i64 = self.sql().query_row(
+                "SELECT id FROM predicates WHERE canonical=?1",
+                [seed.group],
+                |r| r.get(0),
+            )?;
+            self.sql()
+                .execute("UPDATE predicates SET group_id=?1 WHERE id=?2", [group, id])?;
+            if let Some(inverse) = seed.inverse {
+                let inverse_id: i64 = self.sql().query_row(
+                    "SELECT id FROM predicates WHERE canonical=?1",
+                    [inverse],
+                    |r| r.get(0),
+                )?;
+                self.sql().execute(
+                    "UPDATE predicates SET inverse_of=?1 WHERE id=?2",
+                    [inverse_id, id],
+                )?;
+            }
         }
         Ok(())
     }
@@ -177,6 +374,98 @@ impl Db {
             db.seed_predicates()?;
             db.set_version(3)
         })
+    }
+
+    /// v3 -> v4: entities become unique on (norm, type, homonym) with a
+    /// lower-cased type; predicates gain the group/inverse/symmetric ontology
+    /// and the agent's original predicate text moves onto each relation.
+    ///
+    /// The entities table is rebuilt (SQLite cannot drop a column-level UNIQUE
+    /// constraint). Foreign keys are off for the rebuild only: dropping the old
+    /// table with them on would cascade into mentions/relations.
+    fn migrate_v3_to_v4(&self) -> Result<()> {
+        self.sql().execute_batch("PRAGMA foreign_keys=OFF")?;
+        let result = self.write(|db| {
+            if !db.column_exists("entities", "homonym")? {
+                db.sql().execute_batch(
+                    "CREATE TABLE entities_v4 (
+                       id INTEGER PRIMARY KEY,
+                       name TEXT NOT NULL,
+                       norm TEXT NOT NULL,
+                       type TEXT NOT NULL DEFAULT '',
+                       homonym INTEGER NOT NULL DEFAULT 0,
+                       description TEXT NOT NULL DEFAULT '',
+                       created_at INTEGER NOT NULL,
+                       updated_at INTEGER NOT NULL,
+                       mention_count INTEGER NOT NULL DEFAULT 0
+                     );
+                     INSERT INTO entities_v4(id,name,norm,type,homonym,description,created_at,updated_at,mention_count)
+                       SELECT id,name,norm,lower(type),0,description,created_at,updated_at,mention_count FROM entities;
+                     DROP TABLE entities;
+                     ALTER TABLE entities_v4 RENAME TO entities;
+                     CREATE UNIQUE INDEX IF NOT EXISTS idx_entities_norm_type
+                       ON entities(norm, type, homonym);
+                     CREATE INDEX IF NOT EXISTS idx_entities_norm ON entities(norm);",
+                )?;
+            }
+            for (table, column, ddl) in [
+                (
+                    "predicates",
+                    "display",
+                    "ALTER TABLE predicates ADD COLUMN display TEXT NOT NULL DEFAULT '';",
+                ),
+                (
+                    "predicates",
+                    "group_id",
+                    "ALTER TABLE predicates ADD COLUMN group_id INTEGER NOT NULL DEFAULT 0;",
+                ),
+                (
+                    "predicates",
+                    "inverse_of",
+                    "ALTER TABLE predicates ADD COLUMN inverse_of INTEGER;",
+                ),
+                (
+                    "predicates",
+                    "symmetric",
+                    "ALTER TABLE predicates ADD COLUMN symmetric INTEGER NOT NULL DEFAULT 0;",
+                ),
+                (
+                    "predicates",
+                    "seeded",
+                    "ALTER TABLE predicates ADD COLUMN seeded INTEGER NOT NULL DEFAULT 0;",
+                ),
+                (
+                    "relations",
+                    "predicate_text",
+                    "ALTER TABLE relations ADD COLUMN predicate_text TEXT NOT NULL DEFAULT '';",
+                ),
+                (
+                    "relations",
+                    "subj",
+                    "ALTER TABLE relations ADD COLUMN subj INTEGER NOT NULL DEFAULT 0;",
+                ),
+            ] {
+                if !db.column_exists(table, column)? {
+                    db.sql().execute_batch(ddl)?;
+                }
+            }
+            db.sql()
+                .execute("UPDATE relations SET subj=src WHERE subj=0", [])?;
+            // v3 stored fact-sentence vectors; the phrase is the right signal.
+            db.sql().execute("DELETE FROM predicates_vec", [])?;
+            db.seed_predicates()?;
+            db.sql().execute(
+                "UPDATE relations SET predicate_text=COALESCE(
+                     (SELECT NULLIF(display,'') FROM predicates p WHERE p.id=relations.predicate_id),
+                     (SELECT canonical FROM predicates p WHERE p.id=relations.predicate_id),
+                     '')
+                 WHERE predicate_text=''",
+                [],
+            )?;
+            db.set_version(4)
+        });
+        let _ = self.sql().execute_batch("PRAGMA foreign_keys=ON");
+        result
     }
 
     fn column_exists(&self, table: &str, column: &str) -> Result<bool> {

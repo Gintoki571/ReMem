@@ -41,6 +41,7 @@ fn person(name: &str) -> EntityIn {
         description: Some("the user's mother".into()),
         aliases: vec!["mother".into()],
         same_as: None,
+        distinct_from: Vec::new(),
     }
 }
 

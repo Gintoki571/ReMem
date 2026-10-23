@@ -38,8 +38,15 @@ pub struct Config {
     pub sim_edge: f32,
     /// Minimum entity cosine for a query-time graph seed.
     pub entity_seed: f32,
-    /// Predicate cosine at/above which a new predicate becomes an alias.
+    /// Cosine at/above which a new predicate becomes an alias. Measured on
+    /// predicate phrases (not fact sentences): 0.80 had precision 1.0 on 30
+    /// paraphrase / 30 non-paraphrase pairs. The head/tail guard in
+    /// `resolve` is part of the rule, not a replacement for it.
     pub pred_alias: f32,
+    /// Description cosine below which an exact-name match is reported as an
+    /// ambiguous homonym. Measured on 22 same-entity / 22 different-entity
+    /// pairs (same min 0.7404, different max 0.7275).
+    pub entity_conflict: f32,
     pub w_bm25: f64,
     pub w_vector: f64,
     pub w_graph: f64,
@@ -81,7 +88,8 @@ impl Default for Config {
             near_dup: 0.97,
             sim_edge: 0.75,
             entity_seed: 0.55,
-            pred_alias: 0.90,
+            pred_alias: 0.80,
+            entity_conflict: 0.73,
             w_bm25: 1.0,
             w_vector: 2.0,
             w_graph: 1.5,
@@ -166,6 +174,10 @@ pub struct EntityIn {
     /// Force-merge into this existing entity (name, alias or e<id>).
     #[serde(default)]
     pub same_as: Option<String>,
+    /// Force a new entity distinct from these (e<id>, name or alias). Use it
+    /// when `remember` reports `ambiguous`: the same name is a different thing.
+    #[serde(default)]
+    pub distinct_from: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -229,11 +241,25 @@ pub struct RememberInput {
 pub struct EntityResolution {
     pub name: String,
     pub id: i64,
-    /// "new" | "matched" | "alias" | "lexical" | "acronym" | "same_as"
+    /// "new" | "matched" | "alias" | "lexical" | "acronym" | "same_as" | "ambiguous"
     pub status: String,
     /// Soft links written for a new entity: (entity id, name, cosine).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub similar: Vec<(i64, String, f32)>,
+    /// Other entities this name could mean (set with status "ambiguous").
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub candidates: Vec<EntityCandidate>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct EntityCandidate {
+    pub id: i64,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub score: Option<f32>,
 }
 
 #[derive(Clone, Debug, Serialize)]

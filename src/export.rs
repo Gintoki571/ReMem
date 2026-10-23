@@ -417,6 +417,7 @@ fn to_input(record: &ExportRecord, supersedes: Vec<String>) -> RememberInput {
                 description: e.description.clone(),
                 aliases: e.aliases.clone(),
                 same_as: None,
+                distinct_from: Vec::new(),
             })
             .collect(),
         relations: record

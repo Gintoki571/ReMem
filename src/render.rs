@@ -505,12 +505,14 @@ mod tests {
                     id: 3,
                     status: "new".into(),
                     similar: vec![(9, "Mother".into(), 0.81)],
+                    candidates: Vec::new(),
                 },
                 EntityResolution {
                     name: "Pune".into(),
                     id: 8,
                     status: "matched".into(),
                     similar: Vec::new(),
+                    candidates: Vec::new(),
                 },
             ],
             relations: vec![RelationResult {
