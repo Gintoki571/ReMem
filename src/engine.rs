@@ -69,6 +69,8 @@ pub struct Config {
     pub fact_memory_seed: f64,
     /// Score multiplier for ended memories when the query asks about the past.
     pub history_boost: f64,
+    /// Cosine threshold for text-only update candidates.
+    pub update_candidate: f32,
 }
 
 impl Default for Config {
@@ -95,6 +97,7 @@ impl Default for Config {
             history_boost: 1.5,
             fact_entity_boost: 1.0,
             fact_memory_seed: 0.0,
+            update_candidate: 0.82,
         }
     }
 }
@@ -175,7 +178,10 @@ pub struct RelationIn {
     pub fact: Option<String>,
     /// (source, predicate) holds at most one target at a time.
     #[serde(default)]
-    pub exclusive: bool,
+    pub exclusive: Option<bool>,
+    /// Explicit polarity; when absent, remember infers conservative negation.
+    #[serde(default)]
+    pub negated: Option<bool>,
     #[serde(default)]
     pub valid_from: Option<String>,
     #[serde(default)]
@@ -248,7 +254,25 @@ pub struct RememberOutput {
     pub invalidated_relations: Vec<i64>,
     pub superseded_memories: Vec<i64>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub conflicts: Vec<Conflict>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub related: Vec<RelatedMemory>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub hints: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct Conflict {
+    pub relation_id: i64,
+    pub fact: String,
+    pub valid_from: i64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct RelatedMemory {
+    pub memory_id: i64,
+    pub cosine: f32,
+    pub snippet: String,
 }
 
 // ---------------------------------------------------------------- recall
@@ -318,6 +342,9 @@ pub struct FactHit {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub valid_to: Option<i64>,
     pub ended: bool,
+    pub polarity: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current_values: Option<usize>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -832,24 +859,24 @@ impl Engine {
 /// an entity merge: keep the earliest start, sum the evidence, move the
 /// evidence rows and the projections of the rows that go away.
 fn merge_duplicate_relations(db: &Db) -> Result<()> {
-    let groups: Vec<(i64, i64, i64)> = {
+    let groups: Vec<(i64, i64, i64, i64)> = {
         let mut st = db.sql().prepare(
-            "SELECT src,predicate_id,dst FROM relations
+            "SELECT src,predicate_id,dst,polarity FROM relations
              WHERE expired_at IS NULL AND valid_to IS NULL
-             GROUP BY src,predicate_id,dst HAVING count(*)>1",
+             GROUP BY src,predicate_id,dst,polarity HAVING count(*)>1",
         )?;
-        let rows = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+        let rows = st.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
         rows.collect::<rusqlite::Result<_>>()?
     };
-    for (src, pid, dst) in groups {
+    for (src, pid, dst, polarity) in groups {
         let rows: Vec<(i64, i64)> = {
             let mut st = db.sql().prepare(
                 "SELECT id,evidence_count FROM relations
                  WHERE src=?1 AND predicate_id=?2 AND dst=?3
-                   AND expired_at IS NULL AND valid_to IS NULL
+                   AND polarity=?4 AND expired_at IS NULL AND valid_to IS NULL
                  ORDER BY valid_from, id",
             )?;
-            let rows = st.query_map(rusqlite::params![src, pid, dst], |r| {
+            let rows = st.query_map(rusqlite::params![src, pid, dst, polarity], |r| {
                 Ok((r.get(0)?, r.get(1)?))
             })?;
             rows.collect::<rusqlite::Result<_>>()?

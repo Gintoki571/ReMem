@@ -40,8 +40,14 @@ Store something when it will still matter next week:
 - **Structured when known**: pass `entities` and `relations`. Mark single-valued
   relations (`lives in`, `works at`, `is married to`, `has phone number`)
   `exclusive: true` so the previous value is ended and kept as history.
-  Exclusivity sticks to the predicate for every future write, so never mark
-  multi-valued ones (`uses`, `knows`, `likes`, `depends on`) exclusive.
+  Use `exclusive: false` to keep competing values without a conflict hint;
+  omit it to use predicate policy or return candidates. Exclusivity sticks to
+  the predicate for future writes, so never mark multi-valued ones (`uses`,
+  `knows`, `likes`, `depends on`) exclusive.
+- Pass `negated: true` for retractions such as "no longer likes"; negative
+  relations render as `—NOT→` and end the matching positive interval. When
+  `remember` returns `conflicts` or `related`, decide whether to invalidate or
+  supersede the candidate; neocortex never guesses and never deletes history.
 - **Correct, don't contradict**: use `supersedes: ["m12"]` for a newer memory
   that replaces an older one, or `invalidate` when a fact stopped being true.
   Never write two live facts that disagree.

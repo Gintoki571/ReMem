@@ -1,4 +1,4 @@
--- neocortex schema v2. Relational tables are the source of truth; the
+-- neocortex schema v3. Relational tables are the source of truth; the
 -- graphqlite tables (nodes/edges/...) are a rebuildable projection.
 -- Times are unix seconds (UTC). Validity is half-open [valid_from, valid_to).
 
@@ -92,7 +92,9 @@ CREATE TABLE IF NOT EXISTS relations (
   valid_from INTEGER NOT NULL,
   valid_to INTEGER,
   created_at INTEGER NOT NULL,
-  expired_at INTEGER
+  expired_at INTEGER,
+  polarity INTEGER NOT NULL DEFAULT 1,
+  ended_by INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_rel_src ON relations(src, predicate_id);
 CREATE INDEX IF NOT EXISTS idx_rel_dst ON relations(dst);

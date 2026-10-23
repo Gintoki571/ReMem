@@ -58,7 +58,8 @@ fn lives_in(target: &str, from: &str, fact: &str) -> RelationIn {
         predicate: "lives in".into(),
         target: target.into(),
         fact: Some(fact.into()),
-        exclusive: true,
+        exclusive: Some(true),
+        negated: None,
         valid_from: Some(from.into()),
         valid_to: None,
     }

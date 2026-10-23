@@ -6,12 +6,12 @@ use rusqlite::OptionalExtension;
 use std::path::Path;
 use std::sync::Once;
 
-/// v2: unique live content hash (#8). Migrations are an explicit ladder below.
+/// v3: relation polarity/provenance. Migrations are an explicit ladder below.
 ///
 /// The version lives in `schema_meta`, not `PRAGMA user_version`: graphqlite
 /// owns that pragma (it stamps 1 for its own schema and its cypher executor
 /// refuses to start on any other value).
-pub const SCHEMA_VERSION: i64 = 2;
+pub const SCHEMA_VERSION: i64 = 3;
 
 /// One connection for everything (relational, FTS5, vec0, Cypher), so a
 /// write is one transaction.
@@ -108,6 +108,9 @@ impl Db {
         if v < 2 {
             db.migrate_v1_to_v2()?;
         }
+        if v < 3 {
+            db.migrate_v2_to_v3()?;
+        }
         Ok(db)
     }
 
@@ -123,7 +126,64 @@ impl Db {
     /// Fresh database: create every table, then stamp the version.
     fn create_schema(&self) -> Result<()> {
         self.sql().execute_batch(include_str!("schema.sql"))?;
+        self.seed_predicates()?;
         self.set_version(SCHEMA_VERSION)
+    }
+
+    fn seed_predicates(&self) -> Result<()> {
+        for name in [
+            "lives in",
+            "resides in",
+            "based in",
+            "work at",
+            "work for",
+            "employ by",
+            "married to",
+            "reports to",
+            "born in",
+            "born on",
+            "headquartered in",
+        ] {
+            let canonical = crate::text::norm_predicate(name);
+            self.sql().execute(
+                "INSERT OR IGNORE INTO predicates(canonical,exclusive) VALUES (?1,1)",
+                [&canonical],
+            )?;
+            let id: i64 = self.sql().query_row(
+                "SELECT id FROM predicates WHERE canonical=?1",
+                [&canonical],
+                |r| r.get(0),
+            )?;
+            self.sql().execute(
+                "INSERT OR IGNORE INTO predicate_aliases(alias_norm,predicate_id) VALUES (?1,?2)",
+                rusqlite::params![canonical, id],
+            )?;
+        }
+        Ok(())
+    }
+
+    fn migrate_v2_to_v3(&self) -> Result<()> {
+        self.write(|db| {
+            if !db.column_exists("relations", "polarity")? {
+                db.sql().execute_batch(
+                    "ALTER TABLE relations ADD COLUMN polarity INTEGER NOT NULL DEFAULT 1;",
+                )?;
+            }
+            if !db.column_exists("relations", "ended_by")? {
+                db.sql()
+                    .execute_batch("ALTER TABLE relations ADD COLUMN ended_by INTEGER;")?;
+            }
+            db.seed_predicates()?;
+            db.set_version(3)
+        })
+    }
+
+    fn column_exists(&self, table: &str, column: &str) -> Result<bool> {
+        Ok(self.sql().query_row(
+            "SELECT EXISTS(SELECT 1 FROM pragma_table_info(?1) WHERE name=?2)",
+            rusqlite::params![table, column],
+            |r| r.get(0),
+        )?)
     }
 
     fn schema_version(&self) -> Result<i64> {

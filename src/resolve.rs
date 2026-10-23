@@ -520,7 +520,7 @@ pub fn resolve_predicate(
     db: &Db,
     name: &str,
     embedding: &[f32],
-    exclusive: bool,
+    exclusive: Option<bool>,
     cfg: &Config,
 ) -> Result<(i64, String, bool)> {
     let norm = text::norm_predicate(name);
@@ -529,7 +529,7 @@ pub fn resolve_predicate(
         [&norm],
         |r| r.get(0),
     ) {
-        if exclusive {
+        if exclusive == Some(true) {
             db.sql()
                 .execute("UPDATE predicates SET exclusive=1 WHERE id=?1", [id])?;
         }
@@ -549,7 +549,7 @@ pub fn resolve_predicate(
             "INSERT OR IGNORE INTO predicate_aliases(alias_norm,predicate_id) VALUES (?1,?2)",
             params![norm, id],
         )?;
-        if exclusive {
+        if exclusive == Some(true) {
             db.sql()
                 .execute("UPDATE predicates SET exclusive=1 WHERE id=?1", [id])?;
         }
@@ -557,7 +557,7 @@ pub fn resolve_predicate(
     }
     db.sql().execute(
         "INSERT INTO predicates(canonical,exclusive) VALUES (?1,?2)",
-        params![norm, exclusive as i64],
+        params![norm, i64::from(exclusive == Some(true))],
     )?;
     let id = db.sql().last_insert_rowid();
     db.sql().execute(
@@ -568,7 +568,7 @@ pub fn resolve_predicate(
         "INSERT INTO predicates_vec(rowid,embedding) VALUES (?1,?2)",
         params![id, vec_blob(embedding)],
     )?;
-    Ok((id, norm, exclusive))
+    Ok((id, norm, exclusive == Some(true)))
 }
 
 fn predicate_row(db: &Db, id: i64) -> Result<(i64, String, bool)> {

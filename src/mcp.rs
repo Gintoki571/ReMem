@@ -534,7 +534,8 @@ fn relation_schema() -> Value {
             "predicate": {"type": "string", "description": "Lowercase verb phrase, e.g. \"lives in\", \"works at\", \"depends on\"."},
             "target": {"type": "string", "description": "Object entity name (created if unknown)."},
             "fact": {"type": "string", "description": "Natural sentence, e.g. \"Mom lives in Pune\". Defaults to \"source predicate target\"."},
-            "exclusive": {"type": "boolean", "description": "True for single-valued facts (lives in, works at): the previous value is ended and kept as history."},
+            "exclusive": {"type": ["boolean","null"], "description": "true ends competing values; false keeps this write without conflict reporting; omit to use predicate policy or return candidates."},
+            "negated": {"type": "boolean", "description": "Mark a negative assertion; omitted uses conservative cue detection."},
             "valid_from": {"type": "string", "description": "When the fact became true (ISO date, unix seconds or relative phrase)."},
             "valid_to": {"type": "string", "description": "When it stopped being true; omit while it still holds."}
         },
@@ -554,7 +555,7 @@ fn tool_defs() -> Vec<Value> {
     vec![
         json!({
             "name": "remember",
-            "description": "Store one durable memory. Use it for atomic facts, events, decisions and their reasons, user preferences, mistakes and their fixes, procedures that worked, and outcomes. Write one self-contained sentence with absolute dates. Pass entities and relations when you know them, and mark single-valued relations (lives in, works at, is married to) exclusive so the old value is kept as history. To correct or replace a memory use supersedes or invalidate instead of writing a contradiction. Never store secrets, credentials or transient chatter.",
+            "description": "Store one durable memory. Use atomic facts, events, decisions, preferences, mistakes, procedures and outcomes. For relations, exclusive=true ends competing values, false keeps this write without conflict reporting, and omission returns candidates unless the predicate is seeded single-valued. Pass negated=true for a retraction. Act on conflicts/related with invalidate or supersedes; history is never deleted. Never store secrets, credentials or transient chatter.",
             "inputSchema": {
                 "type": "object",
                 "properties": {

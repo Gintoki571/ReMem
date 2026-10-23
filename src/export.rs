@@ -69,8 +69,10 @@ pub struct ExportRelation {
     pub target: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fact: Option<String>,
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub exclusive: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exclusive: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub negated: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub valid_from: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -200,7 +202,7 @@ fn entities_of(engine: &Engine, memory: i64) -> Result<Vec<ExportEntity>> {
 
 fn relations_of(engine: &Engine, memory: i64) -> Result<Vec<ExportRelation>> {
     let mut st = engine.db.sql().prepare(
-        "SELECT s.name, p.canonical, d.name, r.fact, p.exclusive, r.valid_from, r.valid_to
+        "SELECT s.name, p.canonical, d.name, r.fact, p.exclusive, r.valid_from, r.valid_to, r.polarity
          FROM relation_evidence ev
          JOIN relations r ON r.id = ev.relation_id
          JOIN entities s ON s.id = r.src
@@ -214,7 +216,8 @@ fn relations_of(engine: &Engine, memory: i64) -> Result<Vec<ExportRelation>> {
             predicate: r.get(1)?,
             target: r.get(2)?,
             fact: Some(r.get(3)?),
-            exclusive: r.get(4)?,
+            exclusive: Some(r.get::<_, i64>(4)? != 0),
+            negated: Some(r.get::<_, i64>(7)? == 0),
             valid_from: Some(fmt_iso(r.get(5)?)),
             valid_to: r.get::<_, Option<i64>>(6)?.map(fmt_iso),
         })
@@ -388,6 +391,7 @@ fn to_input(record: &ExportRecord, supersedes: Vec<String>) -> RememberInput {
                 target: r.target.clone(),
                 fact: r.fact.clone(),
                 exclusive: r.exclusive,
+                negated: r.negated,
                 valid_from: r.valid_from.clone(),
                 valid_to: r.valid_to.clone(),
             })

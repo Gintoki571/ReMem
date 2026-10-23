@@ -10,6 +10,37 @@ use crate::{
 use rusqlite::{params, OptionalExtension};
 use std::collections::{HashMap, HashSet};
 
+fn infer_negated(fact: &str, content: &str, predicate: &str) -> bool {
+    let text = fact.to_ascii_lowercase();
+    let source = if text.trim().is_empty() {
+        content.to_ascii_lowercase()
+    } else {
+        text
+    };
+    let words: Vec<&str> = source.split_whitespace().collect();
+    let pred_word = predicate.split_whitespace().next().unwrap_or("");
+    let pos = words
+        .iter()
+        .position(|w| w.trim_matches(|c: char| !c.is_alphanumeric()) == pred_word);
+    let end = pos.unwrap_or(words.len());
+    let before = end.saturating_sub(4);
+    let cues = [
+        "no", "not", "never", "stopped", "quit", "ceased", "doesn't", "didn't", "isn't", "wasn't",
+    ];
+    let mut found = words[before..end]
+        .iter()
+        .any(|w| cues.contains(&w.trim_matches(|c: char| !c.is_alphanumeric())));
+    if words.windows(2).any(|pair| pair == ["not", "only"]) {
+        found = false;
+    }
+    if predicate.contains("work") {
+        found |= words[before..end]
+            .iter()
+            .any(|w| *w == "left" || *w == "quit");
+    }
+    found
+}
+
 pub fn check_embedder(db: &Db, emb: &dyn Embedder) -> Result<()> {
     let found: Option<String> = db
         .sql()
@@ -272,6 +303,35 @@ pub fn remember(
         }
         let mut rel_results = Vec::new();
         let mut invalidated = Vec::new();
+        let mut conflicts = Vec::new();
+        let mut related = Vec::new();
+        if inp.relations.is_empty() && !ids.is_empty() {
+            let entity_ids: Vec<i64> = ids.values().copied().collect();
+            let mut st = db.sql().prepare(
+                "SELECT rowid,1-distance FROM memories_vec
+                 WHERE embedding MATCH ?1 AND k=10 AND live=1 ORDER BY distance",
+            )?;
+            for row in st.query_map([vec_blob(&vectors[0])], |r| {
+                Ok((r.get::<_, i64>(0)?, r.get::<_, f32>(1)?))
+            })? {
+                let (mid, cosine) = row?;
+                if cosine < cfg.update_candidate || cosine >= cfg.near_dup || mid == id {
+                    continue;
+                }
+                let shared: bool = db.sql().query_row(
+                    "SELECT EXISTS(SELECT 1 FROM mentions WHERE memory_id=?1 AND entity_id IN (SELECT value FROM json_each(?2)))",
+                    rusqlite::params![mid, serde_json::to_string(&entity_ids)?],
+                    |r| r.get(0),
+                )?;
+                if shared {
+                    let snippet: String = db.sql().query_row(
+                        "SELECT content FROM memories WHERE id=?1", [mid], |r| r.get(0)
+                    )?;
+                    related.push(crate::engine::RelatedMemory { memory_id: mid, cosine, snippet });
+                    if related.len() == 3 { break; }
+                }
+            }
+        }
         for (ri, relation) in inp.relations.iter().enumerate() {
             let src = resolve_endpoint(
                 db,
@@ -316,15 +376,25 @@ pub fn remember(
                 })
                 .transpose()?;
             let fact = facts[ri].clone();
+            let polarity = if relation.negated.unwrap_or_else(|| {
+                infer_negated(
+                    relation.fact.as_deref().unwrap_or(&content),
+                    &content,
+                    &predicate,
+                )
+            }) { 0 } else { 1 };
             if new_valid_to.is_some_and(|to| to <= rf) {
                 return Err(crate::err!(
                     "relation '{fact}': valid_to must be after valid_from"
                 ));
             }
-            if relation.exclusive || predicate_exclusive {
+            if polarity == 1
+                && relation.exclusive != Some(false)
+                && (relation.exclusive == Some(true) || predicate_exclusive)
+            {
                 let mut st = db.sql().prepare(
                     "SELECT id,valid_from,valid_to FROM relations
-                     WHERE src=?1 AND predicate_id=?2 AND dst!=?3 AND expired_at IS NULL",
+                     WHERE src=?1 AND predicate_id=?2 AND dst!=?3 AND polarity=1 AND expired_at IS NULL",
                 )?;
                 let olds: Vec<(i64, i64, Option<i64>)> = st
                     .query_map(params![src, pid, dst], |r| {
@@ -336,14 +406,14 @@ pub fn remember(
                     if old_from == rf {
                         // Equal start: the newer write wins.
                         db.sql().execute(
-                            "UPDATE relations SET valid_to=?1, expired_at=?2 WHERE id=?3",
+                            "UPDATE relations SET valid_to=?1, expired_at=?2, ended_by=NULL WHERE id=?3",
                             params![rf, now, old],
                         )?;
                         invalidated.push(old);
                     } else if old_from < rf && old_to.is_none_or(|to| to > rf) {
                         // Older and still true at the new start: it ends there.
                         db.sql().execute(
-                            "UPDATE relations SET valid_to=?1 WHERE id=?2",
+                            "UPDATE relations SET valid_to=?1, ended_by=NULL WHERE id=?2",
                             params![rf, old],
                         )?;
                         invalidated.push(old);
@@ -356,21 +426,42 @@ pub fn remember(
                     new_valid_to = Some(new_valid_to.map_or(later, |to| to.min(later)));
                 }
             }
-            let existing: Option<(i64, i64)> = db
+            if relation.exclusive.is_none() && !predicate_exclusive && polarity == 1 {
+                let mut st = db.sql().prepare(
+                    "SELECT r.id,r.fact,r.valid_from FROM relations r
+                     WHERE r.src=?1 AND r.predicate_id=?2 AND r.dst!=?3
+                       AND r.polarity=1 AND r.expired_at IS NULL
+                       AND (r.valid_to IS NULL OR r.valid_to>?4) LIMIT 5",
+                )?;
+                for row in st.query_map(params![src, pid, dst, rf], |r| {
+                    Ok(crate::engine::Conflict {
+                        relation_id: r.get(0)?,
+                        fact: r.get(1)?,
+                        valid_from: r.get(2)?,
+                    })
+                })? {
+                    conflicts.push(row?);
+                }
+            }
+            let existing: Option<(i64, i64, Option<i64>)> = db
                 .sql()
                 .query_row(
-                    "SELECT id,evidence_count FROM relations
-                     WHERE src=?1 AND predicate_id=?2 AND dst=?3
-                       AND valid_to IS NULL AND expired_at IS NULL",
-                    params![src, pid, dst],
-                    |r| Ok((r.get(0)?, r.get(1)?)),
+                    "SELECT id,evidence_count,valid_to FROM relations
+                     WHERE src=?1 AND predicate_id=?2 AND dst=?3 AND polarity=?4
+                       AND expired_at IS NULL
+                       AND (valid_to IS NULL OR valid_to>=?5)
+                       AND valid_from<=COALESCE(?6,valid_from) LIMIT 1",
+                    params![src, pid, dst, polarity, rf, new_valid_to],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
                 )
                 .optional()?;
-            let rid = if let Some((rid, _count)) = existing {
+            let rid = if let Some((rid, _count, _old_to)) = existing {
                 db.sql().execute(
                     "UPDATE relations SET evidence_count=evidence_count+1,
-                     weight=evidence_count+1, valid_from=MIN(valid_from,?1) WHERE id=?2",
-                    params![rf, rid],
+                     weight=evidence_count+1, valid_from=MIN(valid_from,?1),
+                     valid_to=CASE WHEN valid_to IS NULL OR ?2 IS NULL THEN NULL ELSE MAX(valid_to,?2) END
+                     WHERE id=?3",
+                    params![rf, new_valid_to, rid],
                 )?;
                 db.sql().execute(
                     "INSERT OR IGNORE INTO relation_evidence(relation_id,memory_id) VALUES(?1,?2)",
@@ -379,9 +470,9 @@ pub fn remember(
                 rid
             } else {
                 db.sql().execute(
-                    "INSERT INTO relations(src,dst,predicate_id,fact,weight,evidence_count,valid_from,valid_to,created_at)
-                     VALUES (?1,?2,?3,?4,1,1,?5,?6,?7)",
-                    params![src, dst, pid, fact, rf, new_valid_to, now],
+                    "INSERT INTO relations(src,dst,predicate_id,fact,weight,evidence_count,valid_from,valid_to,created_at,polarity)
+                     VALUES (?1,?2,?3,?4,1,1,?5,?6,?7,?8)",
+                    params![src, dst, pid, fact, rf, new_valid_to, now, polarity],
                 )?;
                 let rid = db.sql().last_insert_rowid();
                 db.sql().execute(
@@ -396,8 +487,31 @@ pub fn remember(
                     "INSERT INTO relations_vec(rowid,embedding) VALUES(?1,?2)",
                     params![rid, vec_blob(&vectors[fact_base + ri])],
                 )?;
+                if polarity == 0 {
+                    let positive: Vec<i64> = {
+                        let mut st = db.sql().prepare(
+                            "SELECT id FROM relations WHERE src=?1 AND dst=?2 AND predicate_id=?3
+                             AND polarity=1 AND id!=?5 AND expired_at IS NULL AND (valid_to IS NULL OR valid_to>?4)",
+                        )?;
+                        let rows = st.query_map(params![src, dst, pid, rf, rid], |r| r.get(0))?;
+                        rows.collect::<rusqlite::Result<_>>()?
+                    };
+                    for old in positive {
+                        db.sql().execute(
+                            "UPDATE relations SET valid_to=?1, ended_by=?2 WHERE id=?3",
+                            params![rf, rid, old],
+                        )?;
+                        invalidated.push(old);
+                    }
+                }
                 rid
             };
+            for old in &invalidated {
+                db.sql().execute(
+                    "UPDATE relations SET ended_by=?1 WHERE id=?2 AND valid_to=?3",
+                    params![rid, old, rf],
+                )?;
+            }
             kg::project_relation(db, rid, src, dst, &predicate)?;
             rel_results.push(RelationResult {
                 id: rid,
@@ -409,6 +523,7 @@ pub fn remember(
                 },
             });
         }
+
         for target in &supersedes {
             // Relations this memory was the only live evidence for were true
             // until the new memory's world-time starts; they end there and stay
@@ -421,6 +536,7 @@ pub fn remember(
                     params![valid_from, rid],
                 )?;
             }
+
             db.sql().execute(
                 "UPDATE memories SET valid_to=COALESCE(valid_to,?1),expired_at=?2,superseded_by=?3 WHERE id=?4",
                 params![valid_from, now, id, target],
@@ -435,7 +551,15 @@ pub fn remember(
             .collect();
         end_memories_of_ended_facts(db, &touched)?;
         kg::bump_gen(db)?;
-        Ok(RememberOutput{id,duplicate_of,near_duplicate:near,entities:resolutions,relations:rel_results,invalidated_relations:invalidated,superseded_memories:supersedes,hints:if content.len()>2000{vec!["long content: consider splitting into atomic memories".into()]}else{Vec::new()}})
+        let mut hints = if content.len()>2000{vec!["long content: consider splitting into atomic memories".into()]}else{Vec::new()};
+        if !conflicts.is_empty() {
+            let c = &conflicts[0];
+            hints.push(format!("r{} ({}) is also current; if the new fact replaces it call invalidate r{}, or re-send with exclusive=true", c.relation_id, c.fact, c.relation_id));
+        }
+        if !related.is_empty() {
+            hints.push(format!("if this updates m{}, pass supersedes=[m{}]", related[0].memory_id, related[0].memory_id));
+        }
+        Ok(RememberOutput{id,duplicate_of,near_duplicate:near,entities:resolutions,relations:rel_results,invalidated_relations:invalidated,superseded_memories:supersedes,conflicts,related,hints})
     })
 }
 

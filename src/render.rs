@@ -61,9 +61,14 @@ fn fact_line(f: &FactHit, fmt: Fmt<'_>) -> String {
         (None, true) => format!("{}, ended", fmt(f.valid_from)),
         (None, false) => format!("since {}", fmt(f.valid_from)),
     };
+    let arrow = if f.polarity == 0 { "—NOT " } else { "—" };
+    let suffix = f
+        .current_values
+        .map(|n| format!(" [1 of {n} current]"))
+        .unwrap_or_default();
     format!(
-        "[r{}] {} —{}→ {} ({span})",
-        f.id, f.source, f.predicate, f.target
+        "[r{}] {} {}{}→ {}{} ({span})",
+        f.id, f.source, arrow, f.predicate, f.target, suffix
     )
 }
 
@@ -142,6 +147,18 @@ pub fn render_remember(out: &RememberOutput) -> String {
         s.push_str(&format!(
             "superseded: {}\n",
             id_list('m', &out.superseded_memories)
+        ));
+    }
+    for c in &out.conflicts {
+        s.push_str(&format!(
+            "conflict: r{} {} (since {})\n",
+            c.relation_id, c.fact, c.valid_from
+        ));
+    }
+    for r in &out.related {
+        s.push_str(&format!(
+            "related: m{} ({:.2}) {}\n",
+            r.memory_id, r.cosine, r.snippet
         ));
     }
     for hint in &out.hints {
@@ -341,6 +358,8 @@ mod tests {
             valid_from: from,
             valid_to: to,
             ended,
+            polarity: 1,
+            current_values: None,
         }
     }
 
@@ -467,6 +486,8 @@ mod tests {
             }],
             invalidated_relations: vec![4, 6],
             superseded_memories: vec![12],
+            conflicts: Vec::new(),
+            related: Vec::new(),
             hints: vec!["content is long; atomic memories retrieve better".into()],
         };
         assert_eq!(
@@ -491,6 +512,8 @@ mod tests {
             relations: Vec::new(),
             invalidated_relations: Vec::new(),
             superseded_memories: Vec::new(),
+            conflicts: Vec::new(),
+            related: Vec::new(),
             hints: Vec::new(),
         };
         assert_eq!(

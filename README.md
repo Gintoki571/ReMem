@@ -102,8 +102,8 @@ Exit codes: `0` ok, `1` runtime error, `2` usage error.
 memory, in id order, to `FILE` or stdout. Each line is a `RememberInput` plus
 `id` and `expired`, so a single line can be replayed with `neocortex remember -`.
 A line carries the memory's entities (name, type, description, aliases), the
-relations it is evidence for (canonical predicate, fact, validity, exclusive
-flag), validity times as ISO-8601 UTC, and `supersedes` (the ids it replaced).
+relations it is evidence for (canonical predicate, fact, validity, polarity,
+exclusive flag), validity times as ISO-8601 UTC, and `supersedes` (the ids it replaced).
 Superseded rows are exported too, marked `"expired": true`, so the history
 survives; forgotten rows are left out unless `--include-forgotten` is given.
 
@@ -201,6 +201,11 @@ Facts are bi-temporal: `valid_from`/`valid_to` say when something was true in
 the world, `expired_at` says when neocortex retired it. Changed facts are kept
 as history and are never presented as current unless you ask for history or an
 `as_of` snapshot.
+
+Relation writes use tri-state `exclusive`: `true` ends competing values,
+`false` keeps this write without conflict reporting, and omitted uses the
+predicate policy or returns candidates. Negative assertions are stored with
+polarity and end matching positive validity without deleting history.
 
 ## Quality
 

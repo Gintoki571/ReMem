@@ -110,7 +110,7 @@ Design (binding): `docs/superpowers/specs/2026-10-22-neocortex-design.md`. Plan:
 
 ## Layout
 
-- `src/db.rs` + `src/schema.sql` - connection, extensions, schema. The schema version lives in the `schema_meta` table (v2), never in `PRAGMA user_version`: graphqlite owns that pragma (it stamps 1 and its cypher executor refuses any other value). Migrations are an explicit ladder in `Db::init`.
+- `src/db.rs` + `src/schema.sql` - connection, extensions, schema. The schema version lives in the `schema_meta` table (v3), never in `PRAGMA user_version`: graphqlite owns that pragma (it stamps 1 and its cypher executor refuses any other value). Migrations are an explicit ladder in `Db::init`.
 - `src/embed.rs`, `src/ultrabert.rs` - Embedder trait, UltraBERT forward pass, HashEmbedder (tests).
 - `src/text.rs` - normalisation, singularise, Jaro-Winkler, trigrams, FTS query building, predicate keys, content hash.
 - `src/temporal.rs` - civil dates, instant/window parsing, query windows, history intent.

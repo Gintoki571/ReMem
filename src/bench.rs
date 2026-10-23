@@ -305,7 +305,8 @@ fn relation(source: &str, predicate: &str, target: &str, fact: String, from: i64
         predicate: predicate.into(),
         target: target.into(),
         fact: Some(fact),
-        exclusive: false,
+        exclusive: Some(false),
+        negated: None,
         valid_from: Some(iso(from)),
         valid_to: None,
     }
@@ -407,7 +408,7 @@ fn corpus(world: &World, rng: &mut Rng, n: usize, now: i64) -> Vec<RememberInput
                     format!("{person} lives in {place}"),
                     when,
                 );
-                rel.exclusive = true;
+                rel.exclusive = Some(true);
                 (
                     content,
                     "fact",

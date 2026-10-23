@@ -110,6 +110,9 @@ Steps, in one `BEGIN IMMEDIATE` transaction (embeddings computed before the tran
 
 ### Temporal rules
 - Validity intervals are half-open `[valid_from, valid_to)`; NULL `valid_to` = open. "Valid at T" ⇔ `valid_from <= T AND (valid_to IS NULL OR T < valid_to)`. Live (system time) ⇔ `expired_at IS NULL`. An as-of query uses world time only; system time decides what is "current knowledge".
+- Relations carry polarity (`1` positive, `0` negative) and `ended_by`. A matching negative assertion ends a live positive interval at its world start and remains as its own evidence; explicit `invalidate` leaves `ended_by` NULL. Reasserting a past interval attaches evidence to the existing same-triple, same-polarity row when intervals overlap or touch.
+- `exclusive` is tri-state: `true` ends competing values, `false` never ends or reports them for that write, and omitted applies a seeded predicate policy or returns bounded conflict candidates. Non-exclusive predicates remain multi-valued by default; history is never deleted.
+- Text-only update candidates use `Config.update_candidate = 0.82`. A 10-pair UltraBERT-Embed-150M calibration measured update cosine min/max/mean `0.6974/0.9724/0.8802` versus related-but-not-update `0.3335/0.6588/0.4697`; this threshold favors high precision while returning hints only.
 - Exclusive invalidation compares world time:
   - an older live relation (`old.valid_from < new.valid_from`) gets `valid_to = new.valid_from`;
   - a backfilled fact (`new.valid_from < old.valid_from`) is stored already ended: `new.valid_to = min(existing later valid_from)`, and it is history;
