@@ -28,7 +28,7 @@ const PATTERNS: &[(&str, &str)] = &[
     ("reports to", "reports to"),
     ("lives in", "lives in"),
     ("resides in", "lives in"),
-    ("moved to", "moved to"),
+    ("moved to", "lives in"),
     ("joined", "joined"),
     ("manages", "manages"),
     ("prefers", "prefers"),
@@ -68,22 +68,19 @@ pub fn extract_text(text: &str, clock: &Clock) -> Extraction {
                 let negated = needle.starts_with("no longer")
                     || needle.starts_with("does not")
                     || needle.starts_with("doesn't");
-                let source_kind = Some("person".to_string());
-                let target_kind = if matches!(predicate, "lives in" | "moved to") {
-                    Some("place".to_string())
-                } else {
-                    None
-                };
-                add_entity(&mut out.entities, &source, source_kind);
-                add_entity(&mut out.entities, &target, target_kind);
+                // No types: a guessed type that disagrees with a stored one
+                // would split or reject the entity.
+                add_entity(&mut out.entities, &source, None);
+                add_entity(&mut out.entities, &target, None);
                 out.relations.push(RelationIn {
                     source,
                     predicate: predicate.to_string(),
                     target,
                     fact: None,
-                    exclusive: Some(matches!(predicate, "lives in" | "moved to" | "works at")),
+                    // Single-valuedness comes from the predicate seeds.
+                    exclusive: None,
                     negated: Some(negated),
-                    valid_from: out.valid_from.clone(),
+                    valid_from: None,
                     valid_to: None,
                 });
             }
